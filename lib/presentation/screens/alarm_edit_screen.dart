@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 import '../providers/alarm_provider.dart';
+import 'package:flutter_gen/gen_l10n/app_localizations.dart';
 
 class AlarmEditScreen extends ConsumerStatefulWidget {
   const AlarmEditScreen({super.key});
@@ -20,7 +21,7 @@ class _AlarmEditScreenState extends ConsumerState<AlarmEditScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Add/Edit Alarm'),
+        title: Text(AppLocalizations.of(context)!.addEditAlarm),
         actions: [
           IconButton(
             icon: const Icon(Icons.save),
@@ -44,16 +45,16 @@ class _AlarmEditScreenState extends ConsumerState<AlarmEditScreen> {
           children: [
             TextFormField(
               controller: _nameController,
-              decoration: const InputDecoration(labelText: 'Alarm Name'),
+              decoration: InputDecoration(labelText: AppLocalizations.of(context)!.alarmName),
               validator: (value) {
                 if (value == null || value.isEmpty) {
-                  return 'Please enter a name';
+                  return AppLocalizations.of(context)!.pleaseEnterName;
                 }
                 return null;
               },
             ),
             const SizedBox(height: 16),
-            Text('Radius: ${_radius.toInt()} meters'),
+            Text(AppLocalizations.of(context)!.radius(_radius.toInt())),
             Slider(
               value: _radius,
               min: 100,

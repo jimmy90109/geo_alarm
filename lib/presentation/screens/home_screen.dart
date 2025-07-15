@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../core/services/location_service.dart';
 import '../providers/alarm_provider.dart';
 import 'alarm_edit_screen.dart';
+import 'package:flutter_gen/gen_l10n/app_localizations.dart';
 
 class HomeScreen extends ConsumerStatefulWidget {
   const HomeScreen({super.key});
@@ -29,7 +30,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('GeoAlarm'),
+        title: Text(AppLocalizations.of(context)!.homeTitle),
         actions: [
           IconButton(
             icon: const Icon(Icons.add),
@@ -42,7 +43,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
         ],
       ),
       body: alarms.isEmpty
-          ? const Center(child: Text('No alarms set.'))
+          ? Center(child: Text(AppLocalizations.of(context)!.noAlarms))
           : ListView.builder(
               itemCount: alarms.length,
               itemBuilder: (context, index) {

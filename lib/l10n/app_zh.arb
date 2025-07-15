@@ -1,0 +1,9 @@
+{
+  "appTitle": "地點鬧鐘",
+  "homeTitle": "地點鬧鐘",
+  "noAlarms": "尚未設定鬧鐘。",
+  "addEditAlarm": "新增/編輯鬧鐘",
+  "alarmName": "鬧鐘名稱",
+  "pleaseEnterName": "請輸入名稱",
+  "radius": "半徑：{radius} 公尺"
+} 

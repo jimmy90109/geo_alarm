@@ -3,6 +3,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 import 'package:path_provider/path_provider.dart' as path_provider;
+import 'package:flutter_localizations/flutter_localizations.dart';
+import 'package:flutter_gen/gen_l10n/app_localizations.dart';
 
 import 'data/models/alarm_model.dart';
 import 'core/services/background_service.dart';
@@ -11,7 +13,8 @@ import 'presentation/screens/home_screen.dart';
 
 // Default orange color scheme
 final _defaultLightColorScheme = ColorScheme.fromSeed(seedColor: Colors.orange);
-final _defaultDarkColorScheme = ColorScheme.fromSeed(seedColor: Colors.orange, brightness: Brightness.dark);
+final _defaultDarkColorScheme =
+    ColorScheme.fromSeed(seedColor: Colors.orange, brightness: Brightness.dark);
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -21,7 +24,7 @@ void main() async {
   await Hive.initFlutter(appDocumentDir.path);
   Hive.registerAdapter(AlarmModelAdapter());
   await Hive.openBox<AlarmModel>('alarms');
-  
+
   // Init Services
   await initializeService();
   await NotificationService().init();
@@ -49,7 +52,7 @@ class MyApp extends StatelessWidget {
         }
 
         return MaterialApp(
-          title: 'GeoAlarm',
+          title: AppLocalizations.of(context)?.appTitle ?? 'GeoAlarm',
           theme: ThemeData(
             useMaterial3: true,
             colorScheme: lightColorScheme,
@@ -58,6 +61,24 @@ class MyApp extends StatelessWidget {
             useMaterial3: true,
             colorScheme: darkColorScheme,
           ),
+          localizationsDelegates: const [
+            AppLocalizations.delegate,
+            GlobalMaterialLocalizations.delegate,
+            GlobalWidgetsLocalizations.delegate,
+            GlobalCupertinoLocalizations.delegate,
+          ],
+          supportedLocales: const [
+            Locale('zh', 'TW'),
+            Locale('en'),
+          ],
+          localeResolutionCallback: (locale, supportedLocales) {
+            if (locale == null) return const Locale('en');
+            if (locale.languageCode == 'zh' &&
+                (locale.countryCode == 'TW' || locale.scriptCode == 'Hant')) {
+              return const Locale('zh', 'TW');
+            }
+            return const Locale('en');
+          },
           home: const HomeScreen(),
         );
       },

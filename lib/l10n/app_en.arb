@@ -1,0 +1,9 @@
+{
+  "appTitle": "GeoAlarm",
+  "homeTitle": "GeoAlarm",
+  "noAlarms": "No alarms set.",
+  "addEditAlarm": "Add/Edit Alarm",
+  "alarmName": "Alarm Name",
+  "pleaseEnterName": "Please enter a name",
+  "radius": "Radius: {radius} meters"
+} 
