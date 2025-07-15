@@ -34,7 +34,7 @@ class NotificationService {
  
 
   Future<void> vibrate() async {
-    if (await Vibration.hasVibrator() ?? false) {
+    if (await Vibration.hasVibrator()) {
       Vibration.vibrate(duration: 1000, pattern: [500, 1000, 500, 2000]);
     }
   }

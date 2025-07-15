@@ -1,8 +1,8 @@
 import 'dart:async';
 import 'dart:ui';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_background_service/flutter_background_service.dart';
-import 'package:flutter_background_service_android/flutter_background_service_android.dart';
 
 Future<void> initializeService() async {
   final service = FlutterBackgroundService();
@@ -61,6 +61,8 @@ void onStart(ServiceInstance service) async {
     // 2. Get current location from LocationService
     // 3. Compare distance and trigger notification if needed
 
-    print('FLUTTER BACKGROUND SERVICE: ${DateTime.now()}');
+    if (kDebugMode) {
+      print('FLUTTER BACKGROUND SERVICE: ${DateTime.now()}');
+    }
   });
 } 
