@@ -4,6 +4,7 @@ import '../../core/services/location_service.dart';
 import '../providers/alarm_provider.dart';
 import 'alarm_edit_screen.dart';
 import 'package:flutter_gen/gen_l10n/app_localizations.dart';
+import '../../core/services/notification_service.dart'; 
 
 class HomeScreen extends ConsumerStatefulWidget {
   const HomeScreen({super.key});
@@ -16,12 +17,18 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
   @override
   void initState() {
     super.initState();
-    _requestPermission();
+      _requestPermission();
+      _requestNotificationPermission(); // 新增：請求通知權限
   }
 
   Future<void> _requestPermission() async {
     final locationService = LocationService();
     await locationService.handleLocationPermission();
+  }
+
+  Future<void> _requestNotificationPermission() async {
+    final notificationService = NotificationService();
+    await notificationService.requestNotificationPermission();
   }
 
   @override
@@ -36,7 +43,8 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
             icon: const Icon(Icons.add),
             onPressed: () {
               Navigator.of(context).push(
-                MaterialPageRoute(builder: (context) => const AlarmEditScreen()),
+                MaterialPageRoute(
+                    builder: (context) => const AlarmEditScreen()),
               );
             },
           ),
@@ -57,14 +65,17 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                   trailing: Switch(
                     value: alarm.isEnabled,
                     onChanged: (value) {
-                      final enabledCount = alarms.where((a) => a.isEnabled).length;
+                      final enabledCount =
+                          alarms.where((a) => a.isEnabled).length;
                       // show dialog if more than one alarm is enabled
                       if (!alarm.isEnabled && enabledCount >= 1) {
                         showDialog(
                           context: context,
                           builder: (context) => AlertDialog(
-                            title: Text(AppLocalizations.of(context)!.alarmName),
-                            content: Text(AppLocalizations.of(context)!.onlyOneAlarm),
+                            title:
+                                Text(AppLocalizations.of(context)!.alarmName),
+                            content: Text(
+                                AppLocalizations.of(context)!.onlyOneAlarm),
                             actions: [
                               TextButton(
                                 onPressed: () => Navigator.of(context).pop(),
@@ -75,7 +86,9 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                         );
                         return;
                       }
-                      ref.read(alarmListProvider.notifier).toggleAlarm(alarm.id);
+                      ref
+                          .read(alarmListProvider.notifier)
+                          .toggleAlarm(alarm.id);
                     },
                   ),
                   onLongPress: () {
@@ -89,4 +102,4 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
             ),
     );
   }
-} 
+}

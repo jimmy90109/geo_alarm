@@ -7,7 +7,6 @@ import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:flutter_gen/gen_l10n/app_localizations.dart';
 
 import 'data/models/alarm_model.dart';
-import 'core/services/background_service.dart';
 import 'core/services/notification_service.dart';
 import 'presentation/screens/home_screen.dart';
 
@@ -26,7 +25,6 @@ void main() async {
   await Hive.openBox<AlarmModel>('alarms');
 
   // Init Services
-  await initializeService();
   await NotificationService().init();
 
   runApp(const ProviderScope(child: MyApp()));

@@ -3,6 +3,7 @@ import 'package:uuid/uuid.dart';
 import '../../data/models/alarm_model.dart';
 import '../../data/repositories/alarm_repository.dart';
 import '../../data/datasources/local_datasource.dart';
+import '../../core/services/notification_service.dart';
 
 final localDataSourceProvider = Provider((ref) => LocalDataSource());
 
@@ -10,7 +11,8 @@ final alarmRepositoryProvider = Provider((ref) {
   return AlarmRepository(ref.read(localDataSourceProvider));
 });
 
-final alarmListProvider = StateNotifierProvider<AlarmListNotifier, List<AlarmModel>>((ref) {
+final alarmListProvider =
+    StateNotifierProvider<AlarmListNotifier, List<AlarmModel>>((ref) {
   return AlarmListNotifier(ref.read(alarmRepositoryProvider));
 });
 
@@ -38,7 +40,7 @@ class AlarmListNotifier extends StateNotifier<List<AlarmModel>> {
       latitude: latitude,
       longitude: longitude,
       radius: radius,
-      isEnabled: true,
+      isEnabled: false,
     );
     await _repository.addAlarm(newAlarm);
     loadAlarms();
@@ -48,7 +50,7 @@ class AlarmListNotifier extends StateNotifier<List<AlarmModel>> {
     await _repository.updateAlarm(alarm);
     loadAlarms();
   }
-  
+
   Future<void> toggleAlarm(String id) async {
     final alarm = state.firstWhere((a) => a.id == id);
     final updatedAlarm = AlarmModel(
@@ -61,10 +63,16 @@ class AlarmListNotifier extends StateNotifier<List<AlarmModel>> {
     );
     await _repository.updateAlarm(updatedAlarm);
     loadAlarms();
+
+    if (!alarm.isEnabled) {
+      await NotificationService().showAlarmNotification(alarm.name, "鬧鐘已啟用");
+    } else {
+      await NotificationService().stopAlarmNotification();
+    }
   }
 
   Future<void> deleteAlarm(String id) async {
     await _repository.deleteAlarm(id);
     loadAlarms();
   }
-} 
+}
