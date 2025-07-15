@@ -8,5 +8,10 @@
   "radius": "Radius: {radius} meters",
   "onlyOneAlarm": "You can only activate one alarm at a time.",
   "ok": "OK",
-  "latLon": "Lat: {lat}, Lon: {lon}"
+  "latLon": "Lat: {lat}, Lon: {lon}",
+  "switchLanguage": "Switch Language",
+  "localeZh": "繁體中文",
+  "localeEn": "English",
+  "settings": "Settings",
+  "alarmTab": "Alarms"
 } 

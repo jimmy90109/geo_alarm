@@ -8,5 +8,10 @@
   "radius": "半徑：{radius} 公尺",
   "onlyOneAlarm": "同一時間只能啟用一個鬧鐘。",
   "ok": "確定",
-  "latLon": "緯度：{lat}，經度：{lon}"
+  "latLon": "緯度：{lat}，經度：{lon}",
+  "switchLanguage": "切換語言",
+  "localeZh": "繁體中文",
+  "localeEn": "英文",
+  "settings": "設定",
+  "alarmTab": "鬧鐘"
 } 

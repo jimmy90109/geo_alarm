@@ -30,10 +30,27 @@ void main() async {
   runApp(const ProviderScope(child: MyApp()));
 }
 
-class MyApp extends StatelessWidget {
+class MyApp extends StatefulWidget {
   const MyApp({super.key});
 
-  // This widget is the root of your application.
+  static void setLocale(BuildContext context, Locale newLocale) {
+    _MyAppState? state = context.findAncestorStateOfType<_MyAppState>();
+    state?.setLocale(newLocale);
+  }
+
+  @override
+  State<MyApp> createState() => _MyAppState();
+}
+
+class _MyAppState extends State<MyApp> {
+  Locale? _locale;
+
+  void setLocale(Locale locale) {
+    setState(() {
+      _locale = locale;
+    });
+  }
+
   @override
   Widget build(BuildContext context) {
     return DynamicColorBuilder(
@@ -59,6 +76,7 @@ class MyApp extends StatelessWidget {
             useMaterial3: true,
             colorScheme: darkColorScheme,
           ),
+          locale: _locale,
           localizationsDelegates: const [
             AppLocalizations.delegate,
             GlobalMaterialLocalizations.delegate,
@@ -70,6 +88,7 @@ class MyApp extends StatelessWidget {
             Locale('en'),
           ],
           localeResolutionCallback: (locale, supportedLocales) {
+            if (_locale != null) return _locale;
             if (locale == null) return const Locale('en');
             if (locale.languageCode == 'zh' &&
                 (locale.countryCode == 'TW' || locale.scriptCode == 'Hant')) {
