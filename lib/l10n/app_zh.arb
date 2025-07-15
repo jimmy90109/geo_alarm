@@ -5,5 +5,8 @@
   "addEditAlarm": "新增/編輯鬧鐘",
   "alarmName": "鬧鐘名稱",
   "pleaseEnterName": "請輸入名稱",
-  "radius": "半徑：{radius} 公尺"
+  "radius": "半徑：{radius} 公尺",
+  "onlyOneAlarm": "同一時間只能啟用一個鬧鐘。",
+  "ok": "確定",
+  "latLon": "緯度：{lat}，經度：{lon}"
 } 

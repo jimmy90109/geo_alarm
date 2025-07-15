@@ -50,10 +50,31 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                 final alarm = alarms[index];
                 return ListTile(
                   title: Text(alarm.name),
-                  subtitle: Text('Lat: ${alarm.latitude.toStringAsFixed(2)}, Lon: ${alarm.longitude.toStringAsFixed(2)}'),
+                  subtitle: Text(AppLocalizations.of(context)!.latLon(
+                    alarm.latitude.toStringAsFixed(2),
+                    alarm.longitude.toStringAsFixed(2),
+                  )),
                   trailing: Switch(
                     value: alarm.isEnabled,
                     onChanged: (value) {
+                      final enabledCount = alarms.where((a) => a.isEnabled).length;
+                      // show dialog if more than one alarm is enabled
+                      if (!alarm.isEnabled && enabledCount >= 1) {
+                        showDialog(
+                          context: context,
+                          builder: (context) => AlertDialog(
+                            title: Text(AppLocalizations.of(context)!.alarmName),
+                            content: Text(AppLocalizations.of(context)!.onlyOneAlarm),
+                            actions: [
+                              TextButton(
+                                onPressed: () => Navigator.of(context).pop(),
+                                child: Text(AppLocalizations.of(context)!.ok),
+                              ),
+                            ],
+                          ),
+                        );
+                        return;
+                      }
                       ref.read(alarmListProvider.notifier).toggleAlarm(alarm.id);
                     },
                   ),

@@ -5,5 +5,8 @@
   "addEditAlarm": "Add/Edit Alarm",
   "alarmName": "Alarm Name",
   "pleaseEnterName": "Please enter a name",
-  "radius": "Radius: {radius} meters"
+  "radius": "Radius: {radius} meters",
+  "onlyOneAlarm": "You can only activate one alarm at a time.",
+  "ok": "OK",
+  "latLon": "Lat: {lat}, Lon: {lon}"
 } 
