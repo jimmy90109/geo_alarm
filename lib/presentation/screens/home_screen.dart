@@ -1,10 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import '../../core/services/location_service.dart';
 import '../providers/alarm_provider.dart';
 import 'alarm_edit_screen.dart';
 import 'package:flutter_gen/gen_l10n/app_localizations.dart';
-import '../../core/services/notification_service.dart'; 
+import 'package:permission_handler/permission_handler.dart';
 
 class HomeScreen extends ConsumerStatefulWidget {
   const HomeScreen({super.key});
@@ -17,18 +16,20 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
   @override
   void initState() {
     super.initState();
-      _requestPermission();
-      _requestNotificationPermission(); // 新增：請求通知權限
+    _requestPermissions();
   }
 
-  Future<void> _requestPermission() async {
-    final locationService = LocationService();
-    await locationService.handleLocationPermission();
-  }
-
-  Future<void> _requestNotificationPermission() async {
-    final notificationService = NotificationService();
-    await notificationService.requestNotificationPermission();
+  Future<void> _requestPermissions() async {
+    // request notification permission
+    var notificationStatus = await Permission.notification.request();
+    if (notificationStatus.isPermanentlyDenied) {
+      await openAppSettings();
+    }
+    // request location permission
+    var locationStatus = await Permission.location.request();
+    if (locationStatus.isPermanentlyDenied) {
+      await openAppSettings();
+    }
   }
 
   @override

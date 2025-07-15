@@ -49,6 +49,7 @@ dependencies:
   uuid: ^4.5.1
   path_provider: ^2.1.4
   dynamic_color: ^1.7.0
+  permission_handler: ^12.0.1
 
 dev_dependencies:
   flutter_test:
