@@ -40,6 +40,7 @@ This project is built using a clean, scalable, and layered architecture to separ
 * **APIs**: Google Maps Platform (Maps SDK, Places API, Geocoding API)
 
 ### Directory Structure
+```
 lib/
 ├── core/
 │   ├── services/
@@ -62,7 +63,7 @@ lib/
 │   ├── home_screen.dart
 │   └── alarm_edit_screen.dart
 └── widgets/
-
+```
 
 ## 🚀 Getting Started
 
@@ -70,7 +71,7 @@ Follow these instructions to get the project up and running on your local machin
 
 ### Prerequisites
 
-* Flutter SDK (version 3.x.x or higher)
+* Flutter SDK (version 3.35.3)
 * An IDE like VS Code or Android Studio
 * A Google Maps Platform API Key
 
@@ -131,7 +132,4 @@ Follow these instructions to get the project up and running on your local machin
 * **Permission Handling**: The app must gracefully handle cases where the user denies location permissions.
 * **Reliability**: The alarm trigger logic must be robust and tested across various real-world scenarios (e.g., poor GPS signal, network loss).
 
-## 🤝 Contributing
-
-Contributions, issues, and feature requests are welcome! Feel free to check the [issues page](https://github.com/your-username/geoalarm/issues).
 

@@ -30,12 +30,8 @@
             </intent-filter>
         </activity>
         <service
-    android:name=".AlarmNotificationService"
-    android:exported="false"
-    android:foregroundServiceType="location" />
-        <!-- <service
             android:name="id.flutter.flutter_background_service.BackgroundService"
-            android:foregroundServiceType="location" /> -->
+            android:foregroundServiceType="location" />
         <!-- Don't delete the meta-data below.
              This is used by the Flutter tool to generate GeneratedPluginRegistrant.java -->
         <meta-data

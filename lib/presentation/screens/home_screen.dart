@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:geo_alarm/l10n/app_localizations.dart';
 import 'alarm_edit_screen.dart';
-import 'package:flutter_gen/gen_l10n/app_localizations.dart';
 import 'package:permission_handler/permission_handler.dart';
 import '../widgets/alarm_list_widget.dart';
 import '../widgets/settings_widget.dart';

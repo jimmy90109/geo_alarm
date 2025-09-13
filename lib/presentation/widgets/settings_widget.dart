@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:geo_alarm/l10n/app_localizations.dart';
 import 'package:geo_alarm/main.dart';
-import 'package:flutter_gen/gen_l10n/app_localizations.dart';
 
 class SettingsWidget extends StatelessWidget {
   const SettingsWidget({super.key});
