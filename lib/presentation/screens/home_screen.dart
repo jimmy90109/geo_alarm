@@ -4,9 +4,7 @@ import 'package:geo_alarm/l10n/app_localizations.dart';
 import 'alarm_edit_screen.dart';
 import 'package:permission_handler/permission_handler.dart';
 import '../widgets/alarm_list_widget.dart';
-import '../widgets/settings_widget.dart';
-
-enum HomeTab { alarms, settings }
+import '../widgets/language_btn.dart';
 
 class HomeScreen extends ConsumerStatefulWidget {
   const HomeScreen({super.key});
@@ -16,8 +14,6 @@ class HomeScreen extends ConsumerStatefulWidget {
 }
 
 class _HomeScreenState extends ConsumerState<HomeScreen> {
-  HomeTab _selectedTab = HomeTab.alarms;
-
   @override
   void initState() {
     super.initState();
@@ -40,52 +36,69 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: Text(AppLocalizations.of(context)!.homeTitle),
-        actions: _selectedTab == HomeTab.alarms
-            ? [
-                IconButton(
-                  icon: const Icon(Icons.add),
-                  onPressed: () {
-                    Navigator.of(context).push(
-                      MaterialPageRoute(
-                          builder: (context) => const AlarmEditScreen()),
-                    );
-                  },
-                ),
-              ]
-            : null,
-      ),
-      body: _buildBody(),
-      bottomNavigationBar: BottomNavigationBar(
-        currentIndex: _selectedTab.index,
-        onTap: (index) {
-          setState(() {
-            _selectedTab = HomeTab.values[index];
-          });
-        },
-        items: [
-          BottomNavigationBarItem(
-            backgroundColor: Theme.of(context).colorScheme.primary,
-            icon: const Icon(Icons.alarm),
-            label: AppLocalizations.of(context)!.alarmTab,
-          ),
-          BottomNavigationBarItem(
-            backgroundColor: Theme.of(context).colorScheme.primary,
-            icon: const Icon(Icons.settings),
-            label: AppLocalizations.of(context)!.settings,
+      floatingActionButton: _addAlarmBtn(context),
+      body: CustomScrollView(
+        slivers: [
+          _appBar(),
+          const AlarmListWidget(),
+          // padding at bottom
+          SliverToBoxAdapter(
+            child: Container(
+              height: 80 + MediaQuery.of(context).padding.bottom,
+            ),
           ),
         ],
       ),
     );
   }
 
-  Widget _buildBody() {
-    switch (_selectedTab) {
-      case HomeTab.alarms:
-        return const AlarmListWidget();
-      case HomeTab.settings:
-        return const SettingsWidget();
-    }
+  Widget _appBar() {
+    return SliverAppBar(
+      expandedHeight: 200,
+      pinned: true,
+      floating: true,
+      snap: false,
+      actions: const [
+        Padding(
+          padding: EdgeInsets.symmetric(horizontal: 24.0),
+          child: LanguageBtn(),
+        )
+      ],
+      flexibleSpace: LayoutBuilder(
+        builder: (BuildContext context, BoxConstraints constraints) {
+          return FlexibleSpaceBar(
+            titlePadding: const EdgeInsets.only(
+              left: 24,
+              right: 24,
+              bottom: 16,
+            ),
+            title: Align(
+              alignment: Alignment.bottomLeft,
+              child: Text(
+                AppLocalizations.of(context)!.homeTitle,
+                style: const TextStyle(
+                  fontSize: 28,
+                  fontWeight: FontWeight.normal,
+                ),
+              ),
+            ),
+          );
+        },
+      ),
+    );
+  }
+
+  Widget _addAlarmBtn(BuildContext context) {
+    return FloatingActionButton(
+      child: const Icon(Icons.add),
+      onPressed: () {
+        Navigator.of(context).push(
+          MaterialPageRoute(
+            builder: (context) => const AlarmEditScreen(),
+            fullscreenDialog: false,
+          ),
+        );
+      },
+    );
   }
 }
