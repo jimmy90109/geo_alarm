@@ -93,6 +93,7 @@ class _AlarmEditScreenState extends ConsumerState<AlarmEditScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      resizeToAvoidBottomInset: false, // Prevent resize when keyboard appears
       appBar: AppBar(
         centerTitle: true,
         title: Text(widget.alarm != null
