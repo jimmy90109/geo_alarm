@@ -89,14 +89,20 @@ Follow these instructions to get the project up and running on your local machin
     ```
 
 3.  **Configure API Keys:**
-    You need to add your Google Maps API key to the native platform configurations. Make sure you have enabled **Maps SDK for Android**, **Maps SDK for iOS**, and **Places API** in your Google Cloud Console.
+    You need to add your Google Maps API key. Make sure you have enabled **Maps SDK for Android**, **Maps SDK for iOS**, and **Places API** in your Google Cloud Console.
 
     * **For Android:**
-        Open `android/app/src/main/AndroidManifest.xml` and add your key inside the `<application>` tag:
-        ```xml
-        <meta-data android:name="com.google.android.geo.API_KEY"
-                   android:value="YOUR_KEY_HERE"/>
-        ```
+        1. Copy `android/local.properties.example` to `android/local.properties`
+        2. Add your Google Maps API key to the `maps.apiKey` field:
+           ```properties
+           flutter.buildMode=debug
+           flutter.versionName=1.0.0
+           flutter.versionCode=1
+           maps.apiKey=YOUR_GOOGLE_MAPS_API_KEY_HERE
+           sdk.dir=/path/to/your/Android/sdk
+           flutter.sdk=/path/to/your/flutter
+           ```
+        3. The API key is automatically injected into `AndroidManifest.xml` via the `${GOOGLE_MAPS_API_KEY}` placeholder
 
     * **For iOS:**
         Open `ios/Runner/AppDelegate.swift` and add your key inside the `application` function:
@@ -118,6 +124,8 @@ Follow these instructions to get the project up and running on your local machin
         }
         ```
 
+    **Security Note:** The `local.properties` file is excluded from version control to keep your API keys secure.
+
 4.  **Configure Permissions:**
     This app requires location permissions. The necessary keys are already included in `AndroidManifest.xml` and `Info.plist`, but ensure you understand them. The app will request "Always Allow" location access to function correctly when in the background.
 
@@ -131,5 +139,17 @@ Follow these instructions to get the project up and running on your local machin
 * **Background Execution & Battery Optimization**: The biggest challenge is ensuring the background service is not killed by the OS, especially on heavily customized Android versions (like Xiaomi, Huawei, OnePlus). The app should guide users to disable battery optimization for GeoAlarm.
 * **Permission Handling**: The app must gracefully handle cases where the user denies location permissions.
 * **Reliability**: The alarm trigger logic must be robust and tested across various real-world scenarios (e.g., poor GPS signal, network loss).
+
+## 🌿 Branching Strategy
+
+- `main`: Stable release branch, every merge triggers a release
+- `dev`: Development integration branch
+- `feature/*`: Feature development branches
+
+## 🤝 Contributing
+
+1. Create a feature branch from `dev`
+2. Submit a Pull Request to `dev` when complete
+3. After testing stability, create PR from `dev` to `main`
 
 
