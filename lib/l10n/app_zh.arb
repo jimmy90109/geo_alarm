@@ -1,6 +1,6 @@
 {
-  "appTitle": "地點鬧鐘",
-  "homeTitle": "地點鬧鐘",
+  "appTitle": "定位鬧鐘",
+  "homeTitle": "定位鬧鐘",
   "noAlarms": "尚未設定鬧鐘。",
   "addEditAlarm": "新增/編輯鬧鐘",
   "alarmName": "鬧鐘名稱",
@@ -13,5 +13,15 @@
   "localeZh": "繁體中文",
   "localeEn": "英文",
   "settings": "設定",
-  "alarmTab": "鬧鐘"
+  "alarmTab": "鬧鐘",
+  "tapMapToSelectLocation": "請點擊地圖選擇位置",
+  "locationSelected": "已選擇位置",
+  "enterAlarmName": "請輸入鬧鐘名稱",
+  "cancel": "取消",
+  "save": "儲存",
+  "addAlarm": "新增鬧鐘",
+  "editAlarm": "編輯鬧鐘",
+  "alarmDeleted": "鬧鐘已刪除",
+  "undo": "復原",
+  "onlyEditWhenDisabled": "請先關閉鬧鐘才能編輯。"
 } 

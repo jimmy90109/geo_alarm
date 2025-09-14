@@ -148,4 +148,9 @@ class AlarmListNotifier extends StateNotifier<List<AlarmModel>> {
     await _repository.deleteAlarm(id);
     loadAlarms();
   }
+
+  Future<void> restoreAlarm(AlarmModel alarm) async {
+    await _repository.addAlarm(alarm);
+    loadAlarms();
+  }
 }

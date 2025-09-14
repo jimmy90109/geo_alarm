@@ -13,5 +13,15 @@
   "localeZh": "繁體中文",
   "localeEn": "English",
   "settings": "Settings",
-  "alarmTab": "Alarms"
+  "alarmTab": "Alarms",
+  "tapMapToSelectLocation": "Tap on the map to select location",
+  "locationSelected": "Location selected",
+  "enterAlarmName": "Enter alarm name",
+  "cancel": "Cancel",
+  "save": "Save",
+  "addAlarm": "Add Alarm",
+  "editAlarm": "Edit Alarm",
+  "alarmDeleted": "Alarm deleted",
+  "undo": "Undo",
+  "onlyEditWhenDisabled": "Please disable the alarm before editing."
 } 

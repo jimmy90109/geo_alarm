@@ -15,7 +15,11 @@ An intelligent alarm clock app built with Flutter that triggers an alarm when yo
 * **🗂️ Alarm Management**: Save, view, edit, and delete your alarms in a clean and simple list.
 * **Toggle On/Off**: Easily activate or deactivate any saved alarm with a single switch.
 
-*(Add screenshots of your app here)*
+## 📱 Demos
+
+|Languages|Predict-back gesture|Dynamic AppBar|
+|--|--|--|
+|![LanguagesDemo](https://github.com/user-attachments/assets/67385a23-253e-4e69-9c8b-ea5c3dd6c1f0)|![GestureDemo](https://github.com/user-attachments/assets/62ed10d1-b5c4-49b0-a2ab-99fa7056f417)|![ScrollDemo](https://github.com/user-attachments/assets/f7967445-9057-43c5-9dc2-ae490c683bd3)|
 
 ## 🛠️ Tech Stack & Architecture
 

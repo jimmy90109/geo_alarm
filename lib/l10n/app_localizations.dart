@@ -185,6 +185,66 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Alarms'**
   String get alarmTab;
+
+  /// No description provided for @tapMapToSelectLocation.
+  ///
+  /// In en, this message translates to:
+  /// **'Tap on the map to select location'**
+  String get tapMapToSelectLocation;
+
+  /// No description provided for @locationSelected.
+  ///
+  /// In en, this message translates to:
+  /// **'Location selected'**
+  String get locationSelected;
+
+  /// No description provided for @enterAlarmName.
+  ///
+  /// In en, this message translates to:
+  /// **'Enter alarm name'**
+  String get enterAlarmName;
+
+  /// No description provided for @cancel.
+  ///
+  /// In en, this message translates to:
+  /// **'Cancel'**
+  String get cancel;
+
+  /// No description provided for @save.
+  ///
+  /// In en, this message translates to:
+  /// **'Save'**
+  String get save;
+
+  /// No description provided for @addAlarm.
+  ///
+  /// In en, this message translates to:
+  /// **'Add Alarm'**
+  String get addAlarm;
+
+  /// No description provided for @editAlarm.
+  ///
+  /// In en, this message translates to:
+  /// **'Edit Alarm'**
+  String get editAlarm;
+
+  /// No description provided for @alarmDeleted.
+  ///
+  /// In en, this message translates to:
+  /// **'Alarm deleted'**
+  String get alarmDeleted;
+
+  /// No description provided for @undo.
+  ///
+  /// In en, this message translates to:
+  /// **'Undo'**
+  String get undo;
+
+  /// No description provided for @onlyEditWhenDisabled.
+  ///
+  /// In en, this message translates to:
+  /// **'Please disable the alarm before editing.'**
+  String get onlyEditWhenDisabled;
 }
 
 class _AppLocalizationsDelegate extends LocalizationsDelegate<AppLocalizations> {
