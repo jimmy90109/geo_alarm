@@ -9,10 +9,10 @@ class AppLocalizationsZh extends AppLocalizations {
   AppLocalizationsZh([String locale = 'zh']) : super(locale);
 
   @override
-  String get appTitle => '地點鬧鐘';
+  String get appTitle => '定位鬧鐘';
 
   @override
-  String get homeTitle => '地點鬧鐘';
+  String get homeTitle => '定位鬧鐘';
 
   @override
   String get noAlarms => '尚未設定鬧鐘。';
@@ -56,6 +56,36 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get alarmTab => '鬧鐘';
+
+  @override
+  String get tapMapToSelectLocation => '請點擊地圖選擇位置';
+
+  @override
+  String get locationSelected => '已選擇位置';
+
+  @override
+  String get enterAlarmName => '請輸入鬧鐘名稱';
+
+  @override
+  String get cancel => '取消';
+
+  @override
+  String get save => '儲存';
+
+  @override
+  String get addAlarm => '新增鬧鐘';
+
+  @override
+  String get editAlarm => '編輯鬧鐘';
+
+  @override
+  String get alarmDeleted => '鬧鐘已刪除';
+
+  @override
+  String get undo => '復原';
+
+  @override
+  String get onlyEditWhenDisabled => '請先關閉鬧鐘才能編輯。';
 }
 
 /// The translations for Chinese, as used in Taiwan (`zh_TW`).
@@ -63,10 +93,10 @@ class AppLocalizationsZhTw extends AppLocalizationsZh {
   AppLocalizationsZhTw(): super('zh_TW');
 
   @override
-  String get appTitle => '地點鬧鐘';
+  String get appTitle => '定位鬧鐘';
 
   @override
-  String get homeTitle => '地點鬧鐘';
+  String get homeTitle => '定位鬧鐘';
 
   @override
   String get noAlarms => '尚未設定鬧鐘。';
@@ -110,4 +140,34 @@ class AppLocalizationsZhTw extends AppLocalizationsZh {
 
   @override
   String get alarmTab => '鬧鐘';
+
+  @override
+  String get tapMapToSelectLocation => '請點擊地圖選擇位置';
+
+  @override
+  String get locationSelected => '已選擇位置';
+
+  @override
+  String get enterAlarmName => '請輸入鬧鐘名稱';
+
+  @override
+  String get cancel => '取消';
+
+  @override
+  String get save => '儲存';
+
+  @override
+  String get addAlarm => '新增鬧鐘';
+
+  @override
+  String get editAlarm => '編輯鬧鐘';
+
+  @override
+  String get alarmDeleted => '鬧鐘已刪除';
+
+  @override
+  String get undo => '復原';
+
+  @override
+  String get onlyEditWhenDisabled => '請先關閉鬧鐘才能編輯。';
 }

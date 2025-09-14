@@ -56,4 +56,34 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get alarmTab => 'Alarms';
+
+  @override
+  String get tapMapToSelectLocation => 'Tap on the map to select location';
+
+  @override
+  String get locationSelected => 'Location selected';
+
+  @override
+  String get enterAlarmName => 'Enter alarm name';
+
+  @override
+  String get cancel => 'Cancel';
+
+  @override
+  String get save => 'Save';
+
+  @override
+  String get addAlarm => 'Add Alarm';
+
+  @override
+  String get editAlarm => 'Edit Alarm';
+
+  @override
+  String get alarmDeleted => 'Alarm deleted';
+
+  @override
+  String get undo => 'Undo';
+
+  @override
+  String get onlyEditWhenDisabled => 'Please disable the alarm before editing.';
 }
