@@ -30,4 +30,22 @@ class AlarmModel extends HiveObject {
     required this.radius,
     required this.isEnabled,
   });
+
+  AlarmModel copyWith({
+    String? id,
+    String? name,
+    double? latitude,
+    double? longitude,
+    double? radius,
+    bool? isEnabled,
+  }) {
+    return AlarmModel(
+      id: id ?? this.id,
+      name: name ?? this.name,
+      latitude: latitude ?? this.latitude,
+      longitude: longitude ?? this.longitude,
+      radius: radius ?? this.radius,
+      isEnabled: isEnabled ?? this.isEnabled,
+    );
+  }
 } 

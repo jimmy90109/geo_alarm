@@ -15,7 +15,11 @@ An intelligent alarm clock app built with Flutter that triggers an alarm when yo
 * **🗂️ Alarm Management**: Save, view, edit, and delete your alarms in a clean and simple list.
 * **Toggle On/Off**: Easily activate or deactivate any saved alarm with a single switch.
 
-*(Add screenshots of your app here)*
+## 📱 Demos
+
+|Languages|Predict-back gesture|Dynamic AppBar|
+|--|--|--|
+|![LanguagesDemo](https://github.com/user-attachments/assets/67385a23-253e-4e69-9c8b-ea5c3dd6c1f0)|![GestureDemo](https://github.com/user-attachments/assets/62ed10d1-b5c4-49b0-a2ab-99fa7056f417)|![ScrollDemo](https://github.com/user-attachments/assets/f7967445-9057-43c5-9dc2-ae490c683bd3)|
 
 ## 🛠️ Tech Stack & Architecture
 
@@ -40,6 +44,7 @@ This project is built using a clean, scalable, and layered architecture to separ
 * **APIs**: Google Maps Platform (Maps SDK, Places API, Geocoding API)
 
 ### Directory Structure
+```
 lib/
 ├── core/
 │   ├── services/
@@ -62,7 +67,7 @@ lib/
 │   ├── home_screen.dart
 │   └── alarm_edit_screen.dart
 └── widgets/
-
+```
 
 ## 🚀 Getting Started
 
@@ -70,7 +75,7 @@ Follow these instructions to get the project up and running on your local machin
 
 ### Prerequisites
 
-* Flutter SDK (version 3.x.x or higher)
+* Flutter SDK (version 3.35.3)
 * An IDE like VS Code or Android Studio
 * A Google Maps Platform API Key
 
@@ -88,14 +93,20 @@ Follow these instructions to get the project up and running on your local machin
     ```
 
 3.  **Configure API Keys:**
-    You need to add your Google Maps API key to the native platform configurations. Make sure you have enabled **Maps SDK for Android**, **Maps SDK for iOS**, and **Places API** in your Google Cloud Console.
+    You need to add your Google Maps API key. Make sure you have enabled **Maps SDK for Android**, **Maps SDK for iOS**, and **Places API** in your Google Cloud Console.
 
     * **For Android:**
-        Open `android/app/src/main/AndroidManifest.xml` and add your key inside the `<application>` tag:
-        ```xml
-        <meta-data android:name="com.google.android.geo.API_KEY"
-                   android:value="YOUR_KEY_HERE"/>
-        ```
+        1. Copy `android/local.properties.example` to `android/local.properties`
+        2. Add your Google Maps API key to the `maps.apiKey` field:
+           ```properties
+           flutter.buildMode=debug
+           flutter.versionName=1.0.0
+           flutter.versionCode=1
+           maps.apiKey=YOUR_GOOGLE_MAPS_API_KEY_HERE
+           sdk.dir=/path/to/your/Android/sdk
+           flutter.sdk=/path/to/your/flutter
+           ```
+        3. The API key is automatically injected into `AndroidManifest.xml` via the `${GOOGLE_MAPS_API_KEY}` placeholder
 
     * **For iOS:**
         Open `ios/Runner/AppDelegate.swift` and add your key inside the `application` function:
@@ -117,6 +128,8 @@ Follow these instructions to get the project up and running on your local machin
         }
         ```
 
+    **Security Note:** The `local.properties` file is excluded from version control to keep your API keys secure.
+
 4.  **Configure Permissions:**
     This app requires location permissions. The necessary keys are already included in `AndroidManifest.xml` and `Info.plist`, but ensure you understand them. The app will request "Always Allow" location access to function correctly when in the background.
 
@@ -131,7 +144,16 @@ Follow these instructions to get the project up and running on your local machin
 * **Permission Handling**: The app must gracefully handle cases where the user denies location permissions.
 * **Reliability**: The alarm trigger logic must be robust and tested across various real-world scenarios (e.g., poor GPS signal, network loss).
 
+## 🌿 Branching Strategy
+
+- `main`: Stable release branch, every merge triggers a release
+- `dev`: Development integration branch
+- `feature/*`: Feature development branches
+
 ## 🤝 Contributing
 
-Contributions, issues, and feature requests are welcome! Feel free to check the [issues page](https://github.com/your-username/geoalarm/issues).
+1. Create a feature branch from `dev`
+2. Submit a Pull Request to `dev` when complete
+3. After testing stability, create PR from `dev` to `main`
+
 
