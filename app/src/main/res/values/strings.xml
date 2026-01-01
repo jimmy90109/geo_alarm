@@ -1,0 +1,37 @@
+<resources>
+    <string name="app_name">Geo Alarm</string>
+    <string name="home_title">Geo Alarm</string>
+    <string name="no_alarms">No alarms yet. Add one!</string>
+    <string name="add_alarm">Add Alarm</string>
+    <string name="edit_alarm">Edit Alarm</string>
+    <string name="alarm_name">Alarm Name</string>
+    <string name="enter_alarm_name">Enter Alarm Name</string>
+    <string name="radius_label">Radius: %d m</string>
+    <string name="save">Save</string>
+    <string name="cancel">Cancel</string>
+    <string name="delete">Delete</string>
+    <string name="enabled">Enabled</string>
+    <string name="status_on">Status: ON</string>
+    <string name="status_off">Status: OFF</string>
+    <string name="language">Language</string>
+    <string name="locale_en">English</string>
+    <string name="locale_zh">中文 (繁體)</string>
+    <string name="ok">OK</string>
+    <string name="alarm_deleted">Alarm deleted</string>
+    <string name="undo">Undo</string>
+    <string name="only_one_alarm_error">Only one alarm can be enabled at a time.</string>
+    <string name="edit_disabled_error">Turn off the alarm to edit it.</string>
+    <string name="background_location_title">Background Location Required</string>
+    <string name="background_location_message">This app needs "Allow all the time" location permission to track your location in the background. Please go to Settings and set location permission to "Allow all the time".</string>
+    <string name="go_to_settings">Go to Settings</string>
+    <string name="notification_permission_title">Notification Permission Required</string>
+    <string name="notification_permission_message">This app needs notification permission to alert you when you arrive at your destination. Please go to Settings and enable notifications.</string>
+    
+    <!-- Notification strings -->
+    <string name="notification_title">GeoAlarm: %s</string>
+    <string name="notification_distance">Distance: %1$dm | %2$d%%</string>
+    <string name="notification_cancel">Cancel</string>
+    <string name="notification_arrived_title">Arrived at %s!</string>
+    <string name="notification_arrived_text">You have reached your destination.</string>
+    <string name="notification_turn_off">Turn Off</string>
+</resources>

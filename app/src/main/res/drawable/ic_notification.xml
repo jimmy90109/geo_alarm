@@ -1,0 +1,42 @@
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="24dp"
+    android:height="24dp"
+    android:viewportWidth="256"
+    android:viewportHeight="256">
+
+    <!-- 定位針（中間挖空） -->
+    <path
+        android:fillColor="#FFFFFFFF"
+        android:fillType="evenOdd"
+        android:pathData="
+            M128,16
+            C78,16 40,54 40,104
+            C40,160 128,240 128,240
+            C128,240 216,160 216,104
+            C216,54 178,16 128,16
+            Z
+
+            M128,60
+            A44,44 0 1,1 127.9,60
+            Z"/>
+
+    <!-- 時針 -->
+    <path
+        android:fillColor="#FFFFFFFF"
+        android:pathData="
+            M122,104
+            h12
+            v-30
+            h-12
+            Z"/>
+
+    <!-- 分針 -->
+    <path
+        android:fillColor="#FFFFFFFF"
+        android:pathData="
+            M128,104
+            l30,14
+            -6,10
+            -30,-14
+            Z"/>
+</vector>

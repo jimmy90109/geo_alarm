@@ -1,0 +1,37 @@
+<resources>
+    <string name="app_name">Geo Alarm</string>
+    <string name="home_title">定位鬧鐘</string>
+    <string name="no_alarms">還沒有鬧鐘，新增一個吧！</string>
+    <string name="add_alarm">新增鬧鐘</string>
+    <string name="edit_alarm">編輯鬧鐘</string>
+    <string name="alarm_name">鬧鐘名稱</string>
+    <string name="enter_alarm_name">輸入鬧鐘名稱</string>
+    <string name="radius_label">半徑: %d 公尺</string>
+    <string name="save">儲存</string>
+    <string name="cancel">取消</string>
+    <string name="delete">刪除</string>
+    <string name="enabled">啟用</string>
+    <string name="status_on">狀態: 開啟</string>
+    <string name="status_off">狀態: 關閉</string>
+    <string name="language">語言</string>
+    <string name="locale_en">English</string>
+    <string name="locale_zh">中文 (繁體)</string>
+    <string name="ok">確定</string>
+    <string name="alarm_deleted">鬧鐘已刪除</string>
+    <string name="undo">復原</string>
+    <string name="only_one_alarm_error">同時只能啟用一個鬧鐘</string>
+    <string name="edit_disabled_error">請先關閉鬧鐘才能編輯</string>
+    <string name="background_location_title">需要背景定位權限</string>
+    <string name="background_location_message">此應用程式需要「隨時允許」的定位權限才能在背景追蹤您的位置。請前往設定並將定位權限設為「隨時允許」。</string>
+    <string name="go_to_settings">前往設定</string>
+    <string name="notification_permission_title">需要通知權限</string>
+    <string name="notification_permission_message">此應用程式需要通知權限才能在您抵達目的地時提醒您。請前往設定並啟用通知。</string>
+    
+    <!-- 通知字串 -->
+    <string name="notification_title">定位鬧鐘: %s</string>
+    <string name="notification_distance">距離: %1$d公尺 | %2$d%%</string>
+    <string name="notification_cancel">取消</string>
+    <string name="notification_arrived_title">已抵達 %s！</string>
+    <string name="notification_arrived_text">您已到達目的地。</string>
+    <string name="notification_turn_off">關閉</string>
+</resources>
