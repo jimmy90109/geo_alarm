@@ -1,0 +1,17 @@
+package com.example.geo_alarm.navigation
+
+import kotlinx.serialization.Serializable
+
+/**
+ * Type-safe navigation routes for the app.
+ * Using sealed interface with @Serializable for compile-time safety.
+ */
+@Serializable
+sealed interface AppRoutes {
+    
+    @Serializable
+    data object Home : AppRoutes
+    
+    @Serializable
+    data class AlarmEdit(val alarmId: String? = null) : AppRoutes
+}

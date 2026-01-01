@@ -3,14 +3,9 @@ package com.example.geo_alarm
 import android.os.Bundle
 import androidx.appcompat.app.AppCompatActivity
 import androidx.activity.compose.setContent
-import androidx.navigation.compose.NavHost
-import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
-import androidx.navigation.navArgument
-import androidx.navigation.NavType
 import com.example.geo_alarm.ui.theme.GeoAlarmTheme
-import com.example.geo_alarm.ui.screens.HomeScreen
-import com.example.geo_alarm.ui.screens.AlarmEditScreen
+import com.example.geo_alarm.navigation.AppNavHost
 
 import androidx.activity.enableEdgeToEdge
 import kotlinx.coroutines.launch
@@ -28,38 +23,10 @@ class MainActivity : AppCompatActivity() {
         setContent {
             GeoAlarmTheme {
                 val navController = rememberNavController()
-                
-                NavHost(navController = navController, startDestination = "home") {
-                    composable("home") {
-                        HomeScreen(
-                            repository = repository,
-                            onAddAlarm = { navController.navigate("alarm_edit") },
-                            onAlarmClick = { alarm ->
-                                navController.navigate("alarm_edit?alarmId=${alarm.id}")
-                            }
-                        )
-                    }
-                    
-                    composable(
-                        route = "alarm_edit?alarmId={alarmId}",
-                        arguments = listOf(navArgument("alarmId") { type = NavType.StringType; nullable = true })
-                    ) { backStackEntry ->
-                        val alarmId = backStackEntry.arguments?.getString("alarmId")
-                        AlarmEditScreen(
-                            repository = repository,
-                            alarmId = alarmId,
-                            onNavigateBack = { navController.popBackStack() }
-                        )
-                    }
-                    
-                    composable("alarm_edit") {
-                        AlarmEditScreen(
-                            repository = repository,
-                            alarmId = null,
-                            onNavigateBack = { navController.popBackStack() }
-                        )
-                    }
-                }
+                AppNavHost(
+                    navController = navController,
+                    repository = repository
+                )
             }
         }
     }
