@@ -1,5 +1,5 @@
 <resources>
-    <string name="app_name">Geo Alarm</string>
+    <string name="app_name">定位鬧鐘</string>
     <string name="home_title">定位鬧鐘</string>
     <string name="no_alarms">還沒有鬧鐘，新增一個吧！</string>
     <string name="add_alarm">新增鬧鐘</string>
@@ -18,14 +18,24 @@
     <string name="locale_zh">中文 (繁體)</string>
     <string name="ok">確定</string>
     <string name="alarm_deleted">鬧鐘已刪除</string>
+    <string name="delete_alarm_title">刪除鬧鐘</string>
+    <string name="delete_alarm_message">確定要刪除這個鬧鐘嗎？</string>
     <string name="undo">復原</string>
     <string name="only_one_alarm_error">同時只能啟用一個鬧鐘</string>
+    <string name="single_alarm_title">啟用限制</string>
     <string name="edit_disabled_error">請先關閉鬧鐘才能編輯</string>\n    <string name="already_at_destination_title">已在目的地</string>\n    <string name="already_at_destination_message">您已在鬧鐘範圍內，啟用後會立即觸發。</string>
     <string name="background_location_title">需要背景定位權限</string>
-    <string name="background_location_message">此應用程式需要「隨時允許」的定位權限才能在背景追蹤您的位置。請前往設定並將定位權限設為「隨時允許」。</string>
+    <string name="background_location_message">此應用程式需要「一律允許」的定位權限才能在背景追蹤您的位置。請前往設定並將定位權限設為「一律允許」。</string>
     <string name="go_to_settings">前往設定</string>
     <string name="notification_permission_title">需要通知權限</string>
     <string name="notification_permission_message">此應用程式需要通知權限才能在您抵達目的地時提醒您。請前往設定並啟用通知。</string>
+    <string name="notification_retry_title">需要通知權限</string>
+    <string name="notification_retry_message">通知功能對於提醒到達目的地至關重要，請允許權限。</string>
+    <string name="retry">重試</string>
+    <string name="battery_warning_title">允許背景執行</string>
+    <string name="battery_warning_message">為了確保鬧鐘準確運作，請為此應用程式關閉電池最佳化。</string>
+    <string name="fix_now">立即設定</string>
+    <string name="battery_optimization_required_toast">請修正此設定以確保鬧鐘正常運作</string>
     
     <!-- 搜尋字串 -->
     <string name="search_location">搜尋地點</string>

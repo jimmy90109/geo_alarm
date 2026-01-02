@@ -21,10 +21,15 @@ data class HomeUiState(
     val showSingleAlarmDialog: Boolean = false,
     val showBackgroundPermissionDialog: Boolean = false,
     val showNotificationPermissionDialog: Boolean = false,
+    val showNotificationRationaleDialog: Boolean = false,
     val showAlreadyAtDestinationDialog: Boolean = false,
     val showLanguageSheet: Boolean = false
 )
 
+/**
+ * ViewModel for the Home Screen.
+ * Manages alarm list state, dialog visibility states, and core alarm operations (enable/disable/delete).
+ */
 class HomeViewModel(
     application: Application,
     private val repository: AlarmRepository
@@ -70,6 +75,14 @@ class HomeViewModel(
         _uiState.value = _uiState.value.copy(showNotificationPermissionDialog = false)
     }
 
+    fun showNotificationRationaleDialog() {
+        _uiState.value = _uiState.value.copy(showNotificationRationaleDialog = true)
+    }
+
+    fun dismissNotificationRationaleDialog() {
+        _uiState.value = _uiState.value.copy(showNotificationRationaleDialog = false)
+    }
+
     fun showAlreadyAtDestinationDialog() {
         _uiState.value = _uiState.value.copy(showAlreadyAtDestinationDialog = true)
     }
@@ -99,6 +112,16 @@ class HomeViewModel(
         }
     }
 
+    /**
+     * Enables a specific alarm.
+     * Checks if other alarms are enabled first (single alarm policy).
+     * If enabled, it attempts to fetch the current location to verify if the user is already at the destination.
+     * Finally, it starts the foreground service to monitor the alarm.
+     *
+     * @param alarm The alarm to enable.
+     * @param alarms The list of all alarms (used for conflict checking).
+     * @param context Context used to start the service.
+     */
     fun enableAlarm(alarm: Alarm, alarms: List<Alarm>, context: Context) {
         // Check if any other alarm is enabled
         val anyEnabled = alarms.any { it.isEnabled && it.id != alarm.id }
@@ -107,47 +130,69 @@ class HomeViewModel(
             return
         }
 
-        try {
-            fusedLocationClient.lastLocation.addOnSuccessListener { location ->
-                if (location != null) {
-                    // Check if already at destination
-                    val destLocation = Location("").apply {
-                        latitude = alarm.latitude
-                        longitude = alarm.longitude
-                    }
-                    val distance = location.distanceTo(destLocation)
-
-                    if (distance <= alarm.radius) {
-                        showAlreadyAtDestinationDialog()
-                    } else {
-                        viewModelScope.launch {
-                            repository.update(alarm.copy(isEnabled = true))
-                        }
-
-                        // Start Service
-                        val serviceIntent = Intent(context, GeoAlarmService::class.java).apply {
-                            action = GeoAlarmService.ACTION_START
-                            putExtra(GeoAlarmService.EXTRA_ALARM_ID, alarm.id)
-                            putExtra(GeoAlarmService.EXTRA_NAME, alarm.name)
-                            putExtra(GeoAlarmService.EXTRA_DEST_LAT, alarm.latitude)
-                            putExtra(GeoAlarmService.EXTRA_DEST_LNG, alarm.longitude)
-                            putExtra(GeoAlarmService.EXTRA_RADIUS, alarm.radius)
-                            putExtra(GeoAlarmService.EXTRA_START_LAT, location.latitude)
-                            putExtra(GeoAlarmService.EXTRA_START_LNG, location.longitude)
-                        }
-                        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.O) {
-                            context.startForegroundService(serviceIntent)
-                        } else {
-                            context.startService(serviceIntent)
-                        }
-                    }
+        // Check location to see if already at destination
+        fusedLocationClient.lastLocation.addOnSuccessListener { location ->
+            if (location != null) {
+                // Check if already at destination
+                val destLocation = Location("").apply {
+                    latitude = alarm.latitude
+                    longitude = alarm.longitude
                 }
+                val distance = location.distanceTo(destLocation)
+
+                if (distance <= alarm.radius) {
+                    showAlreadyAtDestinationDialog()
+                } else {
+                    proceedEnableAlarm(alarm, context, location)
+                }
+            } else {
+                // Location unknown, just start
+                proceedEnableAlarm(alarm, context, null)
             }
-        } catch (e: SecurityException) {
-            // Handle permission exception
+        }.addOnFailureListener {
+            // Location access failed, just start
+            proceedEnableAlarm(alarm, context, null)
         }
     }
 
+    /**
+     * Internal helper to commit the alarm enabled state to database and start the monitoring service.
+     *
+     * @param alarm The alarm to enable.
+     * @param context Context used to start the service.
+     * @param location The initial location if available (optional).
+     */
+    private fun proceedEnableAlarm(alarm: Alarm, context: Context, location: Location?) {
+        viewModelScope.launch {
+            repository.update(alarm.copy(isEnabled = true))
+        }
+
+        // Start Service
+        val serviceIntent = Intent(context, GeoAlarmService::class.java).apply {
+            action = GeoAlarmService.ACTION_START
+            putExtra(GeoAlarmService.EXTRA_ALARM_ID, alarm.id)
+            putExtra(GeoAlarmService.EXTRA_NAME, alarm.name)
+            putExtra(GeoAlarmService.EXTRA_DEST_LAT, alarm.latitude)
+            putExtra(GeoAlarmService.EXTRA_DEST_LNG, alarm.longitude)
+            putExtra(GeoAlarmService.EXTRA_RADIUS, alarm.radius)
+            if (location != null) {
+                putExtra(GeoAlarmService.EXTRA_START_LAT, location.latitude)
+                putExtra(GeoAlarmService.EXTRA_START_LNG, location.longitude)
+            }
+        }
+        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.O) {
+            context.startForegroundService(serviceIntent)
+        } else {
+            context.startService(serviceIntent)
+        }
+    }
+
+    /**
+     * Disables the alarm and stops the monitoring service.
+     *
+     * @param alarm The alarm to disable.
+     * @param context Context used to stop the service.
+     */
     fun disableAlarm(alarm: Alarm, context: Context) {
         viewModelScope.launch {
             repository.update(alarm.copy(isEnabled = false))

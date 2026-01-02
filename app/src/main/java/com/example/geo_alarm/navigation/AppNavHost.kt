@@ -13,7 +13,11 @@ import androidx.navigation.compose.composable
 import androidx.navigation.toRoute
 import com.example.geo_alarm.ui.screens.AlarmEditScreen
 import com.example.geo_alarm.ui.screens.HomeScreen
+import com.example.geo_alarm.ui.screens.BatteryOptimizationScreen
 import com.example.geo_alarm.ui.viewmodel.AlarmEditViewModel
+import android.content.Intent
+import android.provider.Settings
+import androidx.compose.ui.platform.LocalContext
 import com.example.geo_alarm.ui.viewmodel.HomeViewModel
 import com.example.geo_alarm.ui.viewmodel.ViewModelFactory
 
@@ -47,6 +51,9 @@ fun AppNavHost(
                 onAddAlarm = { navController.navigate(AppRoutes.AlarmEdit()) },
                 onAlarmClick = { alarm ->
                     navController.navigate(AppRoutes.AlarmEdit(alarm.id))
+                },
+                onNavigateToBatteryOptimization = {
+                    navController.navigate(AppRoutes.BatteryOptimization)
                 }
             )
         }
@@ -58,6 +65,19 @@ fun AppNavHost(
                 viewModel = viewModel,
                 alarmId = route.alarmId,
                 onNavigateBack = { navController.popBackStack() }
+            )
+        }
+        
+        composable<AppRoutes.BatteryOptimization> {
+            val context = LocalContext.current
+            BatteryOptimizationScreen(
+                onFix = {
+                     val intent = Intent(Settings.ACTION_IGNORE_BATTERY_OPTIMIZATION_SETTINGS)
+                     context.startActivity(intent)
+                },
+                onOptimizationDisabled = {
+                    navController.popBackStack()
+                }
             )
         }
     }

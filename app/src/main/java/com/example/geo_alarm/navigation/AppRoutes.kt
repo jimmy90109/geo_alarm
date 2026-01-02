@@ -14,4 +14,7 @@ sealed interface AppRoutes {
     
     @Serializable
     data class AlarmEdit(val alarmId: String? = null) : AppRoutes
+
+    @Serializable
+    data object BatteryOptimization : AppRoutes
 }

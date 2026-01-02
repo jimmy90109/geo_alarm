@@ -19,7 +19,10 @@
     <string name="ok">OK</string>
     <string name="alarm_deleted">Alarm deleted</string>
     <string name="undo">Undo</string>
+    <string name="delete_alarm_title">Delete Alarm</string>
+    <string name="delete_alarm_message">Are you sure you want to delete this alarm?</string>
     <string name="only_one_alarm_error">Only one alarm can be enabled at a time.</string>
+    <string name="single_alarm_title">Activation Limit</string>
     <string name="edit_disabled_error">Turn off the alarm to edit it.</string>
     <string name="already_at_destination_title">Already at Destination</string>
     <string name="already_at_destination_message">You are already within the alarm radius. The alarm will trigger immediately if enabled.</string>
@@ -28,6 +31,13 @@
     <string name="go_to_settings">Go to Settings</string>
     <string name="notification_permission_title">Notification Permission Required</string>
     <string name="notification_permission_message">This app needs notification permission to alert you when you arrive at your destination. Please go to Settings and enable notifications.</string>
+    <string name="notification_retry_title">Notification Required</string>
+    <string name="notification_retry_message">Notifications are essential for alerts. Please allow access.</string>
+    <string name="retry">Retry</string>
+    <string name="battery_warning_title">Allow Background Execution</string>
+    <string name="battery_warning_message">To ensure the alarm works reliably, please turn off battery optimization for this app.</string>
+    <string name="fix_now">Fix Now</string>
+    <string name="battery_optimization_required_toast">Please fix this setting to ensure alarms work.</string>
     
     <!-- Search strings -->
     <string name="search_location">Search location</string>
