@@ -4,6 +4,7 @@ import android.app.Application
 import android.content.Context
 import android.content.Intent
 import android.location.Location
+import androidx.core.content.ContextCompat
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.geo_alarm.data.Alarm
@@ -31,8 +32,7 @@ data class HomeUiState(
  * Manages alarm list state, dialog visibility states, and core alarm operations (enable/disable/delete).
  */
 class HomeViewModel(
-    application: Application,
-    private val repository: AlarmRepository
+    application: Application, private val repository: AlarmRepository
 ) : AndroidViewModel(application) {
 
     private val _uiState = MutableStateFlow(HomeUiState())
@@ -131,6 +131,16 @@ class HomeViewModel(
         }
 
         // Check location to see if already at destination
+        if (ContextCompat.checkSelfPermission(
+                context, android.Manifest.permission.ACCESS_FINE_LOCATION
+            ) != android.content.pm.PackageManager.PERMISSION_GRANTED && ContextCompat.checkSelfPermission(
+                context, android.Manifest.permission.ACCESS_COARSE_LOCATION
+            ) != android.content.pm.PackageManager.PERMISSION_GRANTED
+        ) {
+            proceedEnableAlarm(alarm, context, null)
+            return
+        }
+
         fusedLocationClient.lastLocation.addOnSuccessListener { location ->
             if (location != null) {
                 // Check if already at destination
@@ -197,7 +207,7 @@ class HomeViewModel(
         viewModelScope.launch {
             repository.update(alarm.copy(isEnabled = false))
         }
-        
+
         // Stop Service
         val serviceIntent = Intent(context, GeoAlarmService::class.java).apply {
             action = GeoAlarmService.ACTION_STOP
