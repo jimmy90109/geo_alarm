@@ -11,6 +11,8 @@ import com.example.geo_alarm.data.Alarm
 import com.example.geo_alarm.data.AlarmRepository
 import com.example.geo_alarm.service.GeoAlarmService
 import com.google.android.gms.location.LocationServices
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -23,8 +25,7 @@ data class HomeUiState(
     val showBackgroundPermissionDialog: Boolean = false,
     val showNotificationPermissionDialog: Boolean = false,
     val showNotificationRationaleDialog: Boolean = false,
-    val showAlreadyAtDestinationDialog: Boolean = false,
-    val showLanguageSheet: Boolean = false
+    val showAlreadyAtDestinationDialog: Boolean = false
 )
 
 /**
@@ -32,15 +33,37 @@ data class HomeUiState(
  * Manages alarm list state, dialog visibility states, and core alarm operations (enable/disable/delete).
  */
 class HomeViewModel(
-    application: Application, private val repository: AlarmRepository
+    application: Application, 
+    private val repository: AlarmRepository,
+    private val settingsRepository: com.example.geo_alarm.data.SettingsRepository
 ) : AndroidViewModel(application) {
 
     private val _uiState = MutableStateFlow(HomeUiState())
     val uiState: StateFlow<HomeUiState> = _uiState.asStateFlow()
 
     val alarms = repository.allAlarms
+    
+    val monitoringMethod = settingsRepository.monitoringMethod.asStateFlow(viewModelScope, com.example.geo_alarm.data.MonitoringMethod.GEOFENCE)
 
     private val fusedLocationClient = LocationServices.getFusedLocationProviderClient(application)
+    
+    fun setMonitoringMethod(method: com.example.geo_alarm.data.MonitoringMethod) {
+        viewModelScope.launch {
+            settingsRepository.setMonitoringMethod(method)
+        }
+    }
+    
+    // Helper to convert Flow to StateFlow
+    private fun <T> Flow<T>.asStateFlow(
+        scope: CoroutineScope,
+        initialValue: T
+    ): StateFlow<T> {
+        val state = MutableStateFlow(initialValue)
+        scope.launch {
+            collect { state.value = it }
+        }
+        return state.asStateFlow()
+    }
 
     // Dialog controls
     fun showEditDisabledDialog() {
@@ -89,14 +112,6 @@ class HomeViewModel(
 
     fun dismissAlreadyAtDestinationDialog() {
         _uiState.value = _uiState.value.copy(showAlreadyAtDestinationDialog = false)
-    }
-
-    fun showLanguageSheet() {
-        _uiState.value = _uiState.value.copy(showLanguageSheet = true)
-    }
-
-    fun dismissLanguageSheet() {
-        _uiState.value = _uiState.value.copy(showLanguageSheet = false)
     }
 
     // Alarm operations

@@ -46,14 +46,16 @@ fun AlarmEditScreen(
     viewModel: AlarmEditViewModel, alarmId: String? = null, onNavigateBack: () -> Unit
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
-    
-    // Local state for camera
-    var isMapLoading by remember { mutableStateOf(true) }
-
     val scope = rememberCoroutineScope()
     val context = LocalContext.current
     val cameraPositionState = rememberCameraPositionState {
-        position = CameraPosition.fromLatLngZoom(LatLng(25.034, 121.564), 13f)
+        position = CameraPosition.fromLatLngZoom(
+            LatLng(
+                25.034,
+                121.564,
+            ),
+            13f,
+        )
     }
 
     // Places Autocomplete launcher
@@ -63,7 +65,9 @@ fun AlarmEditScreen(
         if (result.resultCode == Activity.RESULT_OK && result.data != null) {
             val place = Autocomplete.getPlaceFromIntent(result.data!!)
             place.latLng?.let { latLng ->
-                viewModel.updatePositionFromSearch(latLng, place.displayName ?: place.formattedAddress ?: "")
+                viewModel.updatePositionFromSearch(
+                    latLng, place.displayName ?: place.formattedAddress ?: ""
+                )
                 scope.launch {
                     cameraPositionState.animate(
                         CameraUpdateFactory.newLatLngZoom(latLng, 15f)
@@ -75,9 +79,14 @@ fun AlarmEditScreen(
 
     // Launch autocomplete
     fun launchAutocomplete() {
-        val fields = listOf(Place.Field.ID, Place.Field.DISPLAY_NAME, Place.Field.FORMATTED_ADDRESS, Place.Field.LOCATION)
-        val intent = Autocomplete.IntentBuilder(AutocompleteActivityMode.OVERLAY, fields)
-            .build(context)
+        val fields = listOf(
+            Place.Field.ID,
+            Place.Field.DISPLAY_NAME,
+            Place.Field.FORMATTED_ADDRESS,
+            Place.Field.LOCATION,
+        )
+        val intent =
+            Autocomplete.IntentBuilder(AutocompleteActivityMode.OVERLAY, fields).build(context)
         autocompleteLauncher.launch(intent)
     }
 
@@ -87,16 +96,16 @@ fun AlarmEditScreen(
         delay(1000)
         viewModel.setMapLoaded()
     }
-    
+
     // Update camera when position changes (e.g. from existing alarm or search)
     LaunchedEffect(uiState.selectedPosition) {
         uiState.selectedPosition?.let { latLng ->
-             cameraPositionState.animate(
+            cameraPositionState.animate(
                 CameraUpdateFactory.newLatLngZoom(latLng, 15f)
             )
         }
     }
-    
+
     // Navigation effect
     LaunchedEffect(uiState.isSaved) {
         if (uiState.isSaved) {
@@ -106,21 +115,25 @@ fun AlarmEditScreen(
 
     Scaffold(
         topBar = {
-            CenterAlignedTopAppBar(title = {
-                Text(
-                    if (uiState.existingAlarm != null) stringResource(R.string.edit_alarm) else stringResource(
-                        R.string.add_alarm
+            CenterAlignedTopAppBar(
+                title = {
+                    Text(
+                        if (uiState.existingAlarm != null) stringResource(R.string.edit_alarm) else stringResource(
+                            R.string.add_alarm
+                        )
                     )
-                )
-            }, navigationIcon = {
-                IconButton(onClick = onNavigateBack) {
-                    Icon(
-                        Icons.Filled.ArrowBack,
-                        contentDescription = stringResource(R.string.cancel)
-                    )
-                }
-            })
-        }) { innerPadding ->
+                },
+                navigationIcon = {
+                    IconButton(onClick = onNavigateBack) {
+                        Icon(
+                            Icons.Filled.ArrowBack,
+                            contentDescription = stringResource(R.string.cancel),
+                        )
+                    }
+                },
+            )
+        },
+    ) { innerPadding ->
         Box(
             modifier = Modifier
                 .padding(top = innerPadding.calculateTopPadding())
@@ -133,7 +146,8 @@ fun AlarmEditScreen(
                 uiSettings = MapUiSettings(zoomControlsEnabled = false),
                 onMapClick = { latLng ->
                     viewModel.updatePosition(latLng)
-                }) {
+                },
+            ) {
                 uiState.selectedPosition?.let { pos ->
                     Marker(
                         state = MarkerState(position = pos), title = "Destination"
@@ -156,7 +170,7 @@ fun AlarmEditScreen(
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(horizontal = 16.dp, vertical = 16.dp),
-                onClick = { launchAutocomplete() }
+                onClick = { launchAutocomplete() },
             ) {
                 Row(
                     modifier = Modifier
@@ -172,24 +186,23 @@ fun AlarmEditScreen(
                     Spacer(modifier = Modifier.width(12.dp))
                     Text(
                         text = uiState.searchText.ifEmpty { stringResource(R.string.search_location) },
-                        color = if (uiState.searchText.isEmpty()) 
-                            MaterialTheme.colorScheme.onSurfaceVariant 
-                        else 
-                            MaterialTheme.colorScheme.onSurface,
-                        style = MaterialTheme.typography.bodyLarge
+                        color = if (uiState.searchText.isEmpty()) MaterialTheme.colorScheme.onSurfaceVariant
+                        else MaterialTheme.colorScheme.onSurface,
+                        style = MaterialTheme.typography.bodyLarge,
                     )
                 }
             }
 
             // Bottom Slider Widget
             val deviceCornerRadius = rememberDeviceCornerRadius(fallback = 36.dp)
-            val navigationBottom = WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding()
+            val navigationBottom =
+                WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding()
             val bottomPadding = maxOf(navigationBottom, 24.dp)
-            
+
             // Calculate card radius: DeviceRadius - Padding (24.dp) for concentric corners
             // Enforce minimum of 24.dp
             val cardCornerRadius = maxOf(deviceCornerRadius - 24.dp, 24.dp)
-            
+
             Box(
                 modifier = Modifier
                     .align(Alignment.BottomCenter)
@@ -213,8 +226,8 @@ fun AlarmEditScreen(
                         Slider(
                             value = uiState.radius,
                             onValueChange = { viewModel.updateRadius(it) },
-                            valueRange = 100f..5000f,
-                            steps = 49
+                            valueRange = 500f..5000f,
+                            steps = 45
                         )
                         Spacer(modifier = Modifier.height(16.dp))
                         Button(
@@ -230,7 +243,7 @@ fun AlarmEditScreen(
 
             // Loading Overlay
             AnimatedVisibility(
-                visible = uiState.isLoading, enter = fadeIn(), exit = fadeOut()
+                visible = uiState.isLoading, enter = fadeIn(), exit = fadeOut(),
             ) {
                 Box(
                     modifier = Modifier
@@ -272,7 +285,8 @@ fun AlarmEditScreen(
                 TextButton(onClick = { viewModel.dismissNameDialog() }) {
                     Text(stringResource(R.string.cancel))
                 }
-            })
+            },
+        )
     }
 }
 
@@ -284,20 +298,21 @@ fun AlarmEditScreen(
 private fun rememberDeviceCornerRadius(fallback: Dp): Dp {
     val view = LocalView.current
     val density = LocalDensity.current
-    
+
     return remember(view, density) {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
             val windowInsets = view.rootWindowInsets
             // Get corner from bottom-left or bottom-right (for bottom widget)
-            val bottomLeftCorner = windowInsets?.getRoundedCorner(RoundedCorner.POSITION_BOTTOM_LEFT)
-            val bottomRightCorner = windowInsets?.getRoundedCorner(RoundedCorner.POSITION_BOTTOM_RIGHT)
-            
+            val bottomLeftCorner =
+                windowInsets?.getRoundedCorner(RoundedCorner.POSITION_BOTTOM_LEFT)
+            val bottomRightCorner =
+                windowInsets?.getRoundedCorner(RoundedCorner.POSITION_BOTTOM_RIGHT)
+
             // Use the larger of the two corners, or fallback
             val radiusPx = maxOf(
-                bottomLeftCorner?.radius ?: 0,
-                bottomRightCorner?.radius ?: 0
+                bottomLeftCorner?.radius ?: 0, bottomRightCorner?.radius ?: 0
             )
-            
+
             if (radiusPx > 0) {
                 with(density) { radiusPx.toDp() }
             } else {

@@ -7,28 +7,30 @@ import androidx.navigation.compose.rememberNavController
 import com.example.geo_alarm.ui.theme.GeoAlarmTheme
 import com.example.geo_alarm.navigation.AppNavHost
 import com.example.geo_alarm.ui.viewmodel.ViewModelFactory
-
 import androidx.activity.enableEdgeToEdge
 import kotlinx.coroutines.launch
 import android.content.Intent
-
+import com.example.geo_alarm.service.GeoAlarmService
+import kotlinx.coroutines.CoroutineScope
 
 class MainActivity : AppCompatActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
-        
+
         val app = application as GeoAlarmApplication
         val repository = app.repository
-        val viewModelFactory = ViewModelFactory(app, repository)
+        val settingsRepository = app.settingsRepository
+        val viewModelFactory = ViewModelFactory(app, repository, settingsRepository)
 
         setContent {
             GeoAlarmTheme {
                 val navController = rememberNavController()
                 AppNavHost(
                     navController = navController,
-                    viewModelFactory = viewModelFactory
+                    viewModelFactory = viewModelFactory,
                 )
+
             }
         }
     }
@@ -40,18 +42,21 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun handleIntent(intent: Intent) {
-        if (intent.action == com.example.geo_alarm.service.GeoAlarmService.ACTION_CANCEL_ALARM) {
-            val alarmId = intent.getStringExtra(com.example.geo_alarm.service.GeoAlarmService.EXTRA_ALARM_ID)
+        if (intent.action == GeoAlarmService.ACTION_CANCEL_ALARM) {
+            val alarmId = intent.getStringExtra(GeoAlarmService.EXTRA_ALARM_ID)
             if (!alarmId.isNullOrEmpty()) {
                 // Find and disable the alarm
                 val app = application as GeoAlarmApplication
-                 kotlinx.coroutines.CoroutineScope(kotlinx.coroutines.Dispatchers.IO).launch { // Launch coroutine
+                CoroutineScope(kotlinx.coroutines.Dispatchers.IO).launch {
                     val alarm = app.repository.getAlarm(alarmId)
                     if (alarm != null) {
                         app.repository.update(alarm.copy(isEnabled = false))
                         // Also stop the service explicitly just in case
-                        val stopIntent = Intent(this@MainActivity, com.example.geo_alarm.service.GeoAlarmService::class.java)
-                        stopIntent.action = com.example.geo_alarm.service.GeoAlarmService.ACTION_STOP
+                        val stopIntent = Intent(
+                            this@MainActivity,
+                            GeoAlarmService::class.java,
+                        )
+                        stopIntent.action = GeoAlarmService.ACTION_STOP
                         startService(stopIntent)
                     }
                 }

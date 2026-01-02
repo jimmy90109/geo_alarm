@@ -72,6 +72,7 @@ dependencies {
     implementation(libs.places)
     implementation(libs.accompanist.permissions)
     implementation(libs.kotlinx.serialization.json)
+    implementation(libs.androidx.datastore.preferences)
     
     // Room
     implementation(libs.androidx.room.runtime)

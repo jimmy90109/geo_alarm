@@ -8,10 +8,9 @@ import kotlinx.serialization.Serializable
  */
 @Serializable
 sealed interface AppRoutes {
-    
     @Serializable
-    data object Home : AppRoutes
-    
+    data object Main : AppRoutes
+
     @Serializable
     data class AlarmEdit(val alarmId: String? = null) : AppRoutes
 

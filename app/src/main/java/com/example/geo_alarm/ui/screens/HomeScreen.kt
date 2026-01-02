@@ -9,11 +9,9 @@ import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AppCompatDelegate
 import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
@@ -23,18 +21,12 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
-import androidx.compose.material.icons.filled.Check
-import androidx.compose.material.icons.filled.Language
-import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FloatingActionButton
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.LargeTopAppBar
-import androidx.compose.material3.ListItem
-import androidx.compose.material3.ListItemDefaults
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarDuration
 import androidx.compose.material3.SnackbarHost
@@ -53,7 +45,6 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
@@ -91,7 +82,7 @@ fun HomeScreen(
     viewModel: HomeViewModel,
     onAddAlarm: () -> Unit,
     onAlarmClick: (Alarm) -> Unit,
-    onNavigateToBatteryOptimization: () -> Unit,
+    onNavigateToBatteryOptimization: () -> Unit
 ) {
     val alarms by viewModel.alarms.collectAsStateWithLifecycle(initialValue = emptyList())
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
@@ -186,30 +177,12 @@ fun HomeScreen(
         modifier = Modifier.nestedScroll(scrollBehavior.nestedScrollConnection),
         topBar = {
             LargeTopAppBar(
-                title = { Text(stringResource(R.string.home_title)) },
-                actions = {
-//                    Debug: Test notification button
-//                    IconButton(onClick = {
-//                        val serviceIntent = Intent(context, GeoAlarmService::class.java).apply {
-//                            action = GeoAlarmService.ACTION_START_TEST
-//                        }
-//                        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.O) {
-//                            context.startForegroundService(serviceIntent)
-//                        } else {
-//                            context.startService(serviceIntent)
-//                        }
-//                    }) {
-//                        Icon(
-//                            Icons.Filled.PlayArrow,
-//                            contentDescription = "Test Notification"
-//                        )
-//                    }
-                    IconButton(onClick = { viewModel.showLanguageSheet() }) {
-                        Icon(
-                            Icons.Filled.Language,
-                            contentDescription = stringResource(R.string.language),
-                        )
-                    }
+                title = {
+                    Text(
+                        text = stringResource(R.string.home_title),
+                        modifier = Modifier.fillMaxWidth(),
+                        textAlign = androidx.compose.ui.text.style.TextAlign.Center
+                    )
                 },
                 scrollBehavior = scrollBehavior,
             )
@@ -240,7 +213,7 @@ fun HomeScreen(
         },
         snackbarHost = { SnackbarHost(snackbarHostState) },
     ) { innerPadding ->
-        Box(modifier = Modifier.padding(innerPadding)) {
+        Box(modifier = Modifier.padding(top = innerPadding.calculateTopPadding())) {
             if (alarms.isEmpty()) {
                 Box(
                     modifier = Modifier.fillMaxSize(),
@@ -254,6 +227,8 @@ fun HomeScreen(
             } else {
                 AlarmList(
                     alarms = alarms,
+                    // Add extra padding at bottom for the floating bar
+                    contentPadding = PaddingValues(bottom = 100.dp),
                     onAlarmClick = { alarm ->
                         if (alarm.isEnabled) {
                             viewModel.showEditDisabledDialog()
@@ -269,48 +244,6 @@ fun HomeScreen(
                         }
                     },
                     onToggle = handleAlarmToggle,
-                )
-            }
-        }
-    }
-
-    // Language Sheet
-    if (uiState.showLanguageSheet) {
-        val currentLocales = AppCompatDelegate.getApplicationLocales()
-        val currentLanguage =
-            if (!currentLocales.isEmpty) currentLocales.toLanguageTags().split("-")[0] else "en"
-
-        ModalBottomSheet(onDismissRequest = { viewModel.dismissLanguageSheet() }) {
-            Column(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(bottom = 24.dp),
-            ) {
-                ListItem(
-                    colors = ListItemDefaults.colors(containerColor = Color.Transparent),
-                    headlineContent = { Text(stringResource(R.string.locale_zh)) },
-                    trailingContent = {
-                        if (currentLanguage == "zh") Icon(
-                            Icons.Filled.Check, null
-                        )
-                    },
-                    modifier = Modifier.clickable {
-                        setAppLocale("zh-TW")
-                        viewModel.dismissLanguageSheet()
-                    },
-                )
-                ListItem(
-                    colors = ListItemDefaults.colors(containerColor = Color.Transparent),
-                    headlineContent = { Text(stringResource(R.string.locale_en)) },
-                    trailingContent = {
-                        if (currentLanguage == "en") Icon(
-                            Icons.Filled.Check, null
-                        )
-                    },
-                    modifier = Modifier.clickable {
-                        setAppLocale("en")
-                        viewModel.dismissLanguageSheet()
-                    },
                 )
             }
         }
@@ -443,9 +376,11 @@ private fun AlarmList(
     onAlarmClick: (Alarm) -> Unit,
     onAlarmLongClick: (Alarm) -> Unit,
     onToggle: (Alarm, Boolean) -> Unit,
+    contentPadding: PaddingValues = PaddingValues(bottom = 80.dp),
 ) {
     LazyColumn(
-        modifier = Modifier.fillMaxSize(), contentPadding = PaddingValues(bottom = 80.dp),
+        modifier = Modifier.fillMaxSize(),
+        contentPadding = contentPadding,
     ) {
         items(
             items = alarms, key = { it.id }) { alarm ->

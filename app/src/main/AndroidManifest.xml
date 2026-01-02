@@ -33,6 +33,10 @@
             android:name=".service.GeoAlarmService"
             android:foregroundServiceType="location"
             android:exported="false" />
+
+        <receiver
+            android:name=".service.GeofenceBroadcastReceiver"
+            android:exported="true" />
             
         <activity
             android:name=".MainActivity"
