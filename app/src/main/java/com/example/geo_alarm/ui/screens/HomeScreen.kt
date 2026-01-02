@@ -106,16 +106,17 @@ fun HomeScreen(
         )
     }, floatingActionButton = {
         FloatingActionButton(onClick = {
-            // Check foreground location permission first
-            if (!locationPermissionState.allPermissionsGranted) {
-                locationPermissionState.launchMultiplePermissionRequest()
-            } else if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.Q && 
-                       backgroundLocationPermissionState?.status?.isGranted != true) {
-                // Need background location permission
-                viewModel.showBackgroundPermissionDialog()
+            // explicit background permission check requested by user
+            val hasLocationPermission = if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.Q) {
+                backgroundLocationPermissionState?.status?.isGranted == true
             } else {
-                // All permissions granted
+                locationPermissionState.allPermissionsGranted
+            }
+
+            if (hasLocationPermission) {
                 onAddAlarm()
+            } else {
+                viewModel.showBackgroundPermissionDialog()
             }
         }) {
             Icon(Icons.Filled.Add, contentDescription = stringResource(R.string.add_alarm))
@@ -175,10 +176,16 @@ fun HomeScreen(
                                 }
                                 
                                 // Check location permission
-                                if (locationPermissionState.allPermissionsGranted) {
+                                val hasLocationPermission = if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.Q) {
+                                    backgroundLocationPermissionState?.status?.isGranted == true
+                                } else {
+                                    locationPermissionState.allPermissionsGranted
+                                }
+
+                                if (hasLocationPermission) {
                                     viewModel.enableAlarm(alarm, alarms, context)
                                 } else {
-                                   locationPermissionState.launchMultiplePermissionRequest()
+                                    viewModel.showBackgroundPermissionDialog()
                                 }
                             } else {
                                 viewModel.disableAlarm(alarm, context)
