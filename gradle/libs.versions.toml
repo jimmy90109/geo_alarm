@@ -30,6 +30,9 @@ mapsCompose = "4.3.3"
 # Permissions
 accompanistPermissions = "0.34.0"
 
+# Places SDK
+placesVersion = "4.1.0"
+
 [libraries]
 androidx-core-ktx = { group = "androidx.core", name = "core-ktx", version.ref = "coreKtx" }
 junit = { group = "junit", name = "junit", version.ref = "junit" }
@@ -56,6 +59,7 @@ play-services-location = { group = "com.google.android.gms", name = "play-servic
 maps-compose = { group = "com.google.maps.android", name = "maps-compose", version.ref = "mapsCompose" }
 accompanist-permissions = { group = "com.google.accompanist", name = "accompanist-permissions", version.ref = "accompanistPermissions" }
 kotlinx-serialization-json = { group = "org.jetbrains.kotlinx", name = "kotlinx-serialization-json", version.ref = "kotlinxSerializationJson" }
+places = { group = "com.google.android.libraries.places", name = "places", version.ref = "placesVersion" }
 
 [plugins]
 android-application = { id = "com.android.application", version.ref = "agp" }

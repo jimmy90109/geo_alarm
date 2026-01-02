@@ -33,6 +33,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.example.geo_alarm.R
 import com.example.geo_alarm.data.Alarm
 import com.example.geo_alarm.data.AlarmRepository
+import com.example.geo_alarm.ui.viewmodel.HomeViewModel
 import com.example.geo_alarm.service.GeoAlarmService
 import com.google.accompanist.permissions.*
 import com.google.android.gms.location.LocationServices
@@ -42,20 +43,18 @@ import java.util.UUID
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalPermissionsApi::class)
 @Composable
 fun HomeScreen(
-    repository: AlarmRepository, onAddAlarm: () -> Unit, onAlarmClick: (Alarm) -> Unit
+    viewModel: HomeViewModel, onAddAlarm: () -> Unit, onAlarmClick: (Alarm) -> Unit
 ) {
-    val alarms by repository.allAlarms.collectAsStateWithLifecycle(initialValue = emptyList())
+    val alarms by viewModel.alarms.collectAsStateWithLifecycle(initialValue = emptyList())
+    val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
     val snackbarHostState = remember { SnackbarHostState() }
     val scrollBehavior = TopAppBarDefaults.exitUntilCollapsedScrollBehavior()
 
-    var showLanguageSheet by remember { mutableStateOf(false) }
-    var showEditDisabledDialog by remember { mutableStateOf(false) }
-    var showSingleAlarmDialog by remember { mutableStateOf(false) }
-    var showBackgroundPermissionDialog by remember { mutableStateOf(false) }
-    var showNotificationPermissionDialog by remember { mutableStateOf(false) }
     var notificationPermissionRequested by remember { mutableStateOf(false) }
+
+
 
     // Permission Handling - Fine/Coarse Location
     val locationPermissionState = rememberMultiplePermissionsState(
@@ -97,7 +96,7 @@ fun HomeScreen(
 //                    contentDescription = "Test Notification"
 //                )
 //            }
-            IconButton(onClick = { showLanguageSheet = true }) {
+            IconButton(onClick = { viewModel.showLanguageSheet() }) {
                 Icon(
                     Icons.Filled.Language,
                     contentDescription = stringResource(R.string.language)
@@ -113,7 +112,7 @@ fun HomeScreen(
             } else if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.Q && 
                        backgroundLocationPermissionState?.status?.isGranted != true) {
                 // Need background location permission
-                showBackgroundPermissionDialog = true
+                viewModel.showBackgroundPermissionDialog()
             } else {
                 // All permissions granted
                 onAddAlarm()
@@ -148,20 +147,20 @@ fun HomeScreen(
                         item = alarm, onDelete = {
                             scope.launch {
                                 // Delete logic
-                                repository.delete(alarm)
+                                viewModel.deleteAlarm(alarm)
                                 val result = snackbarHostState.showSnackbar(
                                     message = msgAlarmDeleted,
                                     actionLabel = labelUndo,
                                     duration = SnackbarDuration.Short
                                 )
                                 if (result == SnackbarResult.ActionPerformed) {
-                                    repository.insert(alarm) // Undo delete
+                                    viewModel.restoreAlarm(alarm) // Undo delete
                                 }
                             }
                         }) {
                         AlarmItem(alarm = alarm, onClick = {
                             if (alarm.isEnabled) {
-                                showEditDisabledDialog = true
+                                viewModel.showEditDisabledDialog()
                             } else {
                                 onAlarmClick(alarm)
                             }
@@ -175,59 +174,14 @@ fun HomeScreen(
                                     return@AlarmItem
                                 }
                                 
-                                // Check if any other alarm is enabled
-                                val anyEnabled = alarms.any { it.isEnabled && it.id != alarm.id }
-                                if (anyEnabled) {
-                                    showSingleAlarmDialog = true
+                                // Check location permission
+                                if (locationPermissionState.allPermissionsGranted) {
+                                    viewModel.enableAlarm(alarm, alarms, context)
                                 } else {
-                                    if (locationPermissionState.allPermissionsGranted) {
-                                        scope.launch {
-                                            val fusedLocationClient = LocationServices.getFusedLocationProviderClient(context)
-                                            try {
-                                                fusedLocationClient.lastLocation.addOnSuccessListener { location ->
-                                                    if (location != null) {
-                                                        // Update DB
-                                                        scope.launch { repository.update(alarm.copy(isEnabled = true)) }
-                                                        
-                                                        // Start Service
-                                                        val serviceIntent = Intent(context, GeoAlarmService::class.java).apply {
-                                                            action = GeoAlarmService.ACTION_START
-                                                            putExtra(GeoAlarmService.EXTRA_ALARM_ID, alarm.id)
-                                                            putExtra(GeoAlarmService.EXTRA_NAME, alarm.name)
-                                                            putExtra(GeoAlarmService.EXTRA_DEST_LAT, alarm.latitude)
-                                                            putExtra(GeoAlarmService.EXTRA_DEST_LNG, alarm.longitude)
-                                                            putExtra(GeoAlarmService.EXTRA_RADIUS, alarm.radius)
-                                                            putExtra(GeoAlarmService.EXTRA_START_LAT, location.latitude)
-                                                            putExtra(GeoAlarmService.EXTRA_START_LNG, location.longitude)
-                                                        }
-                                                        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.O) {
-                                                            context.startForegroundService(serviceIntent)
-                                                        } else {
-                                                            context.startService(serviceIntent)
-                                                        }
-                                                    } else {
-                                                        // Handle null location (maybe show snackbar or request updates)
-                                                        // For now just toggle on but service might be wonky without start location? 
-                                                        // Actually if we can't get start location, the progress calculation will fail.
-                                                        // Let's assume 0,0 or try to handle it.
-                                                        // Better: Don't enable if no location
-                                                    }
-                                                }
-                                            } catch (e: SecurityException) {
-                                                // Handle permission exception
-                                            }
-                                        }
-                                    } else {
-                                       locationPermissionState.launchMultiplePermissionRequest()
-                                    }
+                                   locationPermissionState.launchMultiplePermissionRequest()
                                 }
                             } else {
-                                scope.launch { repository.update(alarm.copy(isEnabled = false)) }
-                                // Stop Service
-                                val serviceIntent = Intent(context, GeoAlarmService::class.java).apply {
-                                    action = GeoAlarmService.ACTION_STOP
-                                }
-                                context.startService(serviceIntent)
+                                viewModel.disableAlarm(alarm, context)
                             }
                         })
                     }
@@ -237,11 +191,11 @@ fun HomeScreen(
         }
     }
 
-    if (showLanguageSheet) {
+    if (uiState.showLanguageSheet) {
         val currentLocales = AppCompatDelegate.getApplicationLocales()
         val currentLanguage = if (!currentLocales.isEmpty) currentLocales.toLanguageTags().split("-")[0] else "en"
 
-        ModalBottomSheet(onDismissRequest = { showLanguageSheet = false }) {
+        ModalBottomSheet(onDismissRequest = { viewModel.dismissLanguageSheet() }) {
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -259,7 +213,7 @@ fun HomeScreen(
                     },
                     modifier = Modifier.clickable {
                         setAppLocale("zh-TW")
-                        showLanguageSheet = false
+                        viewModel.dismissLanguageSheet()
                     })
                 ListItem(
                     colors = ListItemDefaults.colors(
@@ -273,46 +227,46 @@ fun HomeScreen(
                     },
                     modifier = Modifier.clickable {
                         setAppLocale("en")
-                        showLanguageSheet = false
+                        viewModel.dismissLanguageSheet()
                     })
             }
         }
     }
 
     // Dialogs
-    if (showEditDisabledDialog) {
+    if (uiState.showEditDisabledDialog) {
         AlertDialog(
-            onDismissRequest = { showEditDisabledDialog = false },
+            onDismissRequest = { viewModel.dismissEditDisabledDialog() },
             title = { Text(stringResource(R.string.edit_alarm)) },
             text = { Text(stringResource(R.string.edit_disabled_error)) },
             confirmButton = {
-                TextButton(onClick = { showEditDisabledDialog = false }) {
+                TextButton(onClick = { viewModel.dismissEditDisabledDialog() }) {
                     Text(stringResource(R.string.ok))
                 }
             })
     }
 
-    if (showSingleAlarmDialog) {
+    if (uiState.showSingleAlarmDialog) {
         AlertDialog(
-            onDismissRequest = { showSingleAlarmDialog = false },
+            onDismissRequest = { viewModel.dismissSingleAlarmDialog() },
             title = { Text(stringResource(R.string.alarm_name)) }, // Using generic title or could specific 'Error'
             text = { Text(stringResource(R.string.only_one_alarm_error)) },
             confirmButton = {
-                TextButton(onClick = { showSingleAlarmDialog = false }) {
+                TextButton(onClick = { viewModel.dismissSingleAlarmDialog() }) {
                     Text(stringResource(R.string.ok))
                 }
             })
     }
 
     // Background Location Permission Dialog
-    if (showBackgroundPermissionDialog) {
+    if (uiState.showBackgroundPermissionDialog) {
         AlertDialog(
-            onDismissRequest = { showBackgroundPermissionDialog = false },
+            onDismissRequest = { viewModel.dismissBackgroundPermissionDialog() },
             title = { Text(stringResource(R.string.background_location_title)) },
             text = { Text(stringResource(R.string.background_location_message)) },
             confirmButton = {
                 TextButton(onClick = {
-                    showBackgroundPermissionDialog = false
+                    viewModel.dismissBackgroundPermissionDialog()
                     // Navigate to app settings
                     val intent = Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS).apply {
                         data = Uri.fromParts("package", context.packageName, null)
@@ -323,7 +277,7 @@ fun HomeScreen(
                 }
             },
             dismissButton = {
-                TextButton(onClick = { showBackgroundPermissionDialog = false }) {
+                TextButton(onClick = { viewModel.dismissBackgroundPermissionDialog() }) {
                     Text(stringResource(R.string.cancel))
                 }
             }
@@ -337,7 +291,7 @@ fun HomeScreen(
             // If permission was denied after user requested it
             if (status != null && !status.isGranted) {
                 // User denied - show dialog
-                showNotificationPermissionDialog = true
+                viewModel.showNotificationPermissionDialog()
                 notificationPermissionRequested = false // Reset flag
             } else if (status != null && status.isGranted) {
                 // Permission granted, reset flag
@@ -347,14 +301,14 @@ fun HomeScreen(
     }
 
     // Notification Permission Dialog
-    if (showNotificationPermissionDialog) {
+    if (uiState.showNotificationPermissionDialog) {
         AlertDialog(
-            onDismissRequest = { showNotificationPermissionDialog = false },
+            onDismissRequest = { viewModel.dismissNotificationPermissionDialog() },
             title = { Text(stringResource(R.string.notification_permission_title)) },
             text = { Text(stringResource(R.string.notification_permission_message)) },
             confirmButton = {
                 TextButton(onClick = {
-                    showNotificationPermissionDialog = false
+                    viewModel.dismissNotificationPermissionDialog()
                     // Navigate to app settings
                     val intent = Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS).apply {
                         data = Uri.fromParts("package", context.packageName, null)
@@ -365,8 +319,22 @@ fun HomeScreen(
                 }
             },
             dismissButton = {
-                TextButton(onClick = { showNotificationPermissionDialog = false }) {
+                TextButton(onClick = { viewModel.dismissNotificationPermissionDialog() }) {
                     Text(stringResource(R.string.cancel))
+                }
+            }
+        )
+    }
+    
+    // Already at Destination Dialog
+    if (uiState.showAlreadyAtDestinationDialog) {
+        AlertDialog(
+            onDismissRequest = { viewModel.dismissAlreadyAtDestinationDialog() },
+            title = { Text(stringResource(R.string.already_at_destination_title)) },
+            text = { Text(stringResource(R.string.already_at_destination_message)) },
+            confirmButton = {
+                TextButton(onClick = { viewModel.dismissAlreadyAtDestinationDialog() }) {
+                    Text(stringResource(R.string.ok))
                 }
             }
         )

@@ -20,12 +20,15 @@
     <string name="alarm_deleted">鬧鐘已刪除</string>
     <string name="undo">復原</string>
     <string name="only_one_alarm_error">同時只能啟用一個鬧鐘</string>
-    <string name="edit_disabled_error">請先關閉鬧鐘才能編輯</string>
+    <string name="edit_disabled_error">請先關閉鬧鐘才能編輯</string>\n    <string name="already_at_destination_title">已在目的地</string>\n    <string name="already_at_destination_message">您已在鬧鐘範圍內，啟用後會立即觸發。</string>
     <string name="background_location_title">需要背景定位權限</string>
     <string name="background_location_message">此應用程式需要「隨時允許」的定位權限才能在背景追蹤您的位置。請前往設定並將定位權限設為「隨時允許」。</string>
     <string name="go_to_settings">前往設定</string>
     <string name="notification_permission_title">需要通知權限</string>
     <string name="notification_permission_message">此應用程式需要通知權限才能在您抵達目的地時提醒您。請前往設定並啟用通知。</string>
+    
+    <!-- 搜尋字串 -->
+    <string name="search_location">搜尋地點</string>
     
     <!-- 通知字串 -->
     <string name="notification_title">定位鬧鐘: %s</string>

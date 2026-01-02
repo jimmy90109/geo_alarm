@@ -21,11 +21,16 @@
     <string name="undo">Undo</string>
     <string name="only_one_alarm_error">Only one alarm can be enabled at a time.</string>
     <string name="edit_disabled_error">Turn off the alarm to edit it.</string>
+    <string name="already_at_destination_title">Already at Destination</string>
+    <string name="already_at_destination_message">You are already within the alarm radius. The alarm will trigger immediately if enabled.</string>
     <string name="background_location_title">Background Location Required</string>
     <string name="background_location_message">This app needs "Allow all the time" location permission to track your location in the background. Please go to Settings and set location permission to "Allow all the time".</string>
     <string name="go_to_settings">Go to Settings</string>
     <string name="notification_permission_title">Notification Permission Required</string>
     <string name="notification_permission_message">This app needs notification permission to alert you when you arrive at your destination. Please go to Settings and enable notifications.</string>
+    
+    <!-- Search strings -->
+    <string name="search_location">Search location</string>
     
     <!-- Notification strings -->
     <string name="notification_title">GeoAlarm: %s</string>

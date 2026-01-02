@@ -6,6 +6,7 @@ import androidx.activity.compose.setContent
 import androidx.navigation.compose.rememberNavController
 import com.example.geo_alarm.ui.theme.GeoAlarmTheme
 import com.example.geo_alarm.navigation.AppNavHost
+import com.example.geo_alarm.ui.viewmodel.ViewModelFactory
 
 import androidx.activity.enableEdgeToEdge
 import kotlinx.coroutines.launch
@@ -19,13 +20,14 @@ class MainActivity : AppCompatActivity() {
         
         val app = application as GeoAlarmApplication
         val repository = app.repository
+        val viewModelFactory = ViewModelFactory(app, repository)
 
         setContent {
             GeoAlarmTheme {
                 val navController = rememberNavController()
                 AppNavHost(
                     navController = navController,
-                    repository = repository
+                    viewModelFactory = viewModelFactory
                 )
             }
         }

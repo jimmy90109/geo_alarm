@@ -26,6 +26,7 @@ android {
         versionName = "1.0"
         
         manifestPlaceholders["GOOGLE_MAPS_API_KEY"] = localProperties.getProperty("maps.apiKey") ?: ""
+        buildConfigField("String", "GOOGLE_MAPS_API_KEY", "\"${localProperties.getProperty("maps.apiKey") ?: ""}\"")
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
@@ -41,6 +42,7 @@ android {
     }
     buildFeatures {
         compose = true
+        buildConfig = true
     }
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_11
@@ -67,6 +69,7 @@ dependencies {
     implementation(libs.androidx.navigation.compose)
     implementation(libs.play.services.location)
     implementation(libs.maps.compose)
+    implementation(libs.places)
     implementation(libs.accompanist.permissions)
     implementation(libs.kotlinx.serialization.json)
     
