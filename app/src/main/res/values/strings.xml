@@ -49,4 +49,33 @@
     <string name="notification_arrived_title">Arrived at %s!</string>
     <string name="notification_arrived_text">You have reached your destination.</string>
     <string name="notification_turn_off">Turn Off</string>
+    <!-- Settings -->
+    <string name="settings">Settings</string>
+    <string name="back">Back</string>
+    <string name="monitoring_method">Monitoring Method</string>
+    <string name="monitoring_method_locked">Cannot change method while alarm is active</string>
+    <string name="method_geofencing">GeoFencing (Battery Saver)</string>
+    <string name="method_geofencing_desc">Uses system geofencing. Less battery usage, but no real-time distance updates.</string>
+    <string name="method_gps">Periodic GPS (High Consumption)</string>
+    <string name="method_gps_desc">Wakes up GPS periodically. Shows real-time progress, but drains battery.</string>
+    <string name="notification_monitoring_geofence">Monitoring location (Power Saver)</string>
+    <string name="tab_alarms">Alarms</string>
+    <string name="settings_section_general">General</string>
+    <string name="settings_section_alarm">Alarm</string>
+
+    <!-- Updates -->
+    <string name="section_about">About</string>
+    <string name="check_for_updates">Check for Updates</string>
+    <string name="settings_version_label">Version %s</string>
+    <string name="update_available_title">New Version Available</string>
+    <string name="update_available_message">Version %s is available. Do you want to download it?</string>
+    <string name="update_downloading">Downloading...</string>
+    <string name="update_ready_to_install">Click to Install</string>
+    <string name="download">Download</string>
+    <string name="install">Install</string>
+    <string name="update_not_found">No update available</string>
+    <string name="update_error">Check failed</string>
+    <string name="checking_update">Checking...</string>
+    <string name="install_permission_title">Permission Required</string>
+    <string name="install_permission_message">To update the app, you need to allow installing unknown apps from settings.</string>
 </resources>
