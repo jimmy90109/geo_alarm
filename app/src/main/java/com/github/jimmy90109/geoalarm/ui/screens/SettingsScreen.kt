@@ -1,5 +1,7 @@
 package com.github.jimmy90109.geoalarm.ui.screens
 
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.fadeIn
@@ -30,6 +32,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Check
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -40,17 +43,21 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.font.FontWeight
@@ -59,6 +66,7 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.github.jimmy90109.geoalarm.R
 import com.github.jimmy90109.geoalarm.data.MonitoringMethod
+import com.github.jimmy90109.geoalarm.data.UpdateStatus
 import com.github.jimmy90109.geoalarm.ui.viewmodel.SettingsViewModel
 import kotlinx.coroutines.launch
 import kotlin.math.roundToInt
@@ -136,6 +144,120 @@ fun SettingsScreen(
                     enabled = !uiState.anyAlarmEnabled,
                     subtitle = if (uiState.anyAlarmEnabled) stringResource(R.string.monitoring_method_locked) else null
                 )
+
+                Spacer(modifier = Modifier.height(24.dp))
+
+                // About Section
+                SettingsSectionHeader(title = stringResource(R.string.section_about))
+
+                val updateStatus by viewModel.updateStatus.collectAsStateWithLifecycle()
+                val context = LocalContext.current
+
+                // Permission Launcher
+                val launcher = rememberLauncherForActivityResult(
+                    contract = ActivityResultContracts.StartActivityForResult(),
+                    onResult = {
+                        // User returned from settings, we could re-check permission here or let them click install again
+                    },
+                )
+
+                var showUpdateDialog by remember { mutableStateOf(false) }
+                val updateValue = when (val status = updateStatus) {
+                    is UpdateStatus.Checking -> stringResource(R.string.checking_update)
+                    is UpdateStatus.Downloading -> stringResource(R.string.update_downloading)
+                    is UpdateStatus.ReadyToInstall -> stringResource(
+                        R.string.update_ready_to_install
+                    )
+
+                    else -> stringResource(
+                        R.string.settings_version_label, viewModel.currentVersion
+                    )
+                }
+
+                SettingsCard(
+                    title = stringResource(R.string.check_for_updates),
+                    value = updateValue,
+                    onClick = {
+                        when (val status = updateStatus) {
+                            is UpdateStatus.Idle, is UpdateStatus.Error -> {
+                                viewModel.checkForUpdates()
+                            }
+
+                            is UpdateStatus.Available -> {
+                                showUpdateDialog = true
+                            }
+
+                            is UpdateStatus.ReadyToInstall -> {
+                                viewModel.installUpdate(status.file, context)
+                            }
+
+                            is UpdateStatus.Downloading -> {
+                                // Do nothing or show toast
+                                android.widget.Toast.makeText(
+                                    context,
+                                    R.string.update_downloading,
+                                    android.widget.Toast.LENGTH_SHORT
+                                ).show()
+                            }
+
+                            else -> {}
+                        }
+                    },
+                )
+
+                // Handle status changes (e.g. show dialog when Available detected)
+                LaunchedEffect(updateStatus) {
+                    if (updateStatus is UpdateStatus.Available) {
+                        showUpdateDialog = true
+                    }
+                    if (updateStatus is UpdateStatus.Error) {
+                        android.widget.Toast.makeText(
+                            context,
+                            (updateStatus as UpdateStatus.Error).message,
+                            android.widget.Toast.LENGTH_SHORT
+                        ).show()
+                        viewModel.resetUpdateState()
+                    }
+                }
+
+                if (showUpdateDialog) {
+                    val status = updateStatus
+                    if (status is UpdateStatus.Available) {
+                        AlertDialog(
+                            onDismissRequest = {
+                                showUpdateDialog = false
+                                viewModel.resetUpdateState()
+                            },
+                            title = { Text(stringResource(R.string.update_available_title)) },
+                            text = {
+                                Text(
+                                    stringResource(
+                                        R.string.update_available_message,
+                                        status.version,
+                                    )
+                                )
+                            },
+                            confirmButton = {
+                                TextButton(
+                                    onClick = {
+                                        viewModel.downloadUpdate(status.downloadUrl)
+                                        showUpdateDialog = false
+                                    }) {
+                                    Text(stringResource(R.string.download))
+                                }
+                            },
+                            dismissButton = {
+                                TextButton(
+                                    onClick = {
+                                        showUpdateDialog = false
+                                        viewModel.resetUpdateState()
+                                    }) {
+                                    Text(stringResource(R.string.cancel))
+                                }
+                            },
+                        )
+                    }
+                }
             }
         }
     }
