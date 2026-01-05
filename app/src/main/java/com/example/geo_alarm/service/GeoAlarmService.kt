@@ -132,8 +132,9 @@ class GeoAlarmService : Service(), LocationListener {
             }
 
             ACTION_GEOFENCE_TRIGGERED -> {
-                // Might need to fetch alarm name if service was restarted
-                // For now assume memory is fresh or we construct generic
+                // Keep the WakeLock held or re-acquire it to ensure we can vibrate and show notification
+                // The receiver acquired it, so we are good, but let's make sure we hold it until user interaction or sufficient time
+                // Using the singleton, it's already held.
                 triggerArrival()
             }
 
@@ -141,6 +142,7 @@ class GeoAlarmService : Service(), LocationListener {
                 if (isServiceRunning && !isArrived) {
                     startForegroundService() // Restores notification
                 }
+                com.example.geo_alarm.utils.WakeLocker.release()
             }
 
             ACTION_START_TEST -> {
@@ -161,6 +163,7 @@ class GeoAlarmService : Service(), LocationListener {
                 if (::geofencingClient.isInitialized) {
                     geofencingClient.removeGeofences(getGeofencePendingIntent())
                 }
+                com.example.geo_alarm.utils.WakeLocker.release()
                 stopSelf()
             }
         }
@@ -210,6 +213,10 @@ class GeoAlarmService : Service(), LocationListener {
         val geofence = Geofence.Builder().setRequestId(alarmId)
             .setCircularRegion(destLat, destLng, radius.toFloat())
             .setExpirationDuration(Geofence.NEVER_EXPIRE)
+            // Critical for immediate response: 
+            // Setting responsiveness to 0ms tells the system to prioritize this geofence
+            // and trigger the intent as soon as possible, potentially ignoring some power savings.
+            .setNotificationResponsiveness(0) 
             .setTransitionTypes(Geofence.GEOFENCE_TRANSITION_ENTER).build()
 
         // Debug: Log Last Known Location
@@ -351,6 +358,9 @@ class GeoAlarmService : Service(), LocationListener {
         val notification = buildArrivalNotification()
         val manager = getSystemService(NotificationManager::class.java)
         manager.notify(NOTIFICATION_ID, notification)
+        
+        // Use WakeLock to turn screen on if possible
+        com.example.geo_alarm.utils.WakeLocker.acquire(this)
     }
 
     private fun buildNotification(
@@ -448,6 +458,7 @@ class GeoAlarmService : Service(), LocationListener {
                 getString(R.string.notification_turn_off),
                 turnOffPendingIntent
             ).setOngoing(true).setOnlyAlertOnce(false)  // Allow heads-up to show again
+            .setFullScreenIntent(turnOffPendingIntent, true) // Important for waking up
             .setContentIntent(turnOffPendingIntent).build()
     }
 
@@ -459,6 +470,7 @@ class GeoAlarmService : Service(), LocationListener {
         if (::geofencingClient.isInitialized) {
             geofencingClient.removeGeofences(getGeofencePendingIntent())
         }
+        com.example.geo_alarm.utils.WakeLocker.release()
     }
 
     // Unused overrides

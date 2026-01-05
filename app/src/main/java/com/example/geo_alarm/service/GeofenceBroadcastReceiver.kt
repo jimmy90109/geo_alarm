@@ -13,15 +13,22 @@ class GeofenceBroadcastReceiver : BroadcastReceiver() {
     override fun onReceive(context: Context, intent: Intent) {
         Log.d("GeofenceReceiver", "onReceive called with action: ${intent.action}")
 
+        // Acquire WakeLock immediately to ensure the device stays awake
+        // while we process the Geofence event and start the Service.
+        // This is crucial for Android 8.0+ (Oreo) background execution limits.
+        com.example.geo_alarm.utils.WakeLocker.acquire(context)
+
         val geofencingEvent = GeofencingEvent.fromIntent(intent)
         if (geofencingEvent == null) {
             Log.e("GeofenceReceiver", "GeofencingEvent is null")
+            com.example.geo_alarm.utils.WakeLocker.release()
             return
         }
 
         if (geofencingEvent.hasError()) {
             val errorMessage = geofencingEvent.errorCode
             Log.e("GeofenceReceiver", "Geofencing Error: $errorMessage")
+            com.example.geo_alarm.utils.WakeLocker.release()
             return
         }
 
@@ -43,6 +50,7 @@ class GeofenceBroadcastReceiver : BroadcastReceiver() {
             }
         } else {
             Log.d("GeofenceReceiver", "Unhandled transition type: $geofenceTransition")
+            com.example.geo_alarm.utils.WakeLocker.release()
         }
     }
 }
