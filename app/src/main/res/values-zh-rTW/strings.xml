@@ -60,4 +60,20 @@
     <string name="tab_alarms">鬧鐘</string>
     <string name="settings_section_general">一般設定</string>
     <string name="settings_section_alarm">鬧鐘設定</string>
+
+    <!-- Updates -->
+    <string name="section_about">關於</string>
+    <string name="check_for_updates">檢查更新</string>
+    <string name="settings_version_label">版本 %s</string>
+    <string name="update_available_title">有新版本可用</string>
+    <string name="update_available_message">版本 %s 可供下載。您想要下載嗎？</string>
+    <string name="update_downloading">下載中...</string>
+    <string name="update_ready_to_install">點擊安裝</string>
+    <string name="download">下載</string>
+    <string name="install">安裝</string>
+    <string name="update_not_found">無可用更新</string>
+    <string name="update_error">檢查失敗</string>
+    <string name="checking_update">檢查中...</string>
+    <string name="install_permission_title">需要權限</string>
+    <string name="install_permission_message">若要更新應用程式，您需要允許安裝未知應用程式。</string>
 </resources>
