@@ -181,7 +181,6 @@ fun HomeScreen(
                     Text(
                         text = stringResource(R.string.home_title),
                         modifier = Modifier.fillMaxWidth(),
-                        textAlign = androidx.compose.ui.text.style.TextAlign.Center
                     )
                 },
                 scrollBehavior = scrollBehavior,
@@ -228,7 +227,7 @@ fun HomeScreen(
                 AlarmList(
                     alarms = alarms,
                     // Add extra padding at bottom for the floating bar
-                    contentPadding = PaddingValues(bottom = 100.dp),
+                    contentPadding = PaddingValues(bottom = innerPadding.calculateBottomPadding() + 100.dp),
                     onAlarmClick = { alarm ->
                         if (alarm.isEnabled) {
                             viewModel.showEditDisabledDialog()

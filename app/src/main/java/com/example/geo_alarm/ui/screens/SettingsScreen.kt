@@ -16,9 +16,12 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.asPaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.navigationBars
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
@@ -88,7 +91,6 @@ fun SettingsScreen(
                     Text(
                         text = stringResource(R.string.settings),
                         modifier = Modifier.fillMaxWidth(),
-                        textAlign = androidx.compose.ui.text.style.TextAlign.Center
                     )
                 },
                 scrollBehavior = scrollBehavior,
@@ -143,7 +145,12 @@ fun SettingsScreen(
     InlineBottomSheet(
         visible = uiState.showLanguageSheet,
         onDismissRequest = { viewModel.dismissLanguageSheet() }) {
-        Column(modifier = Modifier.padding(bottom = 100.dp)) { // Padding for Navbar
+        Column(
+            modifier = Modifier.padding(
+                bottom = WindowInsets.navigationBars.asPaddingValues()
+                    .calculateBottomPadding() + 72.dp
+            )
+        ) { // Padding for Navbar
             Text(
                 text = stringResource(R.string.language),
                 style = MaterialTheme.typography.titleLarge,
@@ -171,7 +178,12 @@ fun SettingsScreen(
     InlineBottomSheet(
         visible = uiState.showMonitoringSheet,
         onDismissRequest = { viewModel.dismissMonitoringSheet() }) {
-        Column(modifier = Modifier.padding(bottom = 100.dp)) { // Padding for Navbar
+        Column(
+            modifier = Modifier.padding(
+                bottom = WindowInsets.navigationBars.asPaddingValues()
+                    .calculateBottomPadding() + 72.dp
+            )
+        ) {
             Text(
                 text = stringResource(R.string.monitoring_method),
                 style = MaterialTheme.typography.titleLarge,
@@ -243,8 +255,8 @@ fun InlineBottomSheet(
         ) {
             Surface(
                 shape = RoundedCornerShape(
-                    topStart = 28.dp, topEnd = 28.dp,
-                ),
+                topStart = 28.dp, topEnd = 28.dp,
+            ),
                 color = MaterialTheme.colorScheme.surfaceContainerLow,
                 tonalElevation = 6.dp,
                 modifier = Modifier

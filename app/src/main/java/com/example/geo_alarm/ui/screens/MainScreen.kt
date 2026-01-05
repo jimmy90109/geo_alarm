@@ -1,12 +1,18 @@
 package com.example.geo_alarm.ui.screens
 
+import androidx.activity.compose.BackHandler
 import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
+import androidx.compose.animation.slideInHorizontally
+import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.asPaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.navigationBars
 import androidx.compose.foundation.layout.padding
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -19,7 +25,7 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import com.example.geo_alarm.navigation.MainRoutes
-import com.example.geo_alarm.ui.components.CustomBottomBar
+import com.example.geo_alarm.ui.components.BottomNavBar
 import com.example.geo_alarm.ui.components.NavTab
 import com.example.geo_alarm.ui.viewmodel.HomeViewModel
 
@@ -34,8 +40,18 @@ fun MainScreen(
     val navBackStackEntry by navController.currentBackStackEntryAsState()
 
     // Determine if we are on a top-level tab
-    val isHome = navBackStackEntry?.destination?.hasRoute<MainRoutes.Home>() == true
     val isSettings = navBackStackEntry?.destination?.hasRoute<MainRoutes.Settings>() == true
+
+    // Create the factory with dependencies
+    val context = androidx.compose.ui.platform.LocalContext.current
+    val app = context.applicationContext as com.example.geo_alarm.GeoAlarmApplication
+    val factory = com.example.geo_alarm.ui.viewmodel.ViewModelFactory(
+        app, app.repository, app.settingsRepository
+    )
+
+    // Get the SettingsViewModel
+    val settingsViewModel: com.example.geo_alarm.ui.viewmodel.SettingsViewModel =
+        androidx.lifecycle.viewmodel.compose.viewModel(factory = factory)
 
     // Animation States
     val alignmentBias by animateFloatAsState(
@@ -45,13 +61,47 @@ fun MainScreen(
         targetValue = if (isSettings) 0.dp else 16.dp, label = "padding"
     )
 
+    // Handle back press to go Home if on Settings
+    BackHandler(enabled = isSettings) {
+        navController.navigate(MainRoutes.Home) {
+            popUpTo(navController.graph.id) {
+                saveState = true
+            }
+            launchSingleTop = true
+            restoreState = true
+        }
+    }
+
     Box(modifier = Modifier.fillMaxSize()) {
         NavHost(
             navController = navController, startDestination = MainRoutes.Home
         ) {
             composable<MainRoutes.Home>(
-                enterTransition = { fadeIn(animationSpec = tween(300)) },
-                exitTransition = { fadeOut(animationSpec = tween(300)) }) {
+                enterTransition = {
+                    slideInHorizontally(
+                        initialOffsetX = { -it / 2 },
+                        animationSpec = tween(300)
+                    ) + fadeIn(animationSpec = tween(300))
+                },
+                exitTransition = {
+                    slideOutHorizontally(
+                        targetOffsetX = { -it / 2 },
+                        animationSpec = tween(300)
+                    ) + fadeOut(animationSpec = tween(300))
+                },
+                popEnterTransition = {
+                    slideInHorizontally(
+                        initialOffsetX = { -it / 2 },
+                        animationSpec = tween(300)
+                    ) + fadeIn(animationSpec = tween(300))
+                },
+                popExitTransition = {
+                    slideOutHorizontally(
+                        targetOffsetX = { -it / 2 },
+                        animationSpec = tween(300)
+                    ) + fadeOut(animationSpec = tween(300))
+                }
+            ) {
                 HomeScreen(
                     viewModel = viewModel,
                     onAddAlarm = onAddAlarm,
@@ -61,29 +111,45 @@ fun MainScreen(
             }
 
             composable<MainRoutes.Settings>(
-                enterTransition = { fadeIn(animationSpec = tween(300)) },
-                exitTransition = { fadeOut(animationSpec = tween(300)) }
+                enterTransition = {
+                    slideInHorizontally(
+                        initialOffsetX = { it / 2 },
+                        animationSpec = tween(300)
+                    ) + fadeIn(animationSpec = tween(300))
+                },
+                exitTransition = {
+                    slideOutHorizontally(
+                        targetOffsetX = { it / 2 },
+                        animationSpec = tween(300)
+                    ) + fadeOut(animationSpec = tween(300))
+                },
+                popEnterTransition = {
+                    slideInHorizontally(
+                        initialOffsetX = { it / 2 },
+                        animationSpec = tween(300)
+                    ) + fadeIn(animationSpec = tween(300))
+                },
+                popExitTransition = {
+                    slideOutHorizontally(
+                        targetOffsetX = { it / 2 },
+                        animationSpec = tween(300)
+                    ) + fadeOut(animationSpec = tween(300))
+                }
             ) {
-                // Obtain the Application context
-                val context = androidx.compose.ui.platform.LocalContext.current
-                val app = context.applicationContext as com.example.geo_alarm.GeoAlarmApplication
-                
-                // Create the factory with dependencies
-                val factory = com.example.geo_alarm.ui.viewmodel.ViewModelFactory(app, app.repository, app.settingsRepository)
-                
-                // Get the SettingsViewModel
-                val settingsViewModel: com.example.geo_alarm.ui.viewmodel.SettingsViewModel = androidx.lifecycle.viewmodel.compose.viewModel(factory = factory)
-                
                 SettingsScreen(
                     viewModel = settingsViewModel
                 )
             }
         }
 
-        CustomBottomBar(
+        BottomNavBar(
             currentTab = if (isSettings) NavTab.SETTINGS else NavTab.HOME,
             onHomeClick = {
-                if (!isHome) {
+                // Dimiss any open settings sheets
+                settingsViewModel.dismissLanguageSheet()
+                settingsViewModel.dismissMonitoringSheet()
+
+                if (isSettings) {
                     navController.navigate(MainRoutes.Home) {
                         popUpTo(navController.graph.id) {
                             saveState = true
@@ -106,7 +172,11 @@ fun MainScreen(
             },
             modifier = Modifier
                 .align(BiasAlignment(alignmentBias, 1f))
-                .padding(start = startPadding, bottom = 32.dp)
+                .padding(
+                    start = startPadding,
+                    bottom = WindowInsets.navigationBars.asPaddingValues()
+                        .calculateBottomPadding() + 8.dp
+                ),
         )
     }
 }

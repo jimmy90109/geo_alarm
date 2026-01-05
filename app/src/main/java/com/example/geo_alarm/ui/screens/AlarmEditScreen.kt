@@ -2,8 +2,6 @@ package com.example.geo_alarm.ui.screens
 
 import android.app.Activity
 import android.content.Intent
-import android.os.Build
-import android.view.RoundedCorner
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.*
@@ -19,8 +17,6 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.platform.LocalDensity
-import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
@@ -194,14 +190,12 @@ fun AlarmEditScreen(
             }
 
             // Bottom Slider Widget
-            val deviceCornerRadius = rememberDeviceCornerRadius(fallback = 36.dp)
             val navigationBottom =
                 WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding()
             val bottomPadding = maxOf(navigationBottom, 24.dp)
 
-            // Calculate card radius: DeviceRadius - Padding (24.dp) for concentric corners
-            // Enforce minimum of 24.dp
-            val cardCornerRadius = maxOf(deviceCornerRadius - 24.dp, 24.dp)
+            // User requested Button Radius (approx 20.dp for 40.dp height) + 24.dp = 44.dp
+            val cardCornerRadius = 44.dp
 
             Box(
                 modifier = Modifier
@@ -290,37 +284,5 @@ fun AlarmEditScreen(
     }
 }
 
-/**
- * Gets the device's display corner radius using Android 12+ RoundedCorner API.
- * Falls back to the provided default value on older devices or if corner radius cannot be determined.
- */
-@Composable
-private fun rememberDeviceCornerRadius(fallback: Dp): Dp {
-    val view = LocalView.current
-    val density = LocalDensity.current
 
-    return remember(view, density) {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
-            val windowInsets = view.rootWindowInsets
-            // Get corner from bottom-left or bottom-right (for bottom widget)
-            val bottomLeftCorner =
-                windowInsets?.getRoundedCorner(RoundedCorner.POSITION_BOTTOM_LEFT)
-            val bottomRightCorner =
-                windowInsets?.getRoundedCorner(RoundedCorner.POSITION_BOTTOM_RIGHT)
-
-            // Use the larger of the two corners, or fallback
-            val radiusPx = maxOf(
-                bottomLeftCorner?.radius ?: 0, bottomRightCorner?.radius ?: 0
-            )
-
-            if (radiusPx > 0) {
-                with(density) { radiusPx.toDp() }
-            } else {
-                fallback
-            }
-        } else {
-            fallback
-        }
-    }
-}
 
