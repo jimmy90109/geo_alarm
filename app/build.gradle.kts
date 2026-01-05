@@ -9,7 +9,7 @@ plugins {
 }
 
 android {
-    namespace = "com.example.geo_alarm"
+    namespace = "com.github.jimmy90109.geoalarm"
     compileSdk = 36
 
     val localProperties = Properties()
@@ -19,7 +19,7 @@ android {
     }
 
     defaultConfig {
-        applicationId = "com.example.geo_alarm"
+        applicationId = "com.github.jimmy90109.geoalarm"
         minSdk = 31
         targetSdk = 36
         versionCode = 1
