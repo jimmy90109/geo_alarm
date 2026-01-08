@@ -35,10 +35,9 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
-    override fun onNewIntent(intent: Intent?) { // Fix: use nullable Intent? to match override signature if needed, or non-null based on SDK. But safer to assume platform Intent.
-        super.onNewIntent(intent) // Correct signature usually implies 'intent: Intent' but AppCompat might differ, assume safe default or check parent.
-        // Actually, pure Activity onNewIntent takes Intent.
-        intent?.let { handleIntent(it) }
+    override fun onNewIntent(intent: Intent) {
+        super.onNewIntent(intent)
+        handleIntent(intent)
     }
 
     private fun handleIntent(intent: Intent) {
