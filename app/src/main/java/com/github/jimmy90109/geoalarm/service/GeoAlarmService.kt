@@ -2,32 +2,41 @@ package com.github.jimmy90109.geoalarm.service
 
 import android.annotation.SuppressLint
 import android.app.Notification
+import android.app.NotificationManager
 import android.app.PendingIntent
 import android.app.Service
 import android.content.Intent
 import android.content.pm.ServiceInfo.FOREGROUND_SERVICE_TYPE_LOCATION
 import android.location.Location
-import android.location.LocationListener
-import android.location.LocationManager
 import android.os.Build
 import android.os.IBinder
+import android.os.Looper
 import android.os.VibrationEffect
 import android.os.Vibrator
 import android.os.VibratorManager
-import android.app.NotificationManager
 import android.util.Log
 import androidx.core.app.NotificationCompat
 import com.github.jimmy90109.geoalarm.GeoAlarmApplication
 import com.github.jimmy90109.geoalarm.MainActivity
 import com.github.jimmy90109.geoalarm.R
-import com.github.jimmy90109.geoalarm.data.MonitoringMethod
 import com.github.jimmy90109.geoalarm.utils.WakeLocker
+import com.google.android.gms.location.FusedLocationProviderClient
 import com.google.android.gms.location.Geofence
+import com.google.android.gms.location.GeofencingClient
 import com.google.android.gms.location.GeofencingRequest
+import com.google.android.gms.location.LocationCallback
+import com.google.android.gms.location.LocationRequest
+import com.google.android.gms.location.LocationResult
 import com.google.android.gms.location.LocationServices
-import kotlinx.coroutines.*
+import com.google.android.gms.location.Priority
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.isActive
+import kotlinx.coroutines.launch
 
-class GeoAlarmService : Service(), LocationListener {
+class GeoAlarmService : Service() {
 
     companion object {
         const val ACTION_START = "ACTION_START"
@@ -35,6 +44,7 @@ class GeoAlarmService : Service(), LocationListener {
         const val ACTION_START_TEST = "ACTION_START_TEST"  // For testing notifications
         const val ACTION_GEOFENCE_TRIGGERED = "ACTION_GEOFENCE_TRIGGERED"
         const val ACTION_NOTIFICATION_DISMISSED = "ACTION_NOTIFICATION_DISMISSED"
+        const val ACTION_WARNING_GEOFENCE_TRIGGERED = "ACTION_WARNING_GEOFENCE_TRIGGERED"
 
         // Output Actions
         const val ACTION_CANCEL_ALARM =
@@ -50,14 +60,31 @@ class GeoAlarmService : Service(), LocationListener {
 
         private const val NOTIFICATION_ID = 1
         private const val CHANNEL_ID = "geo_alarm_channel"
+
+        // Distance thresholds for adaptive monitoring
+        const val FAR_DISTANCE_THRESHOLD = 5000f   // > 5km: Geofence only (power saving)
+        const val NEAR_DISTANCE_THRESHOLD = 2000f  // <= 2km: High accuracy GPS
+
+        // GPS update intervals
+        const val MID_UPDATE_INTERVAL = 60_000L   // 1 minute for 2-5km range
+        const val NEAR_UPDATE_INTERVAL = 15_000L  // 15 seconds for <= 2km range
+
+        // Geofence IDs
+        const val GEOFENCE_DESTINATION_ID = "dest_geofence"
+        const val GEOFENCE_WARNING_ID = "warning_5km_geofence"
     }
 
-    private lateinit var locationManager: LocationManager
-    private lateinit var geofencingClient: com.google.android.gms.location.GeofencingClient
+    // Monitoring zones for adaptive tracking
+    enum class MonitoringZone { FAR, MID, NEAR }
+
+    private lateinit var fusedLocationClient: FusedLocationProviderClient
+    private lateinit var geofencingClient: GeofencingClient
+    private var locationCallback: LocationCallback? = null
+
     private val settingsRepository by lazy { (application as GeoAlarmApplication).settingsRepository }
     private val repository by lazy { (application as GeoAlarmApplication).repository }
     private var isServiceRunning = false
-    private var currentMonitoringMethod = MonitoringMethod.GEOFENCE
+    private var currentZone = MonitoringZone.FAR
 
     // Alarm Data
     private var alarmName: String = "Alarm"
@@ -76,9 +103,8 @@ class GeoAlarmService : Service(), LocationListener {
 
     override fun onCreate() {
         super.onCreate()
-        locationManager = getSystemService(LOCATION_SERVICE) as LocationManager
+        fusedLocationClient = LocationServices.getFusedLocationProviderClient(this)
         geofencingClient = LocationServices.getGeofencingClient(this)
-
 
         vibrator = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
             val vibratorManager = getSystemService(VIBRATOR_MANAGER_SERVICE) as VibratorManager
@@ -100,43 +126,26 @@ class GeoAlarmService : Service(), LocationListener {
                     startLat = intent.getDoubleExtra(EXTRA_START_LAT, 0.0)
                     startLng = intent.getDoubleExtra(EXTRA_START_LNG, 0.0)
 
-                    val startLocation = Location("").apply {
-                        latitude = startLat
-                        longitude = startLng
-                    }
-                    val destLocation = Location("").apply {
-                        latitude = destLat
-                        longitude = destLng
-                    }
-
                     // totalDistance will be set on first GPS update
                     totalDistance = 0f
 
                     startForegroundService()
-
-                    // Check monitoring method
-                    CoroutineScope(Dispatchers.Main).launch {
-                        settingsRepository.monitoringMethod.collect { method ->
-                            currentMonitoringMethod = method
-                            if (method == MonitoringMethod.GPS) {
-                                startLocationUpdates()
-                            } else {
-                                startGeofencing()
-                            }
-                            // Only listen to the first value then cancel collection to avoid switching mid-service if user somehow changes it (though UI prevents it)
-                            // Actually, UI prevents it, so just taking first value is safe.
-                            this.cancel()
-                        }
-                    }
+                    startSmartHybridMonitoring()
                     isServiceRunning = true
                 }
             }
 
             ACTION_GEOFENCE_TRIGGERED -> {
-                // Keep the WakeLock held or re-acquire it to ensure we can vibrate and show notification
-                // The receiver acquired it, so we are good, but let's make sure we hold it until user interaction or sufficient time
-                // Using the singleton, it's already held.
+                // Destination geofence triggered - arrival!
                 triggerArrival()
+            }
+
+            ACTION_WARNING_GEOFENCE_TRIGGERED -> {
+                // 5km warning geofence triggered - switch to MID zone
+                Log.d("GeoAlarmService", "Warning geofence triggered, switching to MID zone")
+                if (currentZone == MonitoringZone.FAR) {
+                    switchToZone(MonitoringZone.MID)
+                }
             }
 
             ACTION_NOTIFICATION_DISMISSED -> {
@@ -161,14 +170,247 @@ class GeoAlarmService : Service(), LocationListener {
 
             ACTION_STOP -> {
                 testJob?.cancel()
-                if (::geofencingClient.isInitialized) {
-                    geofencingClient.removeGeofences(getGeofencePendingIntent())
-                }
+                stopGpsUpdates()
+                removeAllGeofences()
                 WakeLocker.release()
                 stopSelf()
             }
         }
         return START_STICKY
+    }
+
+    /**
+     * Start the smart hybrid monitoring system:
+     * 1. Always register destination geofence as "safety net"
+     * 2. Register 5km warning geofence for FAR->MID transition
+     * 3. Get initial location to determine starting zone
+     */
+    @SuppressLint("MissingPermission")
+    private fun startSmartHybridMonitoring() {
+        // Register destination geofence (always active as backup)
+        registerDestinationGeofence()
+
+        // Register 5km warning geofence
+        registerWarningGeofence()
+
+        // Get initial location to determine starting zone
+        fusedLocationClient.lastLocation.addOnSuccessListener { location ->
+            if (location != null) {
+                val distance = calculateDistanceToDestination(location)
+                Log.d("GeoAlarmService", "Initial distance: ${distance}m")
+
+                val initialZone = determineZone(distance)
+                switchToZone(initialZone)
+
+                // Set initial total distance for progress calculation
+                if (totalDistance == 0f || distance > totalDistance) {
+                    totalDistance = distance
+                }
+            } else {
+                // No last known location, start with FAR zone (power saving)
+                Log.d("GeoAlarmService", "No last known location, starting in FAR zone")
+                switchToZone(MonitoringZone.FAR)
+            }
+        }.addOnFailureListener { e ->
+            Log.e("GeoAlarmService", "Failed to get last location", e)
+            switchToZone(MonitoringZone.FAR)
+        }
+    }
+
+    private fun determineZone(distance: Float): MonitoringZone {
+        return when {
+            distance > FAR_DISTANCE_THRESHOLD -> MonitoringZone.FAR
+            distance > NEAR_DISTANCE_THRESHOLD -> MonitoringZone.MID
+            else -> MonitoringZone.NEAR
+        }
+    }
+
+    /**
+     * Switch to a new monitoring zone, updating GPS settings accordingly
+     */
+    private fun switchToZone(newZone: MonitoringZone) {
+        if (newZone == currentZone && locationCallback != null) {
+            return // Already in this zone with active monitoring
+        }
+
+        Log.d("GeoAlarmService", "Switching from $currentZone to $newZone")
+        currentZone = newZone
+
+        when (newZone) {
+            MonitoringZone.FAR -> {
+                // Power saving mode - GPS off, rely on geofences
+                stopGpsUpdates()
+                updateNotificationForZone(MonitoringZone.FAR, 0, 0)
+            }
+
+            MonitoringZone.MID -> {
+                // Balanced mode - GPS at 1 minute interval
+                startGpsUpdates(
+                    interval = MID_UPDATE_INTERVAL,
+                    priority = Priority.PRIORITY_BALANCED_POWER_ACCURACY
+                )
+            }
+
+            MonitoringZone.NEAR -> {
+                // High accuracy mode - GPS at 15 second interval + WakeLock
+                WakeLocker.acquire(this)
+                startGpsUpdates(
+                    interval = NEAR_UPDATE_INTERVAL, priority = Priority.PRIORITY_HIGH_ACCURACY
+                )
+            }
+        }
+    }
+
+    /**
+     * Update location request dynamically based on current distance
+     */
+    private fun updateLocationRequest(distance: Float) {
+        val newZone = determineZone(distance)
+        if (newZone != currentZone) {
+            switchToZone(newZone)
+        }
+    }
+
+    @SuppressLint("MissingPermission")
+    private fun registerDestinationGeofence() {
+        val geofence = Geofence.Builder().setRequestId(GEOFENCE_DESTINATION_ID)
+            .setCircularRegion(destLat, destLng, radius.toFloat())
+            .setExpirationDuration(Geofence.NEVER_EXPIRE).setNotificationResponsiveness(0)
+            .setTransitionTypes(Geofence.GEOFENCE_TRANSITION_ENTER).build()
+
+        val geofencingRequest =
+            GeofencingRequest.Builder().setInitialTrigger(GeofencingRequest.INITIAL_TRIGGER_ENTER)
+                .addGeofence(geofence).build()
+
+        geofencingClient.addGeofences(geofencingRequest, getDestinationGeofencePendingIntent())
+            .addOnSuccessListener {
+                Log.d("GeoAlarmService", "Destination geofence added (radius: ${radius}m)")
+            }.addOnFailureListener { e ->
+                Log.e("GeoAlarmService", "Destination geofence failed", e)
+            }
+    }
+
+    @SuppressLint("MissingPermission")
+    private fun registerWarningGeofence() {
+        val geofence = Geofence.Builder().setRequestId(GEOFENCE_WARNING_ID)
+            .setCircularRegion(destLat, destLng, FAR_DISTANCE_THRESHOLD)
+            .setExpirationDuration(Geofence.NEVER_EXPIRE).setNotificationResponsiveness(0)
+            .setTransitionTypes(Geofence.GEOFENCE_TRANSITION_ENTER).build()
+
+        val geofencingRequest =
+            GeofencingRequest.Builder().setInitialTrigger(GeofencingRequest.INITIAL_TRIGGER_ENTER)
+                .addGeofence(geofence).build()
+
+        geofencingClient.addGeofences(geofencingRequest, getWarningGeofencePendingIntent())
+            .addOnSuccessListener {
+                Log.d("GeoAlarmService", "Warning geofence added (5km radius)")
+            }.addOnFailureListener { e ->
+                Log.e("GeoAlarmService", "Warning geofence failed", e)
+            }
+    }
+
+    private fun getDestinationGeofencePendingIntent(): PendingIntent {
+        val intent = Intent(this, GeofenceBroadcastReceiver::class.java).apply {
+            action = ACTION_GEOFENCE_TRIGGERED
+        }
+        return PendingIntent.getBroadcast(
+            this,
+            0,
+            intent,
+            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_MUTABLE,
+        )
+    }
+
+    private fun getWarningGeofencePendingIntent(): PendingIntent {
+        val intent = Intent(this, GeofenceBroadcastReceiver::class.java).apply {
+            action = ACTION_WARNING_GEOFENCE_TRIGGERED
+        }
+        return PendingIntent.getBroadcast(
+            this,
+            1,
+            intent,
+            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_MUTABLE,
+        )
+    }
+
+    private fun removeAllGeofences() {
+        if (::geofencingClient.isInitialized) {
+            geofencingClient.removeGeofences(getDestinationGeofencePendingIntent())
+            geofencingClient.removeGeofences(getWarningGeofencePendingIntent())
+        }
+    }
+
+    @SuppressLint("MissingPermission")
+    private fun startGpsUpdates(interval: Long, priority: Int) {
+        // Stop any existing updates first
+        stopGpsUpdates()
+
+        val locationRequest =
+            LocationRequest.Builder(priority, interval).setMinUpdateIntervalMillis(interval / 2)
+                .setWaitForAccurateLocation(false).build()
+
+        locationCallback = object : LocationCallback() {
+            override fun onLocationResult(result: LocationResult) {
+                result.lastLocation?.let { location ->
+                    onLocationChanged(location)
+                }
+            }
+        }
+
+        fusedLocationClient.requestLocationUpdates(
+            locationRequest, locationCallback!!, Looper.getMainLooper()
+        )
+
+        Log.d("GeoAlarmService", "GPS updates started: interval=${interval}ms, priority=$priority")
+    }
+
+    private fun stopGpsUpdates() {
+        locationCallback?.let {
+            fusedLocationClient.removeLocationUpdates(it)
+            locationCallback = null
+            Log.d("GeoAlarmService", "GPS updates stopped")
+        }
+    }
+
+    private fun calculateDistanceToDestination(location: Location): Float {
+        val destLocation = Location("").apply {
+            latitude = destLat
+            longitude = destLng
+        }
+        return location.distanceTo(destLocation)
+    }
+
+    private fun onLocationChanged(location: Location) {
+        val distanceToDest = calculateDistanceToDestination(location)
+        val remainingDist = distanceToDest - radius.toFloat()
+
+        if (remainingDist <= 0) {
+            // Arrived!
+            if (!isArrived) {
+                isArrived = true
+                triggerArrival()
+            }
+        } else {
+            // Set totalDistance on first GPS update, or update if user moved further away
+            if (totalDistance == 0f || remainingDist > totalDistance) {
+                totalDistance = remainingDist
+            }
+
+            // Calculate progress
+            val progressFraction = 1.0f - (remainingDist / totalDistance)
+            val progressPercent = (progressFraction * 100).toInt().coerceIn(0, 100)
+
+            Log.d(
+                "GeoAlarmService",
+                "Zone: $currentZone, Distance: ${distanceToDest.toInt()}m, Remaining: ${remainingDist.toInt()}m, Progress: $progressPercent%"
+            )
+
+            // Update zone based on current distance
+            updateLocationRequest(remainingDist)
+
+            // Update notification with progress
+            updateNotificationForZone(currentZone, progressPercent, remainingDist.toInt())
+        }
     }
 
     private fun startTestMode() {
@@ -181,7 +423,7 @@ class GeoAlarmService : Service(), LocationListener {
                 val progress = (i * 100) / totalSteps
                 val remainingDistance = ((totalSteps - i) * 100)  // 1000m -> 0m
 
-                android.util.Log.d(
+                Log.d(
                     "GeoAlarmService",
                     "[TEST] Progress: $progress%, Remaining: ${remainingDistance}m"
                 )
@@ -191,7 +433,7 @@ class GeoAlarmService : Service(), LocationListener {
                     isArrived = true
                     triggerArrival()
                 } else {
-                    updateNotification(progress, remainingDistance)
+                    updateNotificationForZone(MonitoringZone.NEAR, progress, remainingDistance)
                 }
 
                 delay(1000)  // Update every 1 second
@@ -201,7 +443,7 @@ class GeoAlarmService : Service(), LocationListener {
 
     @SuppressLint("MissingPermission")
     private fun startForegroundService() {
-        val notification = buildNotification(0, 0, currentMonitoringMethod)
+        val notification = buildZoneNotification(currentZone, 0, 0)
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
             startForeground(NOTIFICATION_ID, notification, FOREGROUND_SERVICE_TYPE_LOCATION)
         } else {
@@ -209,144 +451,20 @@ class GeoAlarmService : Service(), LocationListener {
         }
     }
 
-    @SuppressLint("MissingPermission")
-    private fun startGeofencing() {
-        val geofence = Geofence.Builder().setRequestId(alarmId)
-            .setCircularRegion(destLat, destLng, radius.toFloat())
-            .setExpirationDuration(Geofence.NEVER_EXPIRE)
-            // Critical for immediate response: 
-            // Setting responsiveness to 0ms tells the system to prioritize this geofence
-            // and trigger the intent as soon as possible, potentially ignoring some power savings.
-            .setNotificationResponsiveness(0) 
-            .setTransitionTypes(Geofence.GEOFENCE_TRANSITION_ENTER).build()
-
-        // Debug: Log Last Known Location
-        try {
-            val lastLocation = locationManager.getLastKnownLocation(LocationManager.GPS_PROVIDER)
-                ?: locationManager.getLastKnownLocation(LocationManager.NETWORK_PROVIDER)
-            Log.d(
-                "GeoAlarmService", "StartGeofencing - Last Known Location: $lastLocation"
-            )
-            if (lastLocation != null) {
-                val dist = FloatArray(1)
-                Location.distanceBetween(
-                    lastLocation.latitude,
-                    lastLocation.longitude,
-                    destLat,
-                    destLng,
-                    dist,
-                )
-                Log.d(
-                    "GeoAlarmService",
-                    "StartGeofencing - Distance to dest: ${dist[0]}m, Radius: $radius"
-                )
-            }
-        } catch (e: SecurityException) {
-            Log.e("GeoAlarmService", "Failed to get last known location", e)
-        }
-
-        val geofencingRequest =
-            GeofencingRequest.Builder().setInitialTrigger(GeofencingRequest.INITIAL_TRIGGER_ENTER)
-                .addGeofence(geofence).build()
-
-        geofencingClient.addGeofences(geofencingRequest, getGeofencePendingIntent())
-            .addOnSuccessListener {
-                Log.d("GeoAlarmService", "Geofence added")
-                updateNotificationForGeofence()
-            }.addOnFailureListener { e ->
-                Log.e("GeoAlarmService", "Geofence failed", e)
-                // Fallback to GPS?
-                startLocationUpdates()
-            }
-    }
-
-    private fun getGeofencePendingIntent(): PendingIntent {
-        val intent = Intent(this, GeofenceBroadcastReceiver::class.java)
-        return PendingIntent.getBroadcast(
-            this,
-            0,
-            intent,
-            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_MUTABLE,
-        )
-    }
-
-    private fun updateNotificationForGeofence() {
-        val notification = buildNotification(
-            0,
-            0,
-            MonitoringMethod.GEOFENCE,
-        )
-        val manager = getSystemService(NotificationManager::class.java)
-        manager.notify(NOTIFICATION_ID, notification)
-    }
-
-    @SuppressLint("MissingPermission")
-    private fun startLocationUpdates() {
-        // Request updates every 10 seconds or 10 meters
-        try {
-            locationManager.requestLocationUpdates(
-                LocationManager.GPS_PROVIDER,
-                10000L,
-                10f,
-                this,
-            )
-            locationManager.requestLocationUpdates(
-                LocationManager.NETWORK_PROVIDER,
-                5000L,
-                10f,
-                this,
-            )
-        } catch (e: Exception) {
-            e.printStackTrace()
-        }
-    }
-
-    override fun onLocationChanged(location: Location) {
-        val destLocation = Location("").apply {
-            latitude = destLat
-            longitude = destLng
-        }
-
-        val distanceToDest = location.distanceTo(destLocation)
-        val remainingDist = distanceToDest - radius
-
-        if (remainingDist <= 0) {
-            // Arrived!
-            if (!isArrived) {
-                isArrived = true
-                triggerArrival()
-            }
-        } else {
-            // Set totalDistance on first GPS update, or update if user moved further away
-            if (totalDistance == 0f || remainingDist > totalDistance) {
-                totalDistance = remainingDist.toFloat()
-            }
-
-            // Calculate progress
-            // progress = 1 - (remainingDist / totalDistance)
-            val progressFraction = 1.0f - (remainingDist.toFloat() / totalDistance)
-            val progressPercent = (progressFraction * 100).toInt().coerceIn(0, 100)
-
-            Log.d(
-                "GeoAlarmService",
-                "Distance: ${distanceToDest.toInt()}m, Remaining: ${remainingDist.toInt()}m, Total: ${totalDistance.toInt()}m, Progress: $progressPercent%"
-            )
-
-            updateNotification(progressPercent, remainingDist.toInt())
-        }
-    }
-
-    private fun updateNotification(progress: Int, remainingDistance: Int) {
+    private fun updateNotificationForZone(
+        zone: MonitoringZone, progress: Int, remainingDistance: Int
+    ) {
         if (isArrived) return
 
-        val notification = buildNotification(
-            progress, remainingDistance, MonitoringMethod.GPS,
-        )
+        val notification = buildZoneNotification(zone, progress, remainingDistance)
         val manager = getSystemService(NotificationManager::class.java)
         manager.notify(NOTIFICATION_ID, notification)
     }
 
     private fun triggerArrival() {
+        // Stop GPS updates
+        stopGpsUpdates()
+
         // Vibrate
         val vibrationPattern = longArrayOf(0, 500, 200, 500) // wait 0, vib 500, sleep 200, vib 500
         vibrator?.vibrate(
@@ -359,18 +477,15 @@ class GeoAlarmService : Service(), LocationListener {
         val notification = buildArrivalNotification()
         val manager = getSystemService(NotificationManager::class.java)
         manager.notify(NOTIFICATION_ID, notification)
-        
+
         // Use WakeLock to turn screen on if possible
         WakeLocker.acquire(this)
     }
 
-    private fun buildNotification(
-        progress: Int, remainingDistance: Int, method: MonitoringMethod,
+    @SuppressLint("StringFormatInvalid")
+    private fun buildZoneNotification(
+        zone: MonitoringZone, progress: Int, remainingDistance: Int
     ): Notification {
-        // Cancel Action:
-        // Intent that opens app and also maybe broadcasts to MainActivity to turn off toggle?
-        // User requested: "Cancel button -> Open App -> Close Alarm"
-
         val cancelIntent = Intent(this, MainActivity::class.java).apply {
             flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_SINGLE_TOP
             action = ACTION_CANCEL_ALARM
@@ -383,7 +498,6 @@ class GeoAlarmService : Service(), LocationListener {
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
         )
 
-        // Delete Intent (Handle Slide Away)
         val deleteIntent = Intent(this, GeoAlarmService::class.java).apply {
             action = ACTION_NOTIFICATION_DISMISSED
         }
@@ -394,7 +508,6 @@ class GeoAlarmService : Service(), LocationListener {
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
         )
 
-        // Content intent to open app when tapping notification body
         val contentIntent = Intent(this, MainActivity::class.java).apply {
             flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_SINGLE_TOP
         }
@@ -408,39 +521,45 @@ class GeoAlarmService : Service(), LocationListener {
         val builder =
             NotificationCompat.Builder(this, CHANNEL_ID).setSmallIcon(R.drawable.ic_notification)
                 .setOnlyAlertOnce(true).setOngoing(true)
-                .setCategory(NotificationCompat.CATEGORY_PROGRESS)
-                .setRequestPromotedOngoing(true) // Android 14 compat
-                .setContentIntent(contentPendingIntent)
-                .setDeleteIntent(deletePendingIntent) // Listen for dismissal
+                .setCategory(NotificationCompat.CATEGORY_PROGRESS).setRequestPromotedOngoing(true)
+                .setContentIntent(contentPendingIntent).setDeleteIntent(deletePendingIntent)
                 .addAction(
                     android.R.drawable.ic_menu_close_clear_cancel,
                     getString(R.string.notification_cancel),
                     cancelPendingIntent,
                 )
 
-        if (method == MonitoringMethod.GEOFENCE) {
-            builder.setContentTitle(getString(R.string.notification_title, alarmName))
-                .setContentText(getString(R.string.notification_monitoring_geofence))
-                .setShortCriticalText(alarmName)
-        } else {
-            builder.setContentTitle(getString(R.string.notification_title, alarmName))
-                .setContentText(
-                    getString(
-                        R.string.notification_distance, remainingDistance, progress
-                    )
-                ).setProgress(100, progress, false).setShortCriticalText(alarmName)
+        when (zone) {
+            MonitoringZone.FAR -> {
+                builder.setContentTitle(getString(R.string.notification_title, alarmName))
+                    .setContentText(getString(R.string.notification_power_saving))
+                    .setShortCriticalText(alarmName)
+            }
+
+            MonitoringZone.MID -> {
+                builder.setContentTitle(getString(R.string.notification_title, alarmName))
+                    .setContentText(
+                        getString(R.string.notification_distance, remainingDistance, progress)
+                    ).setSubText(getString(R.string.notification_balanced))
+                    .setProgress(100, progress, false).setShortCriticalText(alarmName)
+            }
+
+            MonitoringZone.NEAR -> {
+                builder.setContentTitle(getString(R.string.notification_title, alarmName))
+                    .setContentText(
+                        getString(R.string.notification_distance, remainingDistance, progress)
+                    ).setSubText(getString(R.string.notification_high_accuracy))
+                    .setProgress(100, progress, false).setShortCriticalText(alarmName)
+            }
         }
 
         return builder.build()
     }
 
     private fun buildArrivalNotification(): Notification {
-        // "Turn Off" button -> Open App (same as cancel effectively for the user action flow)
-        // User said: "Turn Off button -> Stop Vibrate -> Open App"
-
         val turnOffIntent = Intent(this, MainActivity::class.java).apply {
             flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_SINGLE_TOP
-            action = ACTION_CANCEL_ALARM // Re-use this action as it implies "Stop/Done"
+            action = ACTION_CANCEL_ALARM
             putExtra(EXTRA_ALARM_ID, alarmId)
         }
         val turnOffPendingIntent = PendingIntent.getActivity(
@@ -450,7 +569,14 @@ class GeoAlarmService : Service(), LocationListener {
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
         )
 
-        return NotificationCompat.Builder(this, CHANNEL_ID)
+        val notificationManager = getSystemService(NotificationManager::class.java)
+        val canUseFullScreenIntent = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
+            notificationManager.canUseFullScreenIntent()
+        } else {
+            true
+        }
+
+        val builder = NotificationCompat.Builder(this, CHANNEL_ID)
             .setContentTitle(getString(R.string.notification_arrived_title, alarmName))
             .setContentText(getString(R.string.notification_arrived_text))
             .setSmallIcon(R.drawable.ic_notification).setPriority(NotificationCompat.PRIORITY_HIGH)
@@ -458,26 +584,24 @@ class GeoAlarmService : Service(), LocationListener {
                 android.R.drawable.ic_lock_power_off,
                 getString(R.string.notification_turn_off),
                 turnOffPendingIntent
-            ).setOngoing(true).setOnlyAlertOnce(false)  // Allow heads-up to show again
-            .setFullScreenIntent(turnOffPendingIntent, true) // Important for waking up
-            .setContentIntent(turnOffPendingIntent).build()
+            ).setOngoing(true).setOnlyAlertOnce(false)
+            .setContentIntent(turnOffPendingIntent)
+
+        if (canUseFullScreenIntent) {
+            builder.setFullScreenIntent(turnOffPendingIntent, true)
+        }
+
+        return builder.build()
     }
 
     override fun onDestroy() {
         super.onDestroy()
         isServiceRunning = false
-        locationManager.removeUpdates(this)
+        stopGpsUpdates()
+        removeAllGeofences()
         vibrator?.cancel()
-        if (::geofencingClient.isInitialized) {
-            geofencingClient.removeGeofences(getGeofencePendingIntent())
-        }
         WakeLocker.release()
     }
-
-    // Unused overrides
-    override fun onProviderEnabled(provider: String) {}
-    override fun onProviderDisabled(provider: String) {}
-    override fun onStatusChanged(provider: String?, status: Int, extras: android.os.Bundle?) {}
 
     override fun onBind(intent: Intent?): IBinder? = null
 }

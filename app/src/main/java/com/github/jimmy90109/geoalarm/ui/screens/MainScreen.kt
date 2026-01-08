@@ -131,9 +131,8 @@ fun MainScreen(
         BottomNavBar(
             currentTab = if (isSettings) NavTab.SETTINGS else NavTab.HOME,
             onHomeClick = {
-                // Dimiss any open settings sheets
+                // Dismiss any open settings sheets
                 settingsViewModel.dismissLanguageSheet()
-                settingsViewModel.dismissMonitoringSheet()
 
                 if (isSettings) {
                     navController.navigate(MainRoutes.Home) {

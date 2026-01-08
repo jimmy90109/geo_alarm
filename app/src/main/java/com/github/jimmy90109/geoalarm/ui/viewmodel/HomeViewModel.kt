@@ -9,7 +9,6 @@ import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.github.jimmy90109.geoalarm.data.Alarm
 import com.github.jimmy90109.geoalarm.data.AlarmRepository
-import com.github.jimmy90109.geoalarm.data.MonitoringMethod
 import com.github.jimmy90109.geoalarm.data.SettingsRepository
 import com.github.jimmy90109.geoalarm.service.GeoAlarmService
 import com.google.android.gms.location.LocationServices
@@ -45,16 +44,7 @@ class HomeViewModel(
 
     val alarms = repository.allAlarms
 
-    val monitoringMethod =
-        settingsRepository.monitoringMethod.asStateFlow(viewModelScope, MonitoringMethod.GEOFENCE)
-
     private val fusedLocationClient = LocationServices.getFusedLocationProviderClient(application)
-
-    fun setMonitoringMethod(method: MonitoringMethod) {
-        viewModelScope.launch {
-            settingsRepository.setMonitoringMethod(method)
-        }
-    }
 
     // Helper to convert Flow to StateFlow
     private fun <T> Flow<T>.asStateFlow(
