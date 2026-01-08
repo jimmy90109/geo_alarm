@@ -43,10 +43,11 @@ class UpdateManager(private val context: Context) {
             val release = fetchLatestRelease()
             val currentVersion = BuildConfig.VERSION_NAME
 
-            // cleanup version strings for comparison
-            val remoteVersion = release.tagName.removePrefix("v")
+            // cleanup version strings for comparison (remove 'v' prefix and build metadata)
+            val remoteVersion = release.tagName.removePrefix("v").substringBefore("+")
+            val localVersion = currentVersion.substringBefore("+")
 
-            if (remoteVersion != currentVersion) { // Simple string comparison for now, assuming semantic versioning
+            if (remoteVersion != localVersion) {
                 val apkAsset = release.assets.find { it.name.endsWith(".apk") }
                 if (apkAsset != null) {
                     _status.value = UpdateStatus.Available(release.tagName, apkAsset.downloadUrl)
@@ -56,17 +57,20 @@ class UpdateManager(private val context: Context) {
             } else {
                 _status.value = UpdateStatus.Idle // Up to date
             }
+        } catch (e: java.net.UnknownHostException) {
+            e.printStackTrace()
+            _status.value = UpdateStatus.Error("No internet connection")
+            withContext(Dispatchers.Default) {
+                kotlinx.coroutines.delay(3000)
+                _status.value = UpdateStatus.Idle
+            }
         } catch (e: Exception) {
             e.printStackTrace()
             // If checking fails because of 404 (No releases), it's not really an error for the user
             if (e.message == "No releases found") {
                 _status.value = UpdateStatus.Idle
-                // Optionally show a "No update available" toast via a different state if we want explicit feedback
-                // But for now, Idle is fine (the button just stops spinning)
                 withContext(Dispatchers.Main) {
-                    // We could add a "NoUpdateFound" state if we wanted to show a snackbar
-                    _status.value =
-                        UpdateStatus.Error("No update available") // Re-using Error to show toast
+                   _status.value = UpdateStatus.Error("No update available")
                 }
                 withContext(Dispatchers.Default) {
                     kotlinx.coroutines.delay(2000)
@@ -83,7 +87,9 @@ class UpdateManager(private val context: Context) {
     }
 
     private suspend fun fetchLatestRelease(): GithubRelease = withContext(Dispatchers.IO) {
-        val url = URL("https://api.github.com/repos/jimmy90109/geo_alarm/releases/latest")
+        // Use /releases list to get the most recent release (including pre-releases/betas)
+        // because /latest only returns stable releases.
+        val url = URL("https://api.github.com/repos/jimmy90109/geo_alarm/releases?per_page=1")
         val connection = url.openConnection() as HttpURLConnection
         connection.requestMethod = "GET"
         connection.connectTimeout = 10000
@@ -93,11 +99,11 @@ class UpdateManager(private val context: Context) {
             val reader = BufferedReader(InputStreamReader(connection.inputStream))
             val response = reader.readText()
             reader.close()
-            json.decodeFromString(response)
+            // The API returns a List<GithubRelease> now
+            val releases = json.decodeFromString<List<GithubRelease>>(response)
+            releases.firstOrNull() ?: throw Exception("No releases found")
         } else if (connection.responseCode == 404) {
-            // 404 means no release found. Treat as up-to-date.
-            // We'll throw a specific exception to be caught cleanly
-            throw Exception("No releases found")
+             throw Exception("No releases found")
         } else {
             throw Exception("GitHub API Error: ${connection.responseCode}")
         }
