@@ -80,13 +80,15 @@ class SettingsViewModel(
         if (canInstall) {
             context.startActivity(intent)
         } else {
-            // Let UI handle permission request guidance
-            // Ideally we shouldn't pass context to VM, but for start activity it's common in simple apps
-            // or better, send an event to UI.
-            // For now, I'll assume the UI checks permission before calling this or handles the exception/flow.
-            // But the prompt asked me to handle it.
-            // I'll emit a side effect or state, but let's keep it simple:
-            // We can check permission in UI.
+            // Request permission to install unknown apps
+             if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.O) {
+                 val permissionIntent = android.content.Intent(
+                     android.provider.Settings.ACTION_MANAGE_UNKNOWN_APP_SOURCES
+                 ).apply {
+                     data = android.net.Uri.parse("package:${context.packageName}")
+                 }
+                 context.startActivity(permissionIntent)
+             }
         }
     }
 
