@@ -7,20 +7,16 @@ import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.github.jimmy90109.geoalarm.BuildConfig
 import com.github.jimmy90109.geoalarm.data.AlarmRepository
-import com.github.jimmy90109.geoalarm.data.MonitoringMethod
 import com.github.jimmy90109.geoalarm.data.SettingsRepository
 import com.github.jimmy90109.geoalarm.data.UpdateManager
 import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
-import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 
 data class SettingsUiState(
     val showLanguageSheet: Boolean = false,
-    val showMonitoringSheet: Boolean = false,
-    val anyAlarmEnabled: Boolean = false
+    val anyAlarmEnabled: Boolean = false,
 )
 
 class SettingsViewModel(
@@ -31,13 +27,6 @@ class SettingsViewModel(
 
     private val _uiState = MutableStateFlow(SettingsUiState())
     val uiState: StateFlow<SettingsUiState> = _uiState.asStateFlow()
-
-    // Data streams
-    val monitoringMethod = settingsRepository.monitoringMethod.stateIn(
-            scope = viewModelScope,
-            started = SharingStarted.WhileSubscribed(5000),
-            initialValue = MonitoringMethod.GEOFENCE
-        )
 
     private val updateManager = UpdateManager(application)
     val updateStatus = updateManager.status
@@ -67,14 +56,6 @@ class SettingsViewModel(
         dismissLanguageSheet()
     }
 
-    // Monitoring Method Management
-    fun setMonitoringMethod(method: MonitoringMethod) {
-        viewModelScope.launch {
-            settingsRepository.setMonitoringMethod(method)
-            dismissMonitoringSheet()
-        }
-    }
-
     // Update Management
     fun checkForUpdates() {
         viewModelScope.launch {
@@ -97,20 +78,21 @@ class SettingsViewModel(
         }
 
         if (canInstall) {
-             context.startActivity(intent)
+            context.startActivity(intent)
         } else {
-             // Let UI handle permission request guidance
-             // Ideally we shouldn't pass context to VM, but for start activity it's common in simple apps
-             // or better, send an event to UI.
-             // For now, I'll assume the UI checks permission before calling this or handles the exception/flow.
-             // But the prompt asked me to handle it.
-             // I'll emit a side effect or state, but let's keep it simple: 
-             // We can check permission in UI.
+            // Let UI handle permission request guidance
+            // Ideally we shouldn't pass context to VM, but for start activity it's common in simple apps
+            // or better, send an event to UI.
+            // For now, I'll assume the UI checks permission before calling this or handles the exception/flow.
+            // But the prompt asked me to handle it.
+            // I'll emit a side effect or state, but let's keep it simple:
+            // We can check permission in UI.
         }
     }
-    
-    fun getInstallIntent(file: java.io.File): android.content.Intent = updateManager.getInstallIntent(file)
-    
+
+    fun getInstallIntent(file: java.io.File): android.content.Intent =
+        updateManager.getInstallIntent(file)
+
     fun resetUpdateState() {
         updateManager.resetState()
     }
@@ -122,15 +104,5 @@ class SettingsViewModel(
 
     fun dismissLanguageSheet() {
         _uiState.value = _uiState.value.copy(showLanguageSheet = false)
-    }
-
-    fun showMonitoringSheet() {
-        if (!_uiState.value.anyAlarmEnabled) {
-            _uiState.value = _uiState.value.copy(showMonitoringSheet = true)
-        }
-    }
-
-    fun dismissMonitoringSheet() {
-        _uiState.value = _uiState.value.copy(showMonitoringSheet = false)
     }
 }

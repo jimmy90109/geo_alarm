@@ -13,22 +13,15 @@ class GeofenceBroadcastReceiver : BroadcastReceiver() {
     override fun onReceive(context: Context, intent: Intent) {
         Log.d("GeofenceReceiver", "onReceive called with action: ${intent.action}")
 
-        // Acquire WakeLock immediately to ensure the device stays awake
-        // while we process the Geofence event and start the Service.
-        // This is crucial for Android 8.0+ (Oreo) background execution limits.
-        WakeLocker.acquire(context)
-
         val geofencingEvent = GeofencingEvent.fromIntent(intent)
         if (geofencingEvent == null) {
             Log.e("GeofenceReceiver", "GeofencingEvent is null")
-            WakeLocker.release()
             return
         }
 
         if (geofencingEvent.hasError()) {
             val errorMessage = geofencingEvent.errorCode
             Log.e("GeofenceReceiver", "Geofencing Error: $errorMessage")
-            WakeLocker.release()
             return
         }
 
@@ -39,18 +32,49 @@ class GeofenceBroadcastReceiver : BroadcastReceiver() {
             val triggeringGeofences = geofencingEvent.triggeringGeofences
             Log.i("GeofenceReceiver", "Geofence Triggered: $triggeringGeofences")
 
-            // Trigger Service to show Arrival Notification
-            val serviceIntent = Intent(context, GeoAlarmService::class.java).apply {
-                action = GeoAlarmService.ACTION_GEOFENCE_TRIGGERED
-            }
-            if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.O) {
-                context.startForegroundService(serviceIntent)
-            } else {
-                context.startService(serviceIntent)
+            // Check which geofence was triggered
+            val isDestinationGeofence = triggeringGeofences?.any { 
+                it.requestId == GeoAlarmService.GEOFENCE_DESTINATION_ID 
+            } ?: false
+            
+            val isWarningGeofence = triggeringGeofences?.any { 
+                it.requestId == GeoAlarmService.GEOFENCE_WARNING_ID 
+            } ?: false
+
+            when {
+                isDestinationGeofence -> {
+                    // Destination reached - acquire WakeLock and trigger arrival
+                    Log.i("GeofenceReceiver", "Destination geofence triggered!")
+                    WakeLocker.acquire(context)
+                    
+                    val serviceIntent = Intent(context, GeoAlarmService::class.java).apply {
+                        action = GeoAlarmService.ACTION_GEOFENCE_TRIGGERED
+                    }
+                    if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.O) {
+                        context.startForegroundService(serviceIntent)
+                    } else {
+                        context.startService(serviceIntent)
+                    }
+                }
+                isWarningGeofence -> {
+                    // Warning geofence (5km) - switch to MID zone, no WakeLock needed
+                    Log.i("GeofenceReceiver", "Warning geofence triggered (5km)")
+                    
+                    val serviceIntent = Intent(context, GeoAlarmService::class.java).apply {
+                        action = GeoAlarmService.ACTION_WARNING_GEOFENCE_TRIGGERED
+                    }
+                    if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.O) {
+                        context.startForegroundService(serviceIntent)
+                    } else {
+                        context.startService(serviceIntent)
+                    }
+                }
+                else -> {
+                    Log.d("GeofenceReceiver", "Unknown geofence triggered")
+                }
             }
         } else {
             Log.d("GeofenceReceiver", "Unhandled transition type: $geofenceTransition")
-            WakeLocker.release()
         }
     }
 }

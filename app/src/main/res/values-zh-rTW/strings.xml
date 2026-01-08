@@ -41,12 +41,17 @@
     <string name="search_location">搜尋地點</string>
     
     <!-- 通知字串 -->
-    <string name="notification_title">定位鬧鐘: %s</string>
-    <string name="notification_distance">距離: %1$d公尺 | %2$d%%</string>
+    <string name="notification_title">前往 %s</string>
+    <string name="notification_distance">剩餘 %1$d 公尺 • %2$d%%</string>
     <string name="notification_cancel">取消</string>
     <string name="notification_arrived_title">已抵達 %s！</string>
     <string name="notification_arrived_text">您已到達目的地。</string>
     <string name="notification_turn_off">關閉</string>
+    <string name="notification_monitoring_geofence">正在追蹤您的位置</string>
+    <string name="notification_power_saving">背景監控中</string>
+    <string name="notification_balanced">正在追蹤行程</string>
+    <string name="notification_high_accuracy">快到了！</string>
+
     <!-- Settings -->
     <string name="settings">設定</string>
     <string name="back">返回</string>
@@ -56,7 +61,6 @@
     <string name="method_geofencing_desc">使用系統地理圍欄功能，不需要持續使用 GPS，較為省電。但不會即時顯示距離進度。</string>
     <string name="method_gps">定時 GPS (耗電)</string>
     <string name="method_gps_desc">定時喚醒 GPS 檢查位置。可即時顯示距離進度，但較耗電。</string>
-    <string name="notification_monitoring_geofence">正在監控位置 (省電模式)</string>
     <string name="tab_alarms">鬧鐘</string>
     <string name="settings_section_general">一般設定</string>
     <string name="settings_section_alarm">鬧鐘設定</string>

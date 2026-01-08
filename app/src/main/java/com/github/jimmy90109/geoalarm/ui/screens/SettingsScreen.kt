@@ -65,7 +65,6 @@ import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.github.jimmy90109.geoalarm.R
-import com.github.jimmy90109.geoalarm.data.MonitoringMethod
 import com.github.jimmy90109.geoalarm.data.UpdateStatus
 import com.github.jimmy90109.geoalarm.ui.viewmodel.SettingsViewModel
 import kotlinx.coroutines.launch
@@ -78,7 +77,7 @@ fun SettingsScreen(
 ) {
     val scrollBehavior = TopAppBarDefaults.exitUntilCollapsedScrollBehavior()
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
-    val monitoringMethod by viewModel.monitoringMethod.collectAsStateWithLifecycle()
+
 
     // Current Language is pulled directly from the VM helper to ensure recomposition when changed? 
     // Actually AppCompatDelegate triggers recreation, but let's grab it for display consistency 
@@ -130,22 +129,7 @@ fun SettingsScreen(
 
                 Spacer(modifier = Modifier.height(24.dp))
 
-                // Alarm Section
-                SettingsSectionHeader(title = stringResource(R.string.settings_section_alarm))
 
-                val monitoringValue =
-                    if (monitoringMethod == MonitoringMethod.GEOFENCE) stringResource(R.string.method_geofencing)
-                    else stringResource(R.string.method_gps)
-
-                SettingsCard(
-                    title = stringResource(R.string.monitoring_method),
-                    value = monitoringValue,
-                    onClick = { viewModel.showMonitoringSheet() },
-                    enabled = !uiState.anyAlarmEnabled,
-                    subtitle = if (uiState.anyAlarmEnabled) stringResource(R.string.monitoring_method_locked) else null
-                )
-
-                Spacer(modifier = Modifier.height(24.dp))
 
                 // About Section
                 SettingsSectionHeader(title = stringResource(R.string.section_about))
@@ -295,44 +279,6 @@ fun SettingsScreen(
         }
     }
 
-    // Monitoring Method Bottom Sheet
-    InlineBottomSheet(
-        visible = uiState.showMonitoringSheet,
-        onDismissRequest = { viewModel.dismissMonitoringSheet() }) {
-        Column(
-            modifier = Modifier.padding(
-                bottom = WindowInsets.navigationBars.asPaddingValues()
-                    .calculateBottomPadding() + 72.dp
-            )
-        ) {
-            Text(
-                text = stringResource(R.string.monitoring_method),
-                style = MaterialTheme.typography.titleLarge,
-                modifier = Modifier.padding(horizontal = 24.dp, vertical = 16.dp)
-            )
-            SettingsSelectionItem(
-                text = stringResource(R.string.method_geofencing),
-                description = stringResource(R.string.method_geofencing_desc),
-                selected = monitoringMethod == MonitoringMethod.GEOFENCE,
-                enabled = true,
-                onClick = {
-                    viewModel.setMonitoringMethod(MonitoringMethod.GEOFENCE)
-                },
-            )
-            HorizontalDivider(
-                modifier = Modifier.padding(horizontal = 24.dp)
-            )
-            SettingsSelectionItem(
-                text = stringResource(R.string.method_gps),
-                description = stringResource(R.string.method_gps_desc),
-                selected = monitoringMethod == MonitoringMethod.GPS,
-                enabled = true,
-                onClick = {
-                    viewModel.setMonitoringMethod(MonitoringMethod.GPS)
-                },
-            )
-        }
-    }
 }
 
 @Composable
