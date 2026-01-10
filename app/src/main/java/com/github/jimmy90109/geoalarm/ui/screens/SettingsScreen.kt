@@ -1,33 +1,18 @@
 package com.github.jimmy90109.geoalarm.ui.screens
 
-import androidx.activity.compose.rememberLauncherForActivityResult
-import androidx.activity.result.contract.ActivityResultContracts
-import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.animation.core.Animatable
-import androidx.compose.animation.fadeIn
-import androidx.compose.animation.fadeOut
-import androidx.compose.animation.slideInVertically
-import androidx.compose.animation.slideOutVertically
+import android.content.res.Configuration
 import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
-import androidx.compose.foundation.gestures.detectVerticalDragGestures
-import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.WindowInsets
-import androidx.compose.foundation.layout.asPaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.navigationBars
-import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.selection.selectable
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
@@ -41,7 +26,6 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.LargeTopAppBar
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
-import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBarDefaults
@@ -50,25 +34,21 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.input.nestedscroll.nestedScroll
-import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.github.jimmy90109.geoalarm.R
 import com.github.jimmy90109.geoalarm.data.UpdateStatus
 import com.github.jimmy90109.geoalarm.ui.viewmodel.SettingsViewModel
-import kotlinx.coroutines.launch
-import kotlin.math.roundToInt
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -107,282 +87,239 @@ fun SettingsScreen(
             modifier = Modifier
                 .padding(top = innerPadding.calculateTopPadding())
                 .fillMaxSize(),
+            contentAlignment = Alignment.TopCenter
         ) {
-            Column(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .verticalScroll(androidx.compose.foundation.rememberScrollState())
-                    .padding(16.dp)
-                    // Add padding at bottom for floating bar
-                    .padding(bottom = 100.dp),
-            ) {
-                // General Section
-                SettingsSectionHeader(title = stringResource(R.string.settings_section_general))
+            val configuration = LocalConfiguration.current
+            val isLandscape = configuration.orientation == Configuration.ORIENTATION_LANDSCAPE
 
-                SettingsCard(
-                    title = stringResource(R.string.language),
-                    value = if (currentLanguage == "zh") stringResource(R.string.locale_zh) else stringResource(
-                        R.string.locale_en
-                    ),
-                    onClick = { viewModel.showLanguageSheet() },
-                )
+            // Shared Logic for About Section
+            val updateStatus by viewModel.updateStatus.collectAsStateWithLifecycle()
+            val context = LocalContext.current
+            var showUpdateDialog by remember { mutableStateOf(false) }
 
-                Spacer(modifier = Modifier.height(24.dp))
-
-
-
-                // About Section
-                SettingsSectionHeader(title = stringResource(R.string.section_about))
-
-                val updateStatus by viewModel.updateStatus.collectAsStateWithLifecycle()
-                val context = LocalContext.current
-
-                // Permission Launcher
-                val launcher = rememberLauncherForActivityResult(
-                    contract = ActivityResultContracts.StartActivityForResult(),
-                    onResult = {
-                        // User returned from settings, we could re-check permission here or let them click install again
-                    },
-                )
-
-                var showUpdateDialog by remember { mutableStateOf(false) }
-                val updateValue = when (val status = updateStatus) {
-                    is UpdateStatus.Checking -> stringResource(R.string.checking_update)
-                    is UpdateStatus.Downloading -> stringResource(R.string.update_downloading)
-                    is UpdateStatus.ReadyToInstall -> stringResource(
-                        R.string.update_ready_to_install
-                    )
-
-                    else -> stringResource(
-                        R.string.settings_version_label, viewModel.currentVersion
-                    )
+            // Handle status changes (e.g. show dialog when Available detected)
+            LaunchedEffect(updateStatus) {
+                if (updateStatus is UpdateStatus.Available) {
+                    showUpdateDialog = true
                 }
-
-                SettingsCard(
-                    title = stringResource(R.string.check_for_updates),
-                    value = updateValue,
-                    onClick = {
-                        when (val status = updateStatus) {
-                            is UpdateStatus.Idle, is UpdateStatus.Error -> {
-                                viewModel.checkForUpdates()
-                            }
-
-                            is UpdateStatus.Available -> {
-                                showUpdateDialog = true
-                            }
-
-                            is UpdateStatus.ReadyToInstall -> {
-                                viewModel.installUpdate(status.file, context)
-                            }
-
-                            is UpdateStatus.Downloading -> {
-                                // Do nothing or show toast
-                                android.widget.Toast.makeText(
-                                    context,
-                                    R.string.update_downloading,
-                                    android.widget.Toast.LENGTH_SHORT
-                                ).show()
-                            }
-
-                            else -> {}
-                        }
-                    },
-                )
-
-                // Handle status changes (e.g. show dialog when Available detected)
-                LaunchedEffect(updateStatus) {
-                    if (updateStatus is UpdateStatus.Available) {
-                        showUpdateDialog = true
-                    }
-                    if (updateStatus is UpdateStatus.Error) {
-                        android.widget.Toast.makeText(
-                            context,
-                            (updateStatus as UpdateStatus.Error).message,
-                            android.widget.Toast.LENGTH_SHORT
-                        ).show()
-                        viewModel.resetUpdateState()
-                    }
+                if (updateStatus is UpdateStatus.Error) {
+                    android.widget.Toast.makeText(
+                        context,
+                        (updateStatus as UpdateStatus.Error).message,
+                        android.widget.Toast.LENGTH_SHORT
+                    ).show()
+                    viewModel.resetUpdateState()
                 }
+            }
 
-                if (showUpdateDialog) {
-                    val status = updateStatus
-                    if (status is UpdateStatus.Available) {
-                        AlertDialog(
-                            onDismissRequest = {
-                                showUpdateDialog = false
-                                viewModel.resetUpdateState()
-                            },
-                            title = { Text(stringResource(R.string.update_available_title)) },
-                            text = {
-                                Text(
-                                    stringResource(
-                                        R.string.update_available_message,
-                                        status.version,
-                                    )
+            if (showUpdateDialog) {
+                val status = updateStatus
+                if (status is UpdateStatus.Available) {
+                    AlertDialog(
+                        onDismissRequest = {
+                            showUpdateDialog = false
+                            viewModel.resetUpdateState()
+                        },
+                        title = { Text(stringResource(R.string.update_available_title)) },
+                        text = {
+                            Text(
+                                stringResource(
+                                    R.string.update_available_message,
+                                    status.version,
                                 )
-                            },
-                            confirmButton = {
-                                TextButton(
-                                    onClick = {
-                                        viewModel.downloadUpdate(status.downloadUrl)
-                                        showUpdateDialog = false
-                                    }) {
-                                    Text(stringResource(R.string.download))
-                                }
-                            },
-                            dismissButton = {
-                                TextButton(
-                                    onClick = {
-                                        showUpdateDialog = false
-                                        viewModel.resetUpdateState()
-                                    }) {
-                                    Text(stringResource(R.string.cancel))
+                            )
+                        },
+                        confirmButton = {
+                            TextButton(
+                                onClick = {
+                                    viewModel.downloadUpdate(status.downloadUrl)
+                                    showUpdateDialog = false
+                                },
+                            ) {
+                                Text(stringResource(R.string.download))
+                            }
+                        },
+                        dismissButton = {
+                            TextButton(
+                                onClick = {
+                                    showUpdateDialog = false
+                                    viewModel.resetUpdateState()
+                                },
+                            ) {
+                                Text(stringResource(R.string.cancel))
+                            }
+                        },
+                    )
+                }
+            }
+
+            if (isLandscape) {
+                // LANDSCAPE: Two Columns
+                Row(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .padding(horizontal = 16.dp),
+                    horizontalArrangement = Arrangement.spacedBy(16.dp)
+                ) {
+                    // Left Column: General
+                    Column(
+                        modifier = Modifier
+                            .weight(1f)
+                            .verticalScroll(androidx.compose.foundation.rememberScrollState())
+                            .padding(bottom = 16.dp) // Less padding needed than portrait
+                    ) {
+                        SettingsGeneralSection(
+                            currentLanguage = currentLanguage,
+                            onLanguageClick = { viewModel.showLanguageSheet() })
+                    }
+
+                    // Right Column: About
+                    Column(
+                        modifier = Modifier
+                            .weight(1f)
+                            .verticalScroll(androidx.compose.foundation.rememberScrollState())
+                            .padding(bottom = 16.dp)
+                    ) {
+                        SettingsAboutSection(
+                            updateStatus = updateStatus,
+                            currentVersion = viewModel.currentVersion,
+                            onUpdateClick = { status ->
+                                when (status) {
+                                    is UpdateStatus.Idle, is UpdateStatus.Error -> viewModel.checkForUpdates()
+                                    is UpdateStatus.Available -> showUpdateDialog = true
+                                    is UpdateStatus.ReadyToInstall -> viewModel.installUpdate(
+                                        status.file, context
+                                    )
+
+                                    is UpdateStatus.Downloading -> {
+                                        android.widget.Toast.makeText(
+                                            context,
+                                            R.string.update_downloading,
+                                            android.widget.Toast.LENGTH_SHORT
+                                        ).show()
+                                    }
+
+                                    else -> {}
                                 }
                             },
                         )
                     }
+                }
+            } else {
+                // PORTRAIT: Single Column
+                Column(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .widthIn(max = 600.dp)
+                        .verticalScroll(androidx.compose.foundation.rememberScrollState())
+                        .padding(16.dp)
+                        .padding(bottom = 100.dp),
+                ) {
+                    SettingsGeneralSection(
+                        currentLanguage = currentLanguage,
+                        onLanguageClick = { viewModel.showLanguageSheet() },
+                    )
+
+                    Spacer(modifier = Modifier.height(24.dp))
+
+                    SettingsAboutSection(
+                        updateStatus = updateStatus,
+                        currentVersion = viewModel.currentVersion,
+                        onUpdateClick = { status ->
+                            when (status) {
+                                is UpdateStatus.Idle, is UpdateStatus.Error -> viewModel.checkForUpdates()
+                                is UpdateStatus.Available -> showUpdateDialog = true
+                                is UpdateStatus.ReadyToInstall -> viewModel.installUpdate(
+                                    status.file, context
+                                )
+
+                                is UpdateStatus.Downloading -> {
+                                    android.widget.Toast.makeText(
+                                        context,
+                                        R.string.update_downloading,
+                                        android.widget.Toast.LENGTH_SHORT
+                                    ).show()
+                                }
+
+                                else -> {}
+                            }
+                        },
+                    )
                 }
             }
         }
     }
 
     // Language Bottom Sheet
-    InlineBottomSheet(
-        visible = uiState.showLanguageSheet,
-        onDismissRequest = { viewModel.dismissLanguageSheet() }) {
-        Column(
-            modifier = Modifier.padding(
-                bottom = WindowInsets.navigationBars.asPaddingValues()
-                    .calculateBottomPadding() + 72.dp
-            )
-        ) { // Padding for Navbar
+    if (uiState.showLanguageSheet) {
+        androidx.compose.material3.ModalBottomSheet(
+            onDismissRequest = { viewModel.dismissLanguageSheet() },
+            sheetState = androidx.compose.material3.rememberModalBottomSheetState(),
+        ) {
             Text(
                 text = stringResource(R.string.language),
                 style = MaterialTheme.typography.titleLarge,
-                modifier = Modifier.padding(horizontal = 24.dp, vertical = 16.dp)
+                modifier = Modifier.padding(start = 24.dp, bottom = 16.dp)
             )
-            SettingsSelectionItem(
-                text = stringResource(R.string.locale_zh),
-                selected = currentLanguage == "zh",
-                enabled = true,
-                onClick = { viewModel.setAppLocale("zh-TW") },
-            )
-            HorizontalDivider(
-                modifier = Modifier.padding(horizontal = 24.dp)
-            )
-            SettingsSelectionItem(
-                text = stringResource(R.string.locale_en),
-                selected = currentLanguage == "en",
-                enabled = true,
-                onClick = { viewModel.setAppLocale("en") },
-            )
-        }
-    }
-
-}
-
-@Composable
-fun InlineBottomSheet(
-    visible: Boolean, onDismissRequest: () -> Unit, content: @Composable () -> Unit,
-) {
-    if (visible) {
-        androidx.activity.compose.BackHandler(onBack = onDismissRequest)
-    }
-
-    AnimatedVisibility(
-        visible = visible, enter = fadeIn(), exit = fadeOut()
-    ) {
-        Box(
-            modifier = Modifier
-                .fillMaxSize()
-                .background(Color.Black.copy(alpha = 0.5f))
-                .clickable(
-                    interactionSource = remember { MutableInteractionSource() },
-                    indication = null,
-                    onClick = onDismissRequest,
-                )
-        )
-    }
-
-    // Swipe logic state
-    val offsetY = remember { Animatable(0f) }
-    val scope = rememberCoroutineScope()
-
-    // Reset offset when visibility changes to true
-    LaunchedEffect(visible) {
-        if (visible) offsetY.snapTo(0f)
-    }
-
-    AnimatedVisibility(
-        visible = visible,
-        enter = slideInVertically { it } + fadeIn(),
-        exit = slideOutVertically { it } + fadeOut()) {
-        Box(
-            modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.BottomCenter
-        ) {
-            Surface(
-                shape = RoundedCornerShape(
-                topStart = 28.dp, topEnd = 28.dp,
-            ),
-                color = MaterialTheme.colorScheme.surfaceContainerLow,
-                tonalElevation = 6.dp,
+            Column(
                 modifier = Modifier
-                    .fillMaxWidth()
-                    .offset {
-                        IntOffset(0, offsetY.value.roundToInt())
-                    }
-                    .pointerInput(Unit) {
-                        detectVerticalDragGestures(
-                            onDragEnd = {
-                                val dismissThreshold = 100.dp.toPx()
-                                if (offsetY.value > dismissThreshold) {
-                                    onDismissRequest()
-                                } else {
-                                    scope.launch { offsetY.animateTo(0f) }
-                                }
-                            },
-                            onVerticalDrag = { change, dragAmount ->
-                                change.consume()
-                                scope.launch {
-                                    val newOffset = (offsetY.value + dragAmount).coerceAtLeast(0f)
-                                    offsetY.snapTo(newOffset)
-                                }
-                            },
-                        )
-                    }
-                    .clickable(
-                        interactionSource = remember { androidx.compose.foundation.interaction.MutableInteractionSource() },
-                        indication = null, // Disable ripple for the sheet background itself
-                        onClick = {}, // Capture clicks so they don't dismiss
-                    )
+                    .padding(start = 16.dp, end = 16.dp, bottom = 16.dp)
+                    .clip(RoundedCornerShape(16.dp))
+                    .background(MaterialTheme.colorScheme.surfaceContainer)
             ) {
-                Column(
-                    modifier = Modifier.restoreEdgeToEdgeProps(),
-                    horizontalAlignment = Alignment.CenterHorizontally,
-                ) {
-                    // Handle
-                    Box(
-                        modifier = Modifier
-                            .padding(top = 16.dp, bottom = 8.dp)
-                            .width(32.dp)
-                            .height(4.dp)
-                            .background(
-                                color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.4f),
-                                shape = CircleShape,
-                            )
-                    )
-                    content()
-                }
+                SettingsSelectionItem(
+                    text = stringResource(R.string.locale_zh),
+                    selected = currentLanguage == "zh",
+                    enabled = true,
+                    onClick = { viewModel.setAppLocale("zh-TW") },
+                )
+                HorizontalDivider(
+                    modifier = Modifier.padding(horizontal = 16.dp)
+                )
+                SettingsSelectionItem(
+                    text = stringResource(R.string.locale_en),
+                    selected = currentLanguage == "en",
+                    enabled = true,
+                    onClick = { viewModel.setAppLocale("en") },
+                )
             }
         }
     }
 }
 
-// Helper to remove any implicit padding from Surface if needed, 
-// though Column usually handles content. Added for safety or future extension.
 @Composable
-private fun Modifier.restoreEdgeToEdgeProps() = this
+private fun SettingsGeneralSection(
+    currentLanguage: String, onLanguageClick: () -> Unit
+) {
+    SettingsSectionHeader(title = stringResource(R.string.settings_section_general))
+    SettingsCard(
+        title = stringResource(R.string.language),
+        value = if (currentLanguage == "zh") stringResource(R.string.locale_zh) else stringResource(
+            R.string.locale_en
+        ),
+        onClick = onLanguageClick,
+    )
+}
 
+@Composable
+private fun SettingsAboutSection(
+    updateStatus: UpdateStatus, currentVersion: String, onUpdateClick: (UpdateStatus) -> Unit
+) {
+    SettingsSectionHeader(title = stringResource(R.string.section_about))
+
+    val updateValue = when (updateStatus) {
+        is UpdateStatus.Checking -> stringResource(R.string.checking_update)
+        is UpdateStatus.Downloading -> stringResource(R.string.update_downloading)
+        is UpdateStatus.ReadyToInstall -> stringResource(R.string.update_ready_to_install)
+        else -> stringResource(R.string.settings_version_label, currentVersion)
+    }
+
+    SettingsCard(
+        title = stringResource(R.string.check_for_updates),
+        value = updateValue,
+        onClick = { onUpdateClick(updateStatus) },
+    )
+}
 
 @Composable
 fun SettingsSectionHeader(title: String) {
