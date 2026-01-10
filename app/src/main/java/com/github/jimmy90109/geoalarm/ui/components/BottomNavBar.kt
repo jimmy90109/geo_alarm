@@ -2,8 +2,10 @@ package com.github.jimmy90109.geoalarm.ui.components
 
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -65,12 +67,51 @@ fun BottomNavBar(
 }
 
 @Composable
+fun AppNavigationRail(
+    currentTab: NavTab,
+    onHomeClick: () -> Unit,
+    onSettingsClick: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    Surface(
+        color = MaterialTheme.colorScheme.surface,
+        tonalElevation = 3.dp,
+        shadowElevation = 4.dp,
+        shape = CircleShape,
+        modifier = modifier.padding(16.dp),
+    ) {
+        Column(
+            modifier = Modifier.padding(8.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp),
+            horizontalAlignment = Alignment.CenterHorizontally
+        ) {
+            CapsuleNavigationItem(
+                selected = currentTab == NavTab.HOME,
+                onClick = onHomeClick,
+                icon = Icons.Filled.Alarm,
+                label = stringResource(R.string.tab_alarms),
+                vertical = true
+            )
+
+            CapsuleNavigationItem(
+                selected = currentTab == NavTab.SETTINGS,
+                onClick = onSettingsClick,
+                icon = Icons.Filled.Settings,
+                label = stringResource(R.string.settings),
+                vertical = true
+            )
+        }
+    }
+}
+
+@Composable
 fun CapsuleNavigationItem(
     selected: Boolean,
     onClick: () -> Unit,
     icon: ImageVector,
     label: String,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    vertical: Boolean = false
 ) {
     val backgroundColor =
         if (selected) MaterialTheme.colorScheme.primaryContainer else Color.Transparent
@@ -84,25 +125,42 @@ fun CapsuleNavigationItem(
             .clip(CircleShape)
             .clickable(onClick = onClick)
     ) {
-        Row(
-            modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.Center
-        ) {
-            Icon(
-                imageVector = icon,
-                contentDescription = label,
-                tint = contentColor,
-                modifier = Modifier.size(24.dp)
-            )
-            Row {
+        if (vertical) {
+            Column(
+                modifier = Modifier.padding(horizontal = 8.dp, vertical = 12.dp),
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.Center
+            ) {
+                Icon(
+                    imageVector = icon,
+                    contentDescription = label,
+                    tint = contentColor,
+                    modifier = Modifier.size(24.dp)
+                )
+                Spacer(modifier = Modifier.height(4.dp))
+                Text(
+                    text = label, color = contentColor,
+                    style = MaterialTheme.typography.labelLarge,
+                )
+            }
+        } else {
+            Row(
+                modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.Center
+            ) {
+                Icon(
+                    imageVector = icon,
+                    contentDescription = label,
+                    tint = contentColor,
+                    modifier = Modifier.size(24.dp)
+                )
                 Spacer(modifier = Modifier.width(8.dp))
                 Text(
                     text = label, color = contentColor,
                     style = MaterialTheme.typography.labelLarge,
                 )
             }
-
         }
     }
 }

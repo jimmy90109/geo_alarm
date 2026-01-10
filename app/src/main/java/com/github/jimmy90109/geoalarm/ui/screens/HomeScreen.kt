@@ -8,7 +8,6 @@ import android.os.PowerManager
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AppCompatDelegate
-import androidx.compose.foundation.background
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -17,13 +16,14 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.grid.GridCells
+import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
+import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material3.Card
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FloatingActionButton
-import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.LargeTopAppBar
 import androidx.compose.material3.MaterialTheme
@@ -213,7 +213,13 @@ fun HomeScreen(
         },
         snackbarHost = { SnackbarHost(snackbarHostState) },
     ) { innerPadding ->
-        Box(modifier = Modifier.padding(top = innerPadding.calculateTopPadding())) {
+        Box(
+            modifier = Modifier.padding(
+                top = innerPadding.calculateTopPadding() + 16.dp,
+                start = 16.dp,
+                end = 16.dp,
+            ),
+        ) {
             if (alarms.isEmpty()) {
                 Box(
                     modifier = Modifier.fillMaxSize(),
@@ -297,63 +303,6 @@ fun HomeScreen(
     }
 }
 
-
-/**
- * A list item representing a single alarm.
- *
- * @param alarm The alarm data object.
- * @param modifier Modifier for layout adjustments.
- * @param onClick Callback when the item body is clicked.
- * @param onLongClick Callback when the item body is long-clicked (for delete).
- * @param onToggle Callback when the switch is toggled.
- */
-@OptIn(androidx.compose.foundation.ExperimentalFoundationApi::class)
-@Composable
-fun AlarmItem(
-    alarm: Alarm,
-    modifier: Modifier = Modifier,
-    onClick: () -> Unit,
-    onLongClick: () -> Unit,
-    onToggle: (Boolean) -> Unit,
-) {
-    Box(
-        modifier = modifier
-            .background(MaterialTheme.colorScheme.background)
-            .combinedClickable(
-                onClick = onClick, onLongClick = onLongClick,
-            ),
-    ) {
-        Row(
-            modifier = Modifier
-                .padding(16.dp)
-                .fillMaxWidth(),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.SpaceBetween,
-        ) {
-            Text(
-                modifier = Modifier.weight(1f),
-                text = alarm.name,
-                style = MaterialTheme.typography.titleLarge,
-            )
-
-            Switch(
-                checked = alarm.isEnabled, onCheckedChange = onToggle,
-            )
-        }
-    }
-}
-
-
-/**
- * Updates the application locale.
- *
- * @param languageTag The IETF BCP 47 language tag string (e.g., "en", "zh-TW").
- */
-private fun setAppLocale(languageTag: String) {
-    val appLocale = LocaleListCompat.forLanguageTags(languageTag)
-    AppCompatDelegate.setApplicationLocales(appLocale)
-}
-
 /**
  * Helper extension to find the [Activity] from a [Context].
  * Useful when working within Composables that might be wrapped in ContextWrappers.
@@ -378,9 +327,12 @@ private fun AlarmList(
     onToggle: (Alarm, Boolean) -> Unit,
     contentPadding: PaddingValues = PaddingValues(bottom = 80.dp),
 ) {
-    LazyColumn(
+    LazyVerticalGrid(
+        columns = GridCells.Adaptive(300.dp),
         modifier = Modifier.fillMaxSize(),
         contentPadding = contentPadding,
+        verticalArrangement = Arrangement.spacedBy(12.dp),
+        horizontalArrangement = Arrangement.spacedBy(12.dp)
     ) {
         items(
             items = alarms, key = { it.id }) { alarm ->
@@ -390,7 +342,54 @@ private fun AlarmList(
                 onLongClick = { onAlarmLongClick(alarm) },
                 onToggle = { isChecked -> onToggle(alarm, isChecked) },
             )
-            HorizontalDivider(modifier = Modifier.padding(horizontal = 16.dp))
+        }
+    }
+}
+
+/**
+ * A list item representing a single alarm.
+ *
+ * @param alarm The alarm data object.
+ * @param modifier Modifier for layout adjustments.
+ * @param onClick Callback when the item body is clicked.
+ * @param onLongClick Callback when the item body is long-clicked (for delete).
+ * @param onToggle Callback when the switch is toggled.
+ */
+@OptIn(androidx.compose.foundation.ExperimentalFoundationApi::class)
+@Composable
+fun AlarmItem(
+    alarm: Alarm,
+    modifier: Modifier = Modifier,
+    onClick: () -> Unit,
+    onLongClick: () -> Unit,
+    onToggle: (Boolean) -> Unit,
+) {
+    Card(
+        colors = androidx.compose.material3.CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.surfaceContainer
+        ),
+        modifier = modifier
+            .fillMaxWidth()
+            .combinedClickable(
+                onClick = onClick, onLongClick = onLongClick,
+            ),
+    ) {
+        Row(
+            modifier = Modifier
+                .padding(16.dp)
+                .fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.SpaceBetween,
+        ) {
+            Text(
+                modifier = Modifier.weight(1f),
+                text = alarm.name,
+                style = MaterialTheme.typography.titleLarge,
+            )
+
+            Switch(
+                checked = alarm.isEnabled, onCheckedChange = onToggle,
+            )
         }
     }
 }

@@ -1,33 +1,79 @@
 package com.github.jimmy90109.geoalarm.ui.screens
 
 import android.app.Activity
+import android.content.res.Configuration
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
-import androidx.compose.animation.*
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
 import androidx.compose.foundation.background
-import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.isSystemInDarkTheme
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.asPaddingValues
+import androidx.compose.foundation.layout.displayCutout
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.navigationBars
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.widthIn
+import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.Search
-import androidx.compose.material3.*
-import androidx.compose.runtime.*
+import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.Button
+import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.Slider
+import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.github.jimmy90109.geoalarm.R
+import com.github.jimmy90109.geoalarm.ui.viewmodel.AlarmEditUiState
 import com.github.jimmy90109.geoalarm.ui.viewmodel.AlarmEditViewModel
 import com.google.android.gms.maps.CameraUpdateFactory
 import com.google.android.gms.maps.model.CameraPosition
 import com.google.android.gms.maps.model.LatLng
+import com.google.android.gms.maps.model.MapStyleOptions
 import com.google.android.libraries.places.api.model.Place
 import com.google.android.libraries.places.widget.Autocomplete
 import com.google.android.libraries.places.widget.model.AutocompleteActivityMode
-import com.google.maps.android.compose.*
-import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.google.maps.android.compose.CameraPositionState
+import com.google.maps.android.compose.Circle
+import com.google.maps.android.compose.GoogleMap
+import com.google.maps.android.compose.MapProperties
+import com.google.maps.android.compose.MapUiSettings
+import com.google.maps.android.compose.Marker
+import com.google.maps.android.compose.MarkerState
+import com.google.maps.android.compose.rememberCameraPositionState
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
@@ -39,6 +85,9 @@ fun AlarmEditScreen(
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val scope = rememberCoroutineScope()
     val context = LocalContext.current
+    val configuration = LocalConfiguration.current
+    val isLandscape = configuration.orientation == Configuration.ORIENTATION_LANDSCAPE
+
     val cameraPositionState = rememberCameraPositionState {
         position = CameraPosition.fromLatLngZoom(
             LatLng(
@@ -104,147 +153,156 @@ fun AlarmEditScreen(
         }
     }
 
-    Scaffold(
-        topBar = {
-            CenterAlignedTopAppBar(
-                title = {
-                    Text(
-                        if (uiState.existingAlarm != null) stringResource(R.string.edit_alarm) else stringResource(
-                            R.string.add_alarm
-                        )
-                    )
-                },
-                navigationIcon = {
-                    IconButton(onClick = onNavigateBack) {
-                        Icon(
-                            Icons.Filled.ArrowBack,
-                            contentDescription = stringResource(R.string.cancel),
-                        )
-                    }
-                },
-            )
-        },
-    ) { innerPadding ->
-        Box(
-            modifier = Modifier
-                .padding(top = innerPadding.calculateTopPadding())
-                .fillMaxSize()
-        ) {
-            // Map
-            GoogleMap(
-                modifier = Modifier.fillMaxSize(),
-                cameraPositionState = cameraPositionState,
-                uiSettings = MapUiSettings(zoomControlsEnabled = false),
-                onMapClick = { latLng ->
-                    viewModel.updatePosition(latLng)
-                },
-            ) {
-                uiState.selectedPosition?.let { pos ->
-                    Marker(
-                        state = MarkerState(position = pos), title = "Destination"
-                    )
-                    Circle(
-                        center = pos,
-                        radius = uiState.radius.toDouble(),
-                        fillColor = Color(0xFF607D8B).copy(alpha = 0.1f),
-                        strokeColor = Color(0xFF607D8B).copy(alpha = 0.8f),
-                        strokeWidth = 2f
-                    )
-                }
-            }
-
-            // Search Bar
-            Card(
-                shape = RoundedCornerShape(28.dp),
-                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-                elevation = CardDefaults.cardElevation(defaultElevation = 6.dp),
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 16.dp, vertical = 16.dp),
-                onClick = { launchAutocomplete() },
-            ) {
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = 16.dp, vertical = 14.dp),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Icon(
-                        Icons.Default.Search,
-                        contentDescription = null,
-                        tint = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                    Spacer(modifier = Modifier.width(12.dp))
-                    Text(
-                        text = uiState.searchText.ifEmpty { stringResource(R.string.search_location) },
-                        color = if (uiState.searchText.isEmpty()) MaterialTheme.colorScheme.onSurfaceVariant
-                        else MaterialTheme.colorScheme.onSurface,
-                        style = MaterialTheme.typography.bodyLarge,
-                    )
-                }
-            }
-
-            // Bottom Slider Widget
-            val navigationBottom =
-                WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding()
-            val bottomPadding = maxOf(navigationBottom, 24.dp)
-
-            // User requested Button Radius (approx 20.dp for 40.dp height) + 24.dp = 44.dp
-            val cardCornerRadius = 44.dp
-
+    Box(modifier = Modifier.fillMaxSize()) {
+        // Content
+        if (isLandscape) {
+            // LANDSCAPE LAYOUT
             Box(
-                modifier = Modifier
-                    .align(Alignment.BottomCenter)
-                    .padding(start = 24.dp, end = 24.dp, bottom = bottomPadding)
+                modifier = Modifier.fillMaxSize()
             ) {
-                Card(
-                    shape = RoundedCornerShape(cardCornerRadius),
-                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.background),
-                    elevation = CardDefaults.cardElevation(defaultElevation = 10.dp),
-                    modifier = Modifier.fillMaxWidth()
-                ) {
-                    Column(
-                        modifier = Modifier.padding(20.dp),
-                        horizontalAlignment = Alignment.CenterHorizontally
-                    ) {
-                        Text(
-                            text = stringResource(R.string.radius_label, uiState.radius.toInt()),
-                            style = MaterialTheme.typography.bodyLarge
-                        )
-                        Spacer(modifier = Modifier.height(8.dp))
-                        Slider(
-                            value = uiState.radius,
-                            onValueChange = { viewModel.updateRadius(it) },
-                            valueRange = 500f..5000f,
-                            steps = 45
-                        )
-                        Spacer(modifier = Modifier.height(16.dp))
-                        Button(
-                            onClick = { viewModel.showNameDialog() },
-                            enabled = uiState.selectedPosition != null,
-                            modifier = Modifier.fillMaxWidth()
-                        ) {
-                            Text(stringResource(R.string.save))
-                        }
-                    }
-                }
-            }
+                // Map - Full Screen
+                AlarmEditMapContent(
+                    cameraPositionState = cameraPositionState,
+                    uiState = uiState,
+                    onMapClick = { viewModel.updatePosition(it) },
+                    contentPadding = PaddingValues(end = 400.dp),
+                    modifier = Modifier.fillMaxSize()
+                )
 
-            // Loading Overlay
-            AnimatedVisibility(
-                visible = uiState.isLoading, enter = fadeIn(), exit = fadeOut(),
-            ) {
+                // Controls Overlay
                 Box(
                     modifier = Modifier
-                        .fillMaxSize()
-                        .background(MaterialTheme.colorScheme.background),
-                    contentAlignment = Alignment.Center
+                        .align(Alignment.CenterEnd)
+                        .padding(end = 24.dp)
+                        .windowInsetsPadding(WindowInsets.displayCutout)
+                        .windowInsetsPadding(WindowInsets.navigationBars)
+                        .widthIn(max = 360.dp)
                 ) {
-                    CircularProgressIndicator()
+                    Column(
+                        modifier = Modifier.fillMaxSize(),
+                        verticalArrangement = Arrangement.SpaceBetween
+                    ) {
+                        // Overlay Top App Bar
+                        com.github.jimmy90109.geoalarm.ui.components.TopAppBar(
+                            title = {
+                                Text(
+                                    if (uiState.existingAlarm != null) stringResource(R.string.edit_alarm)
+                                    else stringResource(
+                                        R.string.add_alarm
+                                    )
+                                )
+                            },
+                            navigationIcon = {
+                                IconButton(onClick = onNavigateBack) {
+                                    Icon(
+                                        Icons.Default.ArrowBack, // Updated to non-deprecated
+                                        contentDescription = stringResource(R.string.cancel),
+                                    )
+                                }
+                            },
+                            actions = {
+                                IconButton(onClick = { launchAutocomplete() }) {
+                                    Icon(
+                                        Icons.Filled.Search,
+                                        contentDescription = stringResource(R.string.search_location)
+                                    )
+                                }
+                            },
+                        )
+
+                        AlarmEditRadiusControl(
+                            radius = uiState.radius,
+                            onRadiusChange = { viewModel.updateRadius(it) },
+                            onSaveClick = { viewModel.showNameDialog() },
+                            saveEnabled = uiState.selectedPosition != null,
+                            elevation = 10.dp,
+                            shape = RoundedCornerShape(24.dp)
+                        )
+
+                    }
+                }
+            }
+        } else {
+            // PORTRAIT LAYOUT
+            Box(
+                modifier = Modifier.fillMaxSize()
+            ) {
+                // Map
+                AlarmEditMapContent(
+                    cameraPositionState = cameraPositionState,
+                    uiState = uiState,
+                    onMapClick = { viewModel.updatePosition(it) },
+                    contentPadding = PaddingValues(bottom = 200.dp),
+                    modifier = Modifier.fillMaxSize()
+                )
+
+                // Overlay Top App Bar
+                com.github.jimmy90109.geoalarm.ui.components.TopAppBar(
+                    modifier = Modifier
+                        .align(Alignment.TopCenter)
+                        .padding(horizontal = 24.dp),
+                    title = {
+                        Text(
+                            if (uiState.existingAlarm != null) stringResource(R.string.edit_alarm) else stringResource(
+                                R.string.add_alarm
+                            )
+                        )
+                    },
+                    navigationIcon = {
+                        IconButton(onClick = onNavigateBack) {
+                            Icon(
+                                Icons.Default.ArrowBack, // Updated to non-deprecated
+                                contentDescription = stringResource(R.string.cancel),
+                            )
+                        }
+                    },
+                    actions = {
+                        IconButton(onClick = { launchAutocomplete() }) {
+                            Icon(
+                                Icons.Filled.Search,
+                                contentDescription = stringResource(R.string.search_location)
+                            )
+                        }
+                    })
+
+                // Bottom Slider Widget
+                val navigationBottom =
+                    WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding()
+                val bottomPadding = maxOf(navigationBottom, 24.dp)
+
+                Box(
+                    modifier = Modifier
+                        .align(Alignment.BottomCenter)
+                        .padding(start = 24.dp, end = 24.dp, bottom = bottomPadding)
+                ) {
+                    AlarmEditRadiusControl(
+                        radius = uiState.radius,
+                        onRadiusChange = { viewModel.updateRadius(it) },
+                        onSaveClick = { viewModel.showNameDialog() },
+                        saveEnabled = uiState.selectedPosition != null,
+                        elevation = 10.dp,
+                        shape = RoundedCornerShape(44.dp)
+                    )
                 }
             }
         }
     }
+
+
+    // Loading Overlay
+    AnimatedVisibility(
+        visible = uiState.isLoading, enter = fadeIn(), exit = fadeOut(),
+    ) {
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .background(MaterialTheme.colorScheme.background),
+            contentAlignment = Alignment.Center
+        ) {
+            CircularProgressIndicator()
+        }
+    }
+
 
     // Name Dialog
     if (uiState.showNameDialog) {
@@ -276,6 +334,119 @@ fun AlarmEditScreen(
                 }
             },
         )
+    }
+}
+
+// ---- Sub-components ----
+
+@Composable
+fun AlarmEditMapContent(
+    cameraPositionState: CameraPositionState,
+    uiState: AlarmEditUiState,
+    onMapClick: (LatLng) -> Unit,
+    modifier: Modifier = Modifier,
+    contentPadding: PaddingValues = PaddingValues(0.dp)
+) {
+
+    val context = LocalContext.current
+    val isSystemInDarkTheme = isSystemInDarkTheme()
+    var mapProperties by remember {
+        mutableStateOf(MapProperties())
+    }
+
+    // Update map style based on theme
+    LaunchedEffect(isSystemInDarkTheme) {
+        if (isSystemInDarkTheme) {
+            mapProperties = mapProperties.copy(
+                mapStyleOptions = MapStyleOptions.loadRawResourceStyle(
+                    context, R.raw.map_style_dark
+                )
+            )
+        } else {
+            mapProperties = mapProperties.copy(
+                mapStyleOptions = null
+            )
+        }
+    }
+
+    val backgroundColor =
+        if (isSystemInDarkTheme) Color(0xFF1d2c4d) else MaterialTheme.colorScheme.surfaceVariant
+    var isMapLoaded by remember { mutableStateOf(false) }
+
+    Box(modifier = modifier.background(backgroundColor)) {
+        GoogleMap(
+            modifier = Modifier.matchParentSize(),
+            cameraPositionState = cameraPositionState,
+            properties = mapProperties,
+            uiSettings = MapUiSettings(
+                zoomControlsEnabled = false, myLocationButtonEnabled = false
+            ),
+            contentPadding = contentPadding,
+            onMapClick = onMapClick,
+            onMapLoaded = { isMapLoaded = true }) {
+            uiState.selectedPosition?.let { pos ->
+                Marker(
+                    state = MarkerState(position = pos), title = "Destination"
+                )
+                Circle(
+                    center = pos,
+                    radius = uiState.radius.toDouble(),
+                    fillColor = Color(0xFF607D8B).copy(alpha = 0.1f),
+                    strokeColor = Color(0xFF607D8B).copy(alpha = 0.8f),
+                    strokeWidth = 2f
+                )
+            }
+        }
+
+        // Cover white flash
+        androidx.compose.animation.AnimatedVisibility(
+            visible = !isMapLoaded, exit = androidx.compose.animation.fadeOut()
+        ) {
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .background(backgroundColor)
+            )
+        }
+    }
+}
+
+
+@Composable
+fun AlarmEditRadiusControl(
+    radius: Float,
+    onRadiusChange: (Float) -> Unit,
+    onSaveClick: () -> Unit,
+    saveEnabled: Boolean,
+    modifier: Modifier = Modifier,
+    elevation: androidx.compose.ui.unit.Dp = 0.dp,
+    shape: androidx.compose.ui.graphics.Shape = RoundedCornerShape(12.dp)
+) {
+    Card(
+        shape = shape,
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+        elevation = CardDefaults.cardElevation(defaultElevation = elevation),
+        modifier = modifier.fillMaxWidth()
+    ) {
+        Column(
+            modifier = Modifier.padding(20.dp),
+            horizontalAlignment = Alignment.CenterHorizontally,
+        ) {
+            Text(
+                text = stringResource(R.string.radius_label, radius.toInt()),
+                style = MaterialTheme.typography.bodyLarge
+            )
+            Spacer(modifier = Modifier.height(8.dp))
+            Slider(
+                value = radius, onValueChange = onRadiusChange, valueRange = 500f..5000f, steps = 45
+            )
+            Spacer(modifier = Modifier.height(16.dp))
+            Button(
+                onClick = onSaveClick, enabled = saveEnabled, modifier = Modifier.fillMaxWidth()
+            ) {
+                Text(stringResource(R.string.save))
+            }
+        }
     }
 }
 
