@@ -59,10 +59,6 @@
     <string name="back">Back</string>
     <string name="monitoring_method">Monitoring Method</string>
     <string name="monitoring_method_locked">Cannot change method while alarm is active</string>
-    <string name="method_geofencing">GeoFencing (Battery Saver)</string>
-    <string name="method_geofencing_desc">Uses system geofencing. Less battery usage, but no real-time distance updates.</string>
-    <string name="method_gps">Periodic GPS (High Consumption)</string>
-    <string name="method_gps_desc">Wakes up GPS periodically. Shows real-time progress, but drains battery.</string>
     <string name="tab_alarms">Alarms</string>
     <string name="settings_section_general">General</string>
     <string name="settings_section_alarm">Alarm</string>
@@ -82,4 +78,9 @@
     <string name="checking_update">Checking...</string>
     <string name="install_permission_title">Permission Required</string>
     <string name="install_permission_message">To update the app, you need to allow installing unknown apps from settings.</string>
+
+    <!--  Monitoring Screen  -->
+    <string name="cancel_alarm">Cancel Alarm</string>
+    <string name="distance_meters">Remaining %d m</string>
+    <string name="arrived_status">Arrived</string>
 </resources>

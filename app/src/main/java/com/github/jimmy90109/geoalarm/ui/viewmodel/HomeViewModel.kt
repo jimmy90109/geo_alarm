@@ -1,15 +1,20 @@
 package com.github.jimmy90109.geoalarm.ui.viewmodel
 
+import android.Manifest.permission.ACCESS_COARSE_LOCATION
+import android.Manifest.permission.ACCESS_FINE_LOCATION
 import android.app.Application
+import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
+import android.content.IntentFilter
+import android.content.pm.PackageManager
 import android.location.Location
+import android.util.Log
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.github.jimmy90109.geoalarm.data.Alarm
 import com.github.jimmy90109.geoalarm.data.AlarmRepository
-import com.github.jimmy90109.geoalarm.data.SettingsRepository
 import com.github.jimmy90109.geoalarm.service.GeoAlarmService
 import com.google.android.gms.location.LocationServices
 import kotlinx.coroutines.CoroutineScope
@@ -26,7 +31,9 @@ data class HomeUiState(
     val showBackgroundPermissionDialog: Boolean = false,
     val showNotificationPermissionDialog: Boolean = false,
     val showNotificationRationaleDialog: Boolean = false,
-    val showAlreadyAtDestinationDialog: Boolean = false
+    val showAlreadyAtDestinationDialog: Boolean = false,
+    val monitoringProgress: Int = 0,
+    val monitoringDistance: Int? = null
 )
 
 /**
@@ -36,8 +43,36 @@ data class HomeUiState(
 class HomeViewModel(
     application: Application,
     private val repository: AlarmRepository,
-    private val settingsRepository: SettingsRepository
 ) : AndroidViewModel(application) {
+
+    private val progressReceiver = object : BroadcastReceiver() {
+        override fun onReceive(context: Context?, intent: Intent?) {
+            if (intent?.action == GeoAlarmService.ACTION_PROGRESS_UPDATE) {
+                val progress = intent.getIntExtra(GeoAlarmService.EXTRA_PROGRESS, 0)
+                val distance = intent.getIntExtra(GeoAlarmService.EXTRA_REMAINING_DISTANCE, 0)
+                Log.d("HomeViewModel", "Received progress: $progress, dist: $distance")
+                _uiState.value = _uiState.value.copy(
+                    monitoringProgress = progress, monitoringDistance = distance
+                )
+            }
+        }
+    }
+
+    init {
+        val filter = IntentFilter(GeoAlarmService.ACTION_PROGRESS_UPDATE)
+        ContextCompat.registerReceiver(
+            application, progressReceiver, filter, ContextCompat.RECEIVER_NOT_EXPORTED
+        )
+    }
+
+    override fun onCleared() {
+        super.onCleared()
+        try {
+            getApplication<Application>().unregisterReceiver(progressReceiver)
+        } catch (e: Exception) {
+            // Receiver might not be registered
+        }
+    }
 
     private val _uiState = MutableStateFlow(HomeUiState())
     val uiState: StateFlow<HomeUiState> = _uiState.asStateFlow()
@@ -139,10 +174,10 @@ class HomeViewModel(
 
         // Check location to see if already at destination
         if (ContextCompat.checkSelfPermission(
-                context, android.Manifest.permission.ACCESS_FINE_LOCATION
-            ) != android.content.pm.PackageManager.PERMISSION_GRANTED && ContextCompat.checkSelfPermission(
-                context, android.Manifest.permission.ACCESS_COARSE_LOCATION
-            ) != android.content.pm.PackageManager.PERMISSION_GRANTED
+                context, ACCESS_FINE_LOCATION
+            ) != PackageManager.PERMISSION_GRANTED && ContextCompat.checkSelfPermission(
+                context, ACCESS_COARSE_LOCATION
+            ) != PackageManager.PERMISSION_GRANTED
         ) {
             proceedEnableAlarm(alarm, context, null)
             return

@@ -7,7 +7,12 @@ import android.content.ContextWrapper
 import android.os.PowerManager
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
-import androidx.appcompat.app.AppCompatDelegate
+import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.slideInHorizontally
+import androidx.compose.animation.slideOutHorizontally
+import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -49,7 +54,6 @@ import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
-import androidx.core.os.LocaleListCompat
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.github.jimmy90109.geoalarm.R
 import com.github.jimmy90109.geoalarm.data.Alarm
@@ -174,6 +178,9 @@ fun HomeScreen(
         }
     }
 
+    // Check for active alarm
+    val activeAlarm = alarms.find { it.isEnabled }
+
     Scaffold(
         modifier = Modifier.nestedScroll(scrollBehavior.nestedScrollConnection),
         topBar = {
@@ -188,69 +195,99 @@ fun HomeScreen(
             )
         },
         floatingActionButton = {
-            FloatingActionButton(
-                onClick = {
-                    // Add Alarm Permission Check
-                    val hasLocationPermission =
-                        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.Q) {
-                            backgroundLocationPermissionState.status.isGranted
-                        } else {
-                            locationPermissionState.allPermissionsGranted
-                        }
+            // Only show FAB if no alarm is active
+            if (activeAlarm == null) {
+                FloatingActionButton(
+                    onClick = {
+                        // Add Alarm Permission Check
+                        val hasLocationPermission =
+                            if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.Q) {
+                                backgroundLocationPermissionState.status.isGranted
+                            } else {
+                                locationPermissionState.allPermissionsGranted
+                            }
 
-                    if (hasLocationPermission) {
-                        onAddAlarm()
-                    } else {
-                        viewModel.showBackgroundPermissionDialog()
-                    }
-                },
-            ) {
-                Icon(
-                    Icons.Filled.Add,
-                    contentDescription = stringResource(R.string.add_alarm),
-                )
+                        if (hasLocationPermission) {
+                            onAddAlarm()
+                        } else {
+                            viewModel.showBackgroundPermissionDialog()
+                        }
+                    },
+                ) {
+                    Icon(
+                        Icons.Filled.Add,
+                        contentDescription = stringResource(R.string.add_alarm),
+                    )
+                }
             }
         },
         snackbarHost = { SnackbarHost(snackbarHostState) },
     ) { innerPadding ->
-        Box(
-            modifier = Modifier.padding(
-                top = innerPadding.calculateTopPadding() + 16.dp,
-                start = 16.dp,
-                end = 16.dp,
-            ),
-        ) {
-            if (alarms.isEmpty()) {
-                Box(
-                    modifier = Modifier.fillMaxSize(),
-                    contentAlignment = Alignment.Center,
-                ) {
-                    Text(
-                        stringResource(R.string.no_alarms),
-                        style = MaterialTheme.typography.bodyLarge,
+        Box {
+            AnimatedContent(
+                targetState = activeAlarm,
+                transitionSpec = {
+                    if (targetState != null) {
+                        // Entering Active Mode: Slide in from Left
+                        (slideInHorizontally { -it } + fadeIn()).togetherWith(
+                            slideOutHorizontally { it } + fadeOut())
+                    } else {
+                        // Exiting Active Mode: Slide out to Left
+                        (slideInHorizontally { it } + fadeIn()).togetherWith(
+                            slideOutHorizontally { -it } + fadeOut())
+                    }
+                },
+                label = "ActiveAlarmTransition"
+            ) { targetAlarm ->
+                if (targetAlarm != null) {
+                    ActiveAlarmScreen(
+                        modifier = Modifier.padding(top = innerPadding.calculateTopPadding()),
+                        alarm = targetAlarm,
+                        progress = uiState.monitoringProgress,
+                        distanceMeters = uiState.monitoringDistance,
+                        onStopAlarm = { viewModel.disableAlarm(targetAlarm, context) }
                     )
+                } else {
+                    Box(modifier = Modifier.fillMaxSize()) {
+                        if (alarms.isEmpty()) {
+                            Box(
+                                modifier = Modifier.fillMaxSize(),
+                                contentAlignment = Alignment.Center,
+                            ) {
+                                Text(
+                                    stringResource(R.string.no_alarms),
+                                    style = MaterialTheme.typography.bodyLarge,
+                                )
+                            }
+                        } else {
+                            AlarmList(
+                                alarms = alarms,
+                                // Add extra padding at bottom for the floating bar
+                                contentPadding = PaddingValues(
+                                    top = innerPadding.calculateTopPadding() + 16.dp,
+                                    bottom = innerPadding.calculateBottomPadding() + 100.dp,
+                                    start = 16.dp,
+                                    end = 16.dp,
+                                ),
+                                onAlarmClick = { alarm ->
+                                    if (alarm.isEnabled) {
+                                        viewModel.showEditDisabledDialog()
+                                    } else {
+                                        onAlarmClick(alarm)
+                                    }
+                                },
+                                onAlarmLongClick = { alarm ->
+                                    if (alarm.isEnabled) {
+                                        viewModel.showEditDisabledDialog()
+                                    } else {
+                                        alarmToDelete = alarm
+                                    }
+                                },
+                                onToggle = handleAlarmToggle,
+                            )
+                        }
+                    }
                 }
-            } else {
-                AlarmList(
-                    alarms = alarms,
-                    // Add extra padding at bottom for the floating bar
-                    contentPadding = PaddingValues(bottom = innerPadding.calculateBottomPadding() + 100.dp),
-                    onAlarmClick = { alarm ->
-                        if (alarm.isEnabled) {
-                            viewModel.showEditDisabledDialog()
-                        } else {
-                            onAlarmClick(alarm)
-                        }
-                    },
-                    onAlarmLongClick = { alarm ->
-                        if (alarm.isEnabled) {
-                            viewModel.showEditDisabledDialog()
-                        } else {
-                            alarmToDelete = alarm
-                        }
-                    },
-                    onToggle = handleAlarmToggle,
-                )
             }
         }
     }
