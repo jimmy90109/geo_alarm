@@ -28,6 +28,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavDestination.Companion.hasRoute
 import androidx.navigation.compose.NavHost
@@ -54,6 +55,8 @@ fun MainScreen(
     val navBackStackEntry by navController.currentBackStackEntryAsState()
     val configuration = LocalConfiguration.current
     val isLandscape = configuration.orientation == Configuration.ORIENTATION_LANDSCAPE
+    val alarms by viewModel.alarms.collectAsStateWithLifecycle(initialValue = emptyList())
+    val hasActiveAlarm = alarms.any { it.isEnabled }
 
     // Determine if we are on a top-level tab
     val isSettings = navBackStackEntry?.destination?.hasRoute<MainRoutes.Settings>() == true
@@ -134,11 +137,14 @@ fun MainScreen(
         // Portrait Layout: Content + Floating Bottom Bar
 
         // Animation States (Only for Portrait)
+        // Center BottomNavBar if on Settings OR if an alarm is active (ActiveAlarmScreen)
+        val shouldCenterBottomBar = isSettings || hasActiveAlarm
+        
         val alignmentBias by animateFloatAsState(
-            targetValue = if (isSettings) 0f else -1f, label = "bias"
+            targetValue = if (shouldCenterBottomBar) 0f else -1f, label = "bias"
         )
         val startPadding by animateDpAsState(
-            targetValue = if (isSettings) 0.dp else 16.dp, label = "padding"
+            targetValue = if (shouldCenterBottomBar) 0.dp else 16.dp, label = "padding"
         )
 
         Box(modifier = Modifier.fillMaxSize()) {

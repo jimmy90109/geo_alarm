@@ -29,19 +29,13 @@ import com.google.android.gms.location.LocationRequest
 import com.google.android.gms.location.LocationResult
 import com.google.android.gms.location.LocationServices
 import com.google.android.gms.location.Priority
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
-import kotlinx.coroutines.delay
-import kotlinx.coroutines.isActive
-import kotlinx.coroutines.launch
 
 class GeoAlarmService : Service() {
 
     companion object {
         const val ACTION_START = "ACTION_START"
         const val ACTION_STOP = "ACTION_STOP"
-        const val ACTION_START_TEST = "ACTION_START_TEST"  // For testing notifications
         const val ACTION_GEOFENCE_TRIGGERED = "ACTION_GEOFENCE_TRIGGERED"
         const val ACTION_NOTIFICATION_DISMISSED = "ACTION_NOTIFICATION_DISMISSED"
         const val ACTION_WARNING_GEOFENCE_TRIGGERED = "ACTION_WARNING_GEOFENCE_TRIGGERED"
@@ -57,6 +51,11 @@ class GeoAlarmService : Service() {
         const val EXTRA_RADIUS = "EXTRA_RADIUS"
         const val EXTRA_START_LAT = "EXTRA_START_LAT"
         const val EXTRA_START_LNG = "EXTRA_START_LNG"
+
+        // UI Update Broadcast
+        const val ACTION_PROGRESS_UPDATE = "com.github.jimmy90109.geoalarm.ACTION_PROGRESS_UPDATE"
+        const val EXTRA_PROGRESS = "EXTRA_PROGRESS"
+        const val EXTRA_REMAINING_DISTANCE = "EXTRA_REMAINING_DISTANCE"
 
         private const val NOTIFICATION_ID = 1
         private const val CHANNEL_ID = "geo_alarm_channel"
@@ -155,19 +154,6 @@ class GeoAlarmService : Service() {
                 WakeLocker.release()
             }
 
-            ACTION_START_TEST -> {
-                if (!isServiceRunning) {
-                    alarmName = "Test Alarm"
-                    alarmId = "test-alarm-id"
-                    totalDistance = 1000f  // 1000m simulated distance
-                    isArrived = false
-
-                    startForegroundService()
-                    startTestMode()
-                    isServiceRunning = true
-                }
-            }
-
             ACTION_STOP -> {
                 testJob?.cancel()
                 stopGpsUpdates()
@@ -202,9 +188,11 @@ class GeoAlarmService : Service() {
                 val initialZone = determineZone(distance)
                 switchToZone(initialZone)
 
-                // Set initial total distance for progress calculation
-                if (totalDistance == 0f || distance > totalDistance) {
-                    totalDistance = distance
+                // Set initial total distance for progress calculation (Distance - Radius)
+                // This ensures we start at 0% progress relative to the perimeter
+                val remainingDist = distance - radius.toFloat()
+                if (totalDistance == 0f || remainingDist > totalDistance) {
+                    totalDistance = remainingDist
                 }
             } else {
                 // No last known location, start with FAR zone (power saving)
@@ -241,6 +229,7 @@ class GeoAlarmService : Service() {
                 // Power saving mode - GPS off, rely on geofences
                 stopGpsUpdates()
                 updateNotificationForZone(MonitoringZone.FAR, 0, 0)
+                broadcastProgress(0, -1) // Signal FAR state to UI
             }
 
             MonitoringZone.MID -> {
@@ -410,34 +399,9 @@ class GeoAlarmService : Service() {
 
             // Update notification with progress
             updateNotificationForZone(currentZone, progressPercent, remainingDist.toInt())
-        }
-    }
 
-    private fun startTestMode() {
-        testJob = CoroutineScope(Dispatchers.Main).launch {
-            // Simulate progress from 0% to 100% over 10 seconds
-            val totalSteps = 10
-            for (i in 0..totalSteps) {
-                if (!isActive) break
-
-                val progress = (i * 100) / totalSteps
-                val remainingDistance = ((totalSteps - i) * 100)  // 1000m -> 0m
-
-                Log.d(
-                    "GeoAlarmService",
-                    "[TEST] Progress: $progress%, Remaining: ${remainingDistance}m"
-                )
-
-                if (progress >= 100) {
-                    // Trigger arrival
-                    isArrived = true
-                    triggerArrival()
-                } else {
-                    updateNotificationForZone(MonitoringZone.NEAR, progress, remainingDistance)
-                }
-
-                delay(1000)  // Update every 1 second
-            }
+            // Broadcast to UI
+            broadcastProgress(progressPercent, remainingDist.toInt())
         }
     }
 
@@ -464,6 +428,9 @@ class GeoAlarmService : Service() {
     private fun triggerArrival() {
         // Stop GPS updates
         stopGpsUpdates()
+
+        // Broadcast Arrival State (100% progress, 0 distance)
+        broadcastProgress(100, 0)
 
         // Vibrate
         val vibrationPattern = longArrayOf(0, 500, 200, 500) // wait 0, vib 500, sleep 200, vib 500
@@ -592,6 +559,16 @@ class GeoAlarmService : Service() {
         }
 
         return builder.build()
+    }
+
+    private fun broadcastProgress(progress: Int, remainingDistance: Int) {
+        val intent = Intent(ACTION_PROGRESS_UPDATE).apply {
+            setPackage(packageName) // Explicitly set package for security and receiver matching
+            putExtra(EXTRA_PROGRESS, progress)
+            putExtra(EXTRA_REMAINING_DISTANCE, remainingDistance)
+        }
+        sendBroadcast(intent)
+        Log.d("GeoAlarmService", "Broadcasting progress: $progress%, $remainingDistance m")
     }
 
     override fun onDestroy() {

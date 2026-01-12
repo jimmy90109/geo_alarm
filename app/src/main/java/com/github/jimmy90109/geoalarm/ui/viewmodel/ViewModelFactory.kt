@@ -16,7 +16,7 @@ class ViewModelFactory(
     override fun <T : ViewModel> create(modelClass: Class<T>): T {
         return when {
             modelClass.isAssignableFrom(HomeViewModel::class.java) -> {
-                HomeViewModel(application, repository, settingsRepository) as T
+                HomeViewModel(application, repository) as T
             }
 
             modelClass.isAssignableFrom(AlarmEditViewModel::class.java) -> {

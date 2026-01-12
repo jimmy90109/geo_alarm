@@ -39,7 +39,7 @@
     
     <!-- 搜尋字串 -->
     <string name="search_location">搜尋地點</string>
-    
+
     <!-- 通知字串 -->
     <string name="notification_title">前往 %s</string>
     <string name="notification_distance">剩餘 %1$d 公尺 • %2$d%%</string>
@@ -57,10 +57,6 @@
     <string name="back">返回</string>
     <string name="monitoring_method">監聽方式</string>
     <string name="monitoring_method_locked">有鬧鐘正在執行時不能更改監聽方式</string>
-    <string name="method_geofencing">GeoFencing (省電)</string>
-    <string name="method_geofencing_desc">使用系統地理圍欄功能，不需要持續使用 GPS，較為省電。但不會即時顯示距離進度。</string>
-    <string name="method_gps">定時 GPS (耗電)</string>
-    <string name="method_gps_desc">定時喚醒 GPS 檢查位置。可即時顯示距離進度，但較耗電。</string>
     <string name="tab_alarms">鬧鐘</string>
     <string name="settings_section_general">一般設定</string>
     <string name="settings_section_alarm">鬧鐘設定</string>
@@ -80,4 +76,9 @@
     <string name="checking_update">檢查中...</string>
     <string name="install_permission_title">需要權限</string>
     <string name="install_permission_message">若要更新應用程式，您需要允許安裝未知應用程式。</string>
+
+    <!--  Monitoring Screen  -->
+    <string name="cancel_alarm">取消鬧鐘</string>
+    <string name="distance_meters">剩餘 %d 公尺</string>
+    <string name="arrived_status">已抵達</string>
 </resources>
