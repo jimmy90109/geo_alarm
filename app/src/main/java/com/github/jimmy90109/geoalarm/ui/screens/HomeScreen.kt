@@ -21,16 +21,18 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material3.Card
+import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
-import androidx.compose.material3.LargeTopAppBar
+import androidx.compose.material3.LargeFlexibleTopAppBar
+import androidx.compose.material3.LargeFloatingActionButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarDuration
@@ -72,7 +74,7 @@ import com.google.accompanist.permissions.rememberMultiplePermissionsState
 import com.google.accompanist.permissions.rememberPermissionState
 import kotlinx.coroutines.launch
 
-@OptIn(ExperimentalMaterial3Api::class, ExperimentalPermissionsApi::class)
+@OptIn(ExperimentalMaterial3Api::class, ExperimentalPermissionsApi::class, ExperimentalMaterial3ExpressiveApi::class)
 /**
  * The main screen of the application displaying the list of alarms.
  * Handles permission requests (background location, notification) and navigation.
@@ -184,7 +186,7 @@ fun HomeScreen(
     Scaffold(
         modifier = Modifier.nestedScroll(scrollBehavior.nestedScrollConnection),
         topBar = {
-            LargeTopAppBar(
+            LargeFlexibleTopAppBar(
                 title = {
                     Text(
                         text = stringResource(R.string.home_title),
@@ -197,7 +199,7 @@ fun HomeScreen(
         floatingActionButton = {
             // Only show FAB if no alarm is active
             if (activeAlarm == null) {
-                FloatingActionButton(
+                LargeFloatingActionButton(
                     onClick = {
                         // Add Alarm Permission Check
                         val hasLocationPermission =
@@ -217,6 +219,7 @@ fun HomeScreen(
                     Icon(
                         Icons.Filled.Add,
                         contentDescription = stringResource(R.string.add_alarm),
+                        modifier = Modifier.size(36.dp) // Standard Large FAB icon size
                     )
                 }
             }
