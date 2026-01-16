@@ -29,7 +29,7 @@ class GeoAlarmApplication : Application() {
             val channel = NotificationChannel(
                 "geo_alarm_channel",
                 "Geo Alarm Notifications",
-                NotificationManager.IMPORTANCE_DEFAULT,
+                NotificationManager.IMPORTANCE_HIGH,
             ).apply {
                 description = "Shows active alarm progress"
             }

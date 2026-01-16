@@ -22,8 +22,8 @@ android {
         applicationId = "com.github.jimmy90109.geoalarm"
         minSdk = 31
         targetSdk = 36
-        versionCode = 2601120
-        versionName = "1.0.0-beta.5"
+        versionCode = 2601160
+        versionName = "1.0.0-beta.6"
         
         manifestPlaceholders["GOOGLE_MAPS_API_KEY"] = localProperties.getProperty("maps.apiKey") ?: ""
         buildConfigField("String", "GOOGLE_MAPS_API_KEY", "\"${localProperties.getProperty("maps.apiKey") ?: ""}\"")
@@ -81,6 +81,9 @@ dependencies {
     implementation(libs.androidx.room.runtime)
     implementation(libs.androidx.room.ktx)
     ksp(libs.androidx.room.compiler)
+
+    // HyperIsland ToolKit for Xiaomi Dynamic Island notifications
+    implementation(libs.hyperisland.kit)
 
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.junit)

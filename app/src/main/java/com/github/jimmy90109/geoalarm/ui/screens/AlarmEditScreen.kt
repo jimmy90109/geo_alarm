@@ -22,6 +22,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.navigationBars
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.statusBars
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -32,7 +33,8 @@ import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.CircularWavyProgressIndicator
+import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -77,7 +79,7 @@ import com.google.maps.android.compose.rememberCameraPositionState
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
-@OptIn(ExperimentalMaterial3Api::class)
+@OptIn(ExperimentalMaterial3Api::class, ExperimentalMaterial3ExpressiveApi::class)
 @Composable
 fun AlarmEditScreen(
     viewModel: AlarmEditViewModel, alarmId: String? = null, onNavigateBack: () -> Unit
@@ -236,11 +238,10 @@ fun AlarmEditScreen(
                     modifier = Modifier.fillMaxSize()
                 )
 
-                // Overlay Top App Bar
                 com.github.jimmy90109.geoalarm.ui.components.TopAppBar(
                     modifier = Modifier
                         .align(Alignment.TopCenter)
-                        .padding(horizontal = 24.dp),
+                        .padding(start = 24.dp, end = 24.dp),
                     title = {
                         Text(
                             if (uiState.existingAlarm != null) stringResource(R.string.edit_alarm) else stringResource(
@@ -263,7 +264,8 @@ fun AlarmEditScreen(
                                 contentDescription = stringResource(R.string.search_location)
                             )
                         }
-                    })
+                    },
+                )
 
                 // Bottom Slider Widget
                 val navigationBottom =
@@ -299,7 +301,7 @@ fun AlarmEditScreen(
                 .background(MaterialTheme.colorScheme.background),
             contentAlignment = Alignment.Center
         ) {
-            CircularProgressIndicator()
+            CircularWavyProgressIndicator()
         }
     }
 

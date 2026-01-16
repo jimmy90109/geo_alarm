@@ -2,8 +2,9 @@ package com.github.jimmy90109.geoalarm.ui.components
 
 import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.asPaddingValues
+import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.statusBars
-import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.CenterAlignedTopAppBar
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -23,9 +24,11 @@ fun TopAppBar(
     navigationIcon: @Composable () -> Unit = {},
     actions: @Composable RowScope.() -> Unit = {},
 ) {
+    val statusBar = WindowInsets.statusBars.asPaddingValues().calculateTopPadding()
+    val topPadding = maxOf(statusBar, 24.dp)
+
     Surface(
-        modifier = modifier
-            .windowInsetsPadding(WindowInsets.statusBars),
+        modifier = modifier.padding(top = topPadding),
         shape = CircleShape,
         color = MaterialTheme.colorScheme.surface,
         shadowElevation = 4.dp

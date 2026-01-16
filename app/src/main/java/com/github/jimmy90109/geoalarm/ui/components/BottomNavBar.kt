@@ -8,15 +8,20 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.animation.animateContentSize
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Alarm
 import androidx.compose.material.icons.filled.Settings
+import androidx.compose.material3.ButtonGroup
+import androidx.compose.material3.ButtonGroupDefaults
+import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButtonDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.material3.ToggleButton
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -27,10 +32,17 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import com.github.jimmy90109.geoalarm.R
 
-enum class NavTab {
-    HOME, SETTINGS
+import androidx.annotation.StringRes
+
+enum class NavTab(
+    @StringRes val labelRes: Int, val iconVec: ImageVector
+) {
+    HOME(R.string.tab_alarms, Icons.Filled.Alarm), SETTINGS(
+        R.string.settings, Icons.Filled.Settings
+    )
 }
 
+@OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
 fun BottomNavBar(
     currentTab: NavTab,
@@ -39,29 +51,54 @@ fun BottomNavBar(
     modifier: Modifier = Modifier
 ) {
     Surface(
-        color = MaterialTheme.colorScheme.surface,
+        color = MaterialTheme.colorScheme.surfaceContainerHigh,
         tonalElevation = 3.dp,
         shadowElevation = 4.dp,
         shape = CircleShape,
         modifier = modifier,
     ) {
-        Row(
-            modifier = Modifier.padding(8.dp),
-            horizontalArrangement = Arrangement.spacedBy(8.dp),
-            verticalAlignment = Alignment.CenterVertically
+        ButtonGroup(
+            horizontalArrangement = Arrangement.spacedBy(4.dp),
+            modifier = Modifier.padding(vertical = 8.dp, horizontal = 8.dp),
         ) {
-            CapsuleNavigationItem(
-                selected = currentTab == NavTab.HOME,
-                onClick = onHomeClick,
-                icon = Icons.Filled.Alarm,
-                label = stringResource(R.string.tab_alarms)
-            )
-            CapsuleNavigationItem(
-                selected = currentTab == NavTab.SETTINGS,
-                onClick = onSettingsClick,
-                icon = Icons.Filled.Settings,
-                label = stringResource(R.string.settings)
-            )
+            val tabs = NavTab.entries.toTypedArray()
+            tabs.forEachIndexed { index, tab ->
+                val selected = currentTab == tab
+                val onClick = when (tab) {
+                    NavTab.HOME -> onHomeClick
+                    NavTab.SETTINGS -> onSettingsClick
+                }
+
+                val shape = when (index) {
+                    0 -> ButtonGroupDefaults.connectedLeadingButtonShapes()
+                    tabs.lastIndex -> ButtonGroupDefaults.connectedTrailingButtonShapes()
+                    else -> ButtonGroupDefaults.connectedMiddleButtonShapes()
+                }
+
+                ToggleButton(
+                    checked = selected, onCheckedChange = { onClick() }, shapes = shape
+                ) {
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        modifier = Modifier
+                            .padding(vertical = 4.dp, horizontal = 8.dp)
+                            .animateContentSize()
+                    ) {
+                        Icon(
+                            tab.iconVec,
+                            contentDescription = stringResource(tab.labelRes),
+                            modifier = Modifier.size(24.dp),
+                        )
+                        if (selected) {
+                            Text(
+                                stringResource(tab.labelRes),
+                                modifier = Modifier.padding(start = 8.dp),
+                                style = MaterialTheme.typography.titleMedium,
+                            )
+                        }
+                    }
+                }
+            }
         }
     }
 }
@@ -74,7 +111,7 @@ fun AppNavigationRail(
     modifier: Modifier = Modifier
 ) {
     Surface(
-        color = MaterialTheme.colorScheme.surface,
+        color = MaterialTheme.colorScheme.surfaceContainerHigh,
         tonalElevation = 3.dp,
         shadowElevation = 4.dp,
         shape = CircleShape,
@@ -85,82 +122,58 @@ fun AppNavigationRail(
             verticalArrangement = Arrangement.spacedBy(8.dp),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
-            CapsuleNavigationItem(
+            RailItem(
                 selected = currentTab == NavTab.HOME,
                 onClick = onHomeClick,
-                icon = Icons.Filled.Alarm,
-                label = stringResource(R.string.tab_alarms),
-                vertical = true
+                icon = NavTab.HOME.iconVec,
+                label = stringResource(NavTab.HOME.labelRes)
             )
 
-            CapsuleNavigationItem(
+            RailItem(
                 selected = currentTab == NavTab.SETTINGS,
                 onClick = onSettingsClick,
-                icon = Icons.Filled.Settings,
-                label = stringResource(R.string.settings),
-                vertical = true
+                icon = NavTab.SETTINGS.iconVec,
+                label = stringResource(NavTab.SETTINGS.labelRes)
             )
         }
     }
 }
 
 @Composable
-fun CapsuleNavigationItem(
+private fun RailItem(
     selected: Boolean,
     onClick: () -> Unit,
     icon: ImageVector,
     label: String,
-    modifier: Modifier = Modifier,
-    vertical: Boolean = false
 ) {
-    val backgroundColor =
-        if (selected) MaterialTheme.colorScheme.primaryContainer else Color.Transparent
-    val contentColor =
-        if (selected) MaterialTheme.colorScheme.onPrimaryContainer else MaterialTheme.colorScheme.onSurfaceVariant
+    val colors = IconButtonDefaults.iconButtonColors(
+        containerColor = if (selected) MaterialTheme.colorScheme.primaryContainer else Color.Transparent,
+        contentColor = if (selected) MaterialTheme.colorScheme.onPrimaryContainer else MaterialTheme.colorScheme.onSurfaceVariant
+    )
 
     Surface(
-        color = backgroundColor,
+        color = colors.containerColor,
         shape = CircleShape,
-        modifier = modifier
+        modifier = Modifier
             .clip(CircleShape)
             .clickable(onClick = onClick)
     ) {
-        if (vertical) {
-            Column(
-                modifier = Modifier.padding(horizontal = 8.dp, vertical = 12.dp),
-                horizontalAlignment = Alignment.CenterHorizontally,
-                verticalArrangement = Arrangement.Center
-            ) {
-                Icon(
-                    imageVector = icon,
-                    contentDescription = label,
-                    tint = contentColor,
-                    modifier = Modifier.size(24.dp)
-                )
-                Spacer(modifier = Modifier.height(4.dp))
-                Text(
-                    text = label, color = contentColor,
-                    style = MaterialTheme.typography.labelLarge,
-                )
-            }
-        } else {
-            Row(
-                modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp),
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.Center
-            ) {
-                Icon(
-                    imageVector = icon,
-                    contentDescription = label,
-                    tint = contentColor,
-                    modifier = Modifier.size(24.dp)
-                )
-                Spacer(modifier = Modifier.width(8.dp))
-                Text(
-                    text = label, color = contentColor,
-                    style = MaterialTheme.typography.labelLarge,
-                )
-            }
+        Column(
+            horizontalAlignment = Alignment.CenterHorizontally,
+            modifier = Modifier.padding(horizontal = 16.dp, vertical = 20.dp)
+        ) {
+            Icon(
+                imageVector = icon,
+                contentDescription = label,
+                tint = colors.contentColor,
+                modifier = Modifier.size(24.dp)
+            )
+            Spacer(Modifier.height(4.dp))
+            Text(
+                text = label,
+                style = MaterialTheme.typography.labelMedium,
+                color = colors.contentColor
+            )
         }
     }
 }

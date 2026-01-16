@@ -167,7 +167,7 @@ fun MainScreen(
                     .padding(
                         start = startPadding,
                         bottom = WindowInsets.navigationBars.asPaddingValues()
-                            .calculateBottomPadding() + 8.dp
+                            .calculateBottomPadding() + 16.dp
                     ),
             )
         }
