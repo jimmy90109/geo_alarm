@@ -82,6 +82,9 @@ dependencies {
     implementation(libs.androidx.room.ktx)
     ksp(libs.androidx.room.compiler)
 
+    // HyperIsland ToolKit for Xiaomi Dynamic Island notifications
+    implementation(libs.hyperisland.kit)
+
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.junit)
     androidTestImplementation(libs.androidx.espresso.core)

@@ -19,6 +19,7 @@ import androidx.core.app.NotificationCompat
 import com.github.jimmy90109.geoalarm.GeoAlarmApplication
 import com.github.jimmy90109.geoalarm.MainActivity
 import com.github.jimmy90109.geoalarm.R
+import com.github.jimmy90109.geoalarm.utils.HyperIslandHelper
 import com.github.jimmy90109.geoalarm.utils.WakeLocker
 import com.google.android.gms.location.FusedLocationProviderClient
 import com.google.android.gms.location.Geofence
@@ -520,6 +521,16 @@ class GeoAlarmService : Service() {
             }
         }
 
+        // Apply Xiaomi HyperOS Dynamic Island extras if supported
+        HyperIslandHelper.applyProgressExtras(
+            this,
+            builder,
+            alarmName,
+            progress,
+            remainingDistance,
+            zone
+        )
+
         return builder.build()
     }
 
@@ -557,6 +568,9 @@ class GeoAlarmService : Service() {
         if (canUseFullScreenIntent) {
             builder.setFullScreenIntent(turnOffPendingIntent, true)
         }
+
+        // Apply Xiaomi HyperOS Dynamic Island extras if supported
+        HyperIslandHelper.applyArrivalExtras(this, builder, alarmName)
 
         return builder.build()
     }
