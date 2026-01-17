@@ -562,7 +562,7 @@ class GeoAlarmService : Service() {
             .setContentText(getString(R.string.notification_arrived_text))
             .setSmallIcon(R.drawable.ic_notification).setPriority(NotificationCompat.PRIORITY_HIGH)
             .setCategory(NotificationCompat.CATEGORY_ALARM).addAction(
-                android.R.drawable.ic_lock_power_off,
+                android.R.drawable.ic_menu_close_clear_cancel,
                 getString(R.string.notification_turn_off),
                 turnOffPendingIntent
             ).setOngoing(true).setOnlyAlertOnce(false)

@@ -11,7 +11,6 @@ import io.github.d4viddf.hyperisland_kit.HyperAction
 import io.github.d4viddf.hyperisland_kit.HyperIslandNotification
 import io.github.d4viddf.hyperisland_kit.HyperPicture
 import io.github.d4viddf.hyperisland_kit.models.ImageTextInfoLeft
-import io.github.d4viddf.hyperisland_kit.models.ImageTextInfoRight
 import io.github.d4viddf.hyperisland_kit.models.PicInfo
 import io.github.d4viddf.hyperisland_kit.models.TextInfo
 
@@ -23,10 +22,6 @@ object HyperIslandHelper {
 
     private const val BUSINESS_ID = "geo_alarm"
     private const val ICON_KEY = "app_icon"
-    private const val LOCATION_ICON_KEY = "location_icon"
-    private const val FLAG_ICON_KEY = "flag_icon"
-    
-    private const val PROGRESS_COLOR = "#FFFFFF" // White
 
     /**
      * Check if HyperIsland notifications are supported on this device
@@ -41,11 +36,11 @@ object HyperIslandHelper {
 
     /**
      * Apply HyperIsland extras to a notification builder for progress tracking
-     * 
+     *
      * SmallIslandArea: Circular progress ring with AppIcon inside
      * BigIslandArea: Left side = AppIcon + destination name, Right side = percentage
      * Actions: Cancel button
-     * 
+     *
      * @param context Application context
      * @param builder NotificationCompat.Builder to modify
      * @param alarmName Alarm name to display
@@ -74,7 +69,7 @@ object HyperIslandHelper {
                 MonitoringZone.FAR -> 0
                 else -> progress
             }
-            
+
             // Right side text - percentage or power saving message
             val rightText = when (zone) {
                 MonitoringZone.FAR -> context.getString(R.string.notification_power_saving)
@@ -82,22 +77,20 @@ object HyperIslandHelper {
             }
 
             val hyperBuilder = HyperIslandNotification.Builder(
-                context,
-                BUSINESS_ID,
-                context.getString(R.string.notification_title, alarmName)
-            )
-                .setSmallWindowTarget("${context.packageName}.MainActivity")
+                context, BUSINESS_ID, context.getString(R.string.notification_title, alarmName)
+            ).setSmallWindowTarget("${context.packageName}.MainActivity")
                 // Register icon resources
                 .addPicture(HyperPicture(ICON_KEY, context, R.drawable.ic_notification))
-                .addPicture(HyperPicture(LOCATION_ICON_KEY, context, R.drawable.ic_notification))
-                .addPicture(HyperPicture(FLAG_ICON_KEY, context, R.drawable.ic_notification))
                 // Set base info content (fallback for card expansion)
                 .setBaseInfo(
                     title = context.getString(R.string.notification_title, alarmName),
                     content = when (zone) {
                         MonitoringZone.FAR -> context.getString(R.string.notification_power_saving)
-                        MonitoringZone.MID, MonitoringZone.NEAR -> 
-                            context.getString(R.string.notification_distance, remainingDistance, progress)
+                        MonitoringZone.MID, MonitoringZone.NEAR -> context.getString(
+                            R.string.notification_distance,
+                            remainingDistance,
+                            progress,
+                        )
                     },
                     pictureKey = ICON_KEY
                 )
@@ -107,11 +100,9 @@ object HyperIslandHelper {
                 .setIslandFirstFloat(false)
                 // Small Island: Circular progress ring with icon inside
                 .setSmallIslandCircularProgress(
-                    ICON_KEY,        // pictureKey
-                    displayProgress, // progress
-                    PROGRESS_COLOR,  // colorProgress
-                    null,            // colorProgressEnd (optional)
-                    false            // isCCW (counter-clockwise)
+                    pictureKey = ICON_KEY,
+                    progress = displayProgress,
+                    isCCW = false,
                 )
                 // Big Island: Left (icon + text), Right (percentage text)
                 .setBigIslandInfo(
@@ -127,7 +118,9 @@ object HyperIslandHelper {
                     HyperAction(
                         key = "cancel",
                         title = context.getString(R.string.notification_cancel),
-                        icon = Icon.createWithResource(context, android.R.drawable.ic_menu_close_clear_cancel),
+                        icon = Icon.createWithResource(
+                            context, android.R.drawable.ic_menu_close_clear_cancel
+                        ),
                         pendingIntent = cancelPendingIntent,
                         actionIntentType = 1 // Activity
                     )
@@ -135,10 +128,7 @@ object HyperIslandHelper {
 
             // Add simple linear progress bar (no icons) for MID and NEAR zones
             if (zone != MonitoringZone.FAR) {
-                hyperBuilder.setProgressBar(
-                    progress,   // progress
-                    color = PROGRESS_COLOR, // color
-                )
+                hyperBuilder.setProgressBar(progress)
             }
 
             // Build payloads
@@ -160,9 +150,9 @@ object HyperIslandHelper {
 
     /**
      * Apply HyperIsland extras for arrival notification
-     * 
+     *
      * Actions: Close (Turn Off) button
-     * 
+     *
      * @param context Application context
      * @param builder NotificationCompat.Builder to modify
      * @param alarmName Alarm name to display
@@ -183,9 +173,8 @@ object HyperIslandHelper {
             val hyperBuilder = HyperIslandNotification.Builder(
                 context,
                 BUSINESS_ID,
-                context.getString(R.string.notification_arrived_title, alarmName)
-            )
-                .setSmallWindowTarget("${context.packageName}.MainActivity")
+                context.getString(R.string.notification_arrived_title, alarmName),
+            ).setSmallWindowTarget("${context.packageName}.MainActivity")
                 // Register icon resources
                 .addPicture(HyperPicture(ICON_KEY, context, R.drawable.ic_notification))
                 // Set base info content for arrival
@@ -198,11 +187,9 @@ object HyperIslandHelper {
                 .setIslandConfig(priority = 2)
                 // Small Island: Full progress ring (100%) with icon
                 .setSmallIslandCircularProgress(
-                    ICON_KEY,       // pictureKey
-                    100,            // progress
-                    PROGRESS_COLOR, // colorProgress
-                    null,           // colorProgressEnd
-                    false           // isCCW
+                    pictureKey = ICON_KEY,
+                    progress = 100,
+                    isCCW = false,
                 )
                 // Big Island: Left (icon + title), Right (100%)
                 .setBigIslandInfo(
@@ -218,7 +205,9 @@ object HyperIslandHelper {
                     HyperAction(
                         key = "turn_off",
                         title = context.getString(R.string.notification_turn_off),
-                        icon = Icon.createWithResource(context, android.R.drawable.ic_lock_power_off),
+                        icon = Icon.createWithResource(
+                            context, android.R.drawable.ic_menu_close_clear_cancel
+                        ),
                         pendingIntent = turnOffPendingIntent,
                         actionIntentType = 1 // Activity
                     )

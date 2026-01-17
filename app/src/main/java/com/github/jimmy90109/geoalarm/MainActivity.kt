@@ -33,6 +33,8 @@ class MainActivity : AppCompatActivity() {
 
             }
         }
+
+        handleIntent(intent)
     }
 
     override fun onNewIntent(intent: Intent) {
