@@ -1,10 +1,13 @@
 package com.github.jimmy90109.geoalarm.utils
 
+import android.app.PendingIntent
 import android.content.Context
+import android.graphics.drawable.Icon
 import android.os.Bundle
 import androidx.core.app.NotificationCompat
 import com.github.jimmy90109.geoalarm.R
 import com.github.jimmy90109.geoalarm.service.GeoAlarmService.MonitoringZone
+import io.github.d4viddf.hyperisland_kit.HyperAction
 import io.github.d4viddf.hyperisland_kit.HyperIslandNotification
 import io.github.d4viddf.hyperisland_kit.HyperPicture
 import io.github.d4viddf.hyperisland_kit.models.ImageTextInfoLeft
@@ -41,6 +44,7 @@ object HyperIslandHelper {
      * 
      * SmallIslandArea: Circular progress ring with AppIcon inside
      * BigIslandArea: Left side = AppIcon + destination name, Right side = percentage
+     * Actions: Cancel button
      * 
      * @param context Application context
      * @param builder NotificationCompat.Builder to modify
@@ -48,6 +52,7 @@ object HyperIslandHelper {
      * @param progress Current progress (0-100), 0 for FAR zone
      * @param remainingDistance Remaining distance in meters
      * @param zone Current monitoring zone (FAR/MID/NEAR)
+     * @param cancelPendingIntent PendingIntent to cancel the alarm
      * @return Modified NotificationCompat.Builder
      */
     fun applyProgressExtras(
@@ -56,7 +61,8 @@ object HyperIslandHelper {
         alarmName: String,
         progress: Int,
         remainingDistance: Int,
-        zone: MonitoringZone
+        zone: MonitoringZone,
+        cancelPendingIntent: PendingIntent
     ): NotificationCompat.Builder {
         if (!isSupported(context)) {
             return builder
@@ -97,8 +103,9 @@ object HyperIslandHelper {
                 )
                 // Configure island behavior (priority 1 = normal)
                 .setIslandConfig(priority = 1)
+                // Prevent auto-expansion on updates
+                .setIslandFirstFloat(false)
                 // Small Island: Circular progress ring with icon inside
-                // Parameters: pictureKey, progress, colorProgress, colorProgressEnd, isCCW
                 .setSmallIslandCircularProgress(
                     ICON_KEY,        // pictureKey
                     displayProgress, // progress
@@ -106,7 +113,7 @@ object HyperIslandHelper {
                     null,            // colorProgressEnd (optional)
                     false            // isCCW (counter-clockwise)
                 )
-                // Big Island: Left (icon + text), Right (percentage text), TextInfo?, PicInfo?, ProgressTextInfo?
+                // Big Island: Left (icon + text), Right (percentage text)
                 .setBigIslandInfo(
                     ImageTextInfoLeft(
                         type = 1,
@@ -120,6 +127,16 @@ object HyperIslandHelper {
                     null, // TextInfo (center)
                     null, // PicInfo (center)
                     null  // ProgressTextInfo
+                )
+                // Add Cancel Action
+                .addAction(
+                    HyperAction(
+                        key = "cancel",
+                        title = context.getString(R.string.notification_cancel),
+                        icon = Icon.createWithResource(context, android.R.drawable.ic_menu_close_clear_cancel),
+                        pendingIntent = cancelPendingIntent,
+                        actionIntentType = 1 // Activity
+                    )
                 )
 
             // Add linear progress bar for MID and NEAR zones
@@ -151,15 +168,20 @@ object HyperIslandHelper {
 
     /**
      * Apply HyperIsland extras for arrival notification
+     * 
+     * Actions: Close (Turn Off) button
+     * 
      * @param context Application context
      * @param builder NotificationCompat.Builder to modify
      * @param alarmName Alarm name to display
+     * @param turnOffPendingIntent PendingIntent to turn off the alarm
      * @return Modified NotificationCompat.Builder
      */
     fun applyArrivalExtras(
         context: Context,
         builder: NotificationCompat.Builder,
-        alarmName: String
+        alarmName: String,
+        turnOffPendingIntent: PendingIntent
     ): NotificationCompat.Builder {
         if (!isSupported(context)) {
             return builder
@@ -204,6 +226,16 @@ object HyperIslandHelper {
                     null, // TextInfo
                     null, // PicInfo
                     null  // ProgressTextInfo
+                )
+                // Add Turn Off Action
+                .addAction(
+                    HyperAction(
+                        key = "turn_off",
+                        title = context.getString(R.string.notification_turn_off),
+                        icon = Icon.createWithResource(context, android.R.drawable.ic_lock_power_off),
+                        pendingIntent = turnOffPendingIntent,
+                        actionIntentType = 1 // Activity
+                    )
                 )
 
             // Build payloads

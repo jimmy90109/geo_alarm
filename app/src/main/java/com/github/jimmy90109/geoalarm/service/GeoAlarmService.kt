@@ -489,7 +489,9 @@ class GeoAlarmService : Service() {
         val builder =
             NotificationCompat.Builder(this, CHANNEL_ID).setSmallIcon(R.drawable.ic_notification)
                 .setOnlyAlertOnce(true).setOngoing(true)
-                .setCategory(NotificationCompat.CATEGORY_PROGRESS).setRequestPromotedOngoing(true)
+                .setVisibility(NotificationCompat.VISIBILITY_PUBLIC) // Show on lock screen
+                .setCategory(NotificationCompat.CATEGORY_NAVIGATION) // Treat as navigation/live activity
+                .setRequestPromotedOngoing(true)
                 .setContentIntent(contentPendingIntent).setDeleteIntent(deletePendingIntent)
                 .addAction(
                     android.R.drawable.ic_menu_close_clear_cancel,
@@ -528,7 +530,8 @@ class GeoAlarmService : Service() {
             alarmName,
             progress,
             remainingDistance,
-            zone
+            zone,
+            cancelPendingIntent,
         )
 
         return builder.build()
@@ -570,7 +573,7 @@ class GeoAlarmService : Service() {
         }
 
         // Apply Xiaomi HyperOS Dynamic Island extras if supported
-        HyperIslandHelper.applyArrivalExtras(this, builder, alarmName)
+        HyperIslandHelper.applyArrivalExtras(this, builder, alarmName, turnOffPendingIntent)
 
         return builder.build()
     }

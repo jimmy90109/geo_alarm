@@ -22,10 +22,11 @@ android {
         applicationId = "com.github.jimmy90109.geoalarm"
         minSdk = 31
         targetSdk = 36
-        versionCode = 2601160
-        versionName = "1.0.0-beta.6"
+        versionCode = 2601170
+        versionName = "1.0.0-beta.7"
         
         manifestPlaceholders["GOOGLE_MAPS_API_KEY"] = localProperties.getProperty("maps.apiKey") ?: ""
+        manifestPlaceholders["appName"] = "@string/app_name"
         buildConfigField("String", "GOOGLE_MAPS_API_KEY", "\"${localProperties.getProperty("maps.apiKey") ?: ""}\"")
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
@@ -41,6 +42,7 @@ android {
         }
         debug {
             applicationIdSuffix = ".debug"
+            manifestPlaceholders["appName"] = "@string/app_name_debug"
         }
     }
     buildFeatures {

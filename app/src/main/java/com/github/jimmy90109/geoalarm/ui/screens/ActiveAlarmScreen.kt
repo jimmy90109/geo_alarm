@@ -267,7 +267,9 @@ fun ActiveAlarmScreen(
                 ) {
                     Text(
                         text = stringResource(if (isArrived) R.string.notification_turn_off else R.string.cancel_alarm),
-                        style = MaterialTheme.typography.titleMedium
+                        style = MaterialTheme.typography.titleLarge.copy(
+                            fontWeight = FontWeight.Bold,
+                        )
                     )
                 }
             }
