@@ -26,7 +26,7 @@ object HyperIslandHelper {
     private const val LOCATION_ICON_KEY = "location_icon"
     private const val FLAG_ICON_KEY = "flag_icon"
     
-    private const val PROGRESS_COLOR = "#4CAF50" // Green
+    private const val PROGRESS_COLOR = "#FFFFFF" // White
 
     /**
      * Check if HyperIsland notifications are supported on this device
@@ -115,21 +115,15 @@ object HyperIslandHelper {
                 )
                 // Big Island: Left (icon + text), Right (percentage text)
                 .setBigIslandInfo(
-                    ImageTextInfoLeft(
+                    left = ImageTextInfoLeft(
                         type = 1,
                         picInfo = PicInfo(type = 1, pic = ICON_KEY),
                         textInfo = TextInfo(title = alarmName, content = null)
                     ),
-                    ImageTextInfoRight(
-                        type = 1,
-                        textInfo = TextInfo(title = rightText, content = null)
-                    ),
-                    null, // TextInfo (center)
-                    null, // PicInfo (center)
-                    null  // ProgressTextInfo
+                    centerText = TextInfo(title = rightText),// TextInfo (center)
                 )
-                // Add Cancel Action
-                .addAction(
+                // Add Cancel Action as TextButton
+                .setTextButtons(
                     HyperAction(
                         key = "cancel",
                         title = context.getString(R.string.notification_cancel),
@@ -139,13 +133,11 @@ object HyperIslandHelper {
                     )
                 )
 
-            // Add linear progress bar for MID and NEAR zones
+            // Add simple linear progress bar (no icons) for MID and NEAR zones
             if (zone != MonitoringZone.FAR) {
                 hyperBuilder.setProgressBar(
-                    progress = progress,
-                    color = PROGRESS_COLOR,
-                    picForwardKey = LOCATION_ICON_KEY,
-                    picEndKey = FLAG_ICON_KEY
+                    progress,   // progress
+                    color = PROGRESS_COLOR, // color
                 )
             }
 
@@ -214,21 +206,15 @@ object HyperIslandHelper {
                 )
                 // Big Island: Left (icon + title), Right (100%)
                 .setBigIslandInfo(
-                    ImageTextInfoLeft(
+                    left = ImageTextInfoLeft(
                         type = 1,
                         picInfo = PicInfo(type = 1, pic = ICON_KEY),
                         textInfo = TextInfo(title = alarmName, content = null)
                     ),
-                    ImageTextInfoRight(
-                        type = 1,
-                        textInfo = TextInfo(title = "100%", content = null)
-                    ),
-                    null, // TextInfo
-                    null, // PicInfo
-                    null  // ProgressTextInfo
+                    centerText = TextInfo(title = "100%"),
                 )
-                // Add Turn Off Action
-                .addAction(
+                // Add Turn Off Action as TextButton
+                .setTextButtons(
                     HyperAction(
                         key = "turn_off",
                         title = context.getString(R.string.notification_turn_off),
