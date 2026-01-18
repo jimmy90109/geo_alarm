@@ -113,18 +113,19 @@ object HyperIslandHelper {
                     ),
                     centerText = TextInfo(title = rightText),// TextInfo (center)
                 )
+                // TODO cant work, hide for now
                 // Add Cancel Action as TextButton
-                .setTextButtons(
-                    HyperAction(
-                        key = "cancel",
-                        title = context.getString(R.string.notification_cancel),
-                        icon = Icon.createWithResource(
-                            context, android.R.drawable.ic_menu_close_clear_cancel
-                        ),
-                        pendingIntent = cancelPendingIntent,
-                        actionIntentType = 1 // Activity
-                    )
-                )
+//                .setTextButtons(
+//                    HyperAction(
+//                        key = "cancel",
+//                        title = context.getString(R.string.notification_cancel),
+//                        icon = Icon.createWithResource(
+//                            context, android.R.drawable.ic_menu_close_clear_cancel
+//                        ),
+//                        pendingIntent = cancelPendingIntent,
+//                        actionIntentType = 1 // Activity
+//                    )
+//                )
 
             // Add simple linear progress bar (no icons) for MID and NEAR zones
             if (zone != MonitoringZone.FAR) {
@@ -200,18 +201,19 @@ object HyperIslandHelper {
                     ),
                     centerText = TextInfo(title = "100%"),
                 )
+                // TODO cant work, hide for now
                 // Add Turn Off Action as TextButton
-                .setTextButtons(
-                    HyperAction(
-                        key = "turn_off",
-                        title = context.getString(R.string.notification_turn_off),
-                        icon = Icon.createWithResource(
-                            context, android.R.drawable.ic_menu_close_clear_cancel
-                        ),
-                        pendingIntent = turnOffPendingIntent,
-                        actionIntentType = 1 // Activity
-                    )
-                )
+//                .setTextButtons(
+//                    HyperAction(
+//                        key = "turn_off",
+//                        title = context.getString(R.string.notification_turn_off),
+//                        icon = Icon.createWithResource(
+//                            context, android.R.drawable.ic_menu_close_clear_cancel
+//                        ),
+//                        pendingIntent = turnOffPendingIntent,
+//                        actionIntentType = 1 // Activity
+//                    )
+//                )
 
             // Build payloads
             val jsonPayload = hyperBuilder.buildJsonParam()
