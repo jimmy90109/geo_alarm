@@ -19,7 +19,10 @@ data class AlarmEditUiState(
     val isLoading: Boolean = true,
     val showNameDialog: Boolean = false,
     val existingAlarm: Alarm? = null,
-    val isSaved: Boolean = false
+    val isSaved: Boolean = false,
+    val savedAlarmId: String? = null, // ID of the alarm that was just saved (for highlight animation)
+    val showDeleteErrorDialog: Boolean = false,
+    val showDeleteConfirmDialog: Boolean = false
 )
 
 class AlarmEditViewModel(
@@ -78,13 +81,23 @@ class AlarmEditViewModel(
         _uiState.value = _uiState.value.copy(showNameDialog = false)
     }
 
+    fun dismissDeleteErrorDialog() {
+        _uiState.value = _uiState.value.copy(showDeleteErrorDialog = false)
+    }
+
+    fun dismissDeleteConfirmDialog() {
+        _uiState.value = _uiState.value.copy(showDeleteConfirmDialog = false)
+    }
+
     fun saveAlarm(name: String) {
         val position = _uiState.value.selectedPosition ?: return
         val existing = _uiState.value.existingAlarm
 
         viewModelScope.launch {
+            val alarmId: String
             if (existing != null) {
                 // Update existing alarm
+                alarmId = existing.id
                 val updatedAlarm = existing.copy(
                     name = name,
                     latitude = position.latitude,
@@ -94,8 +107,9 @@ class AlarmEditViewModel(
                 repository.update(updatedAlarm)
             } else {
                 // Create new alarm
+                alarmId = UUID.randomUUID().toString()
                 val newAlarm = Alarm(
-                    id = UUID.randomUUID().toString(),
+                    id = alarmId,
                     name = name,
                     latitude = position.latitude,
                     longitude = position.longitude,
@@ -106,16 +120,39 @@ class AlarmEditViewModel(
             }
             _uiState.value = _uiState.value.copy(
                 isSaved = true,
+                savedAlarmId = alarmId,
                 showNameDialog = false
             )
         }
     }
 
-    fun deleteAlarm() {
+    /**
+     * Request to delete the alarm. Shows confirmation or error dialog.
+     */
+    fun requestDeleteAlarm() {
+        val existing = _uiState.value.existingAlarm ?: return
+        viewModelScope.launch {
+            // Check if alarm is used in any schedule
+            val isUsedInSchedule = repository.isAlarmUsedInSchedule(existing.id)
+            if (isUsedInSchedule) {
+                _uiState.value = _uiState.value.copy(showDeleteErrorDialog = true)
+            } else {
+                _uiState.value = _uiState.value.copy(showDeleteConfirmDialog = true)
+            }
+        }
+    }
+
+    /**
+     * Confirm and execute the deletion.
+     */
+    fun confirmDeleteAlarm() {
         val existing = _uiState.value.existingAlarm ?: return
         viewModelScope.launch {
             repository.delete(existing)
-            _uiState.value = _uiState.value.copy(isSaved = true)
+            _uiState.value = _uiState.value.copy(
+                isSaved = true,
+                showDeleteConfirmDialog = false
+            )
         }
     }
 }

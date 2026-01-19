@@ -94,8 +94,8 @@ object HyperIslandHelper {
                     },
                     pictureKey = ICON_KEY
                 )
-                // Configure island behavior (priority 1 = normal)
-                .setIslandConfig(priority = 1)
+                // Configure island behavior (priority 0 = background)
+                .setIslandConfig(priority = 0)
                 // Prevent auto-expansion on updates
                 .setIslandFirstFloat(false)
                 // Small Island: Circular progress ring with icon inside

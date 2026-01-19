@@ -22,22 +22,25 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.navigationBars
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.statusBars
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
+import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonGroup
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularWavyProgressIndicator
-import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
+import androidx.compose.material3.FilledIconButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.IconButtonDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Slider
@@ -59,6 +62,8 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.github.jimmy90109.geoalarm.R
+import com.github.jimmy90109.geoalarm.ui.components.DeleteAlarmDialog
+import com.github.jimmy90109.geoalarm.ui.components.DeleteErrorDialog
 import com.github.jimmy90109.geoalarm.ui.viewmodel.AlarmEditUiState
 import com.github.jimmy90109.geoalarm.ui.viewmodel.AlarmEditViewModel
 import com.google.android.gms.maps.CameraUpdateFactory
@@ -217,6 +222,8 @@ fun AlarmEditScreen(
                             onRadiusChange = { viewModel.updateRadius(it) },
                             onSaveClick = { viewModel.showNameDialog() },
                             saveEnabled = uiState.selectedPosition != null,
+                            isEditMode = uiState.existingAlarm != null,
+                            onDeleteClick = { viewModel.requestDeleteAlarm() },
                             elevation = 10.dp,
                             shape = RoundedCornerShape(24.dp)
                         )
@@ -282,6 +289,8 @@ fun AlarmEditScreen(
                         onRadiusChange = { viewModel.updateRadius(it) },
                         onSaveClick = { viewModel.showNameDialog() },
                         saveEnabled = uiState.selectedPosition != null,
+                        isEditMode = uiState.existingAlarm != null,
+                        onDeleteClick = { viewModel.requestDeleteAlarm() },
                         elevation = 10.dp,
                         shape = RoundedCornerShape(44.dp)
                     )
@@ -336,6 +345,19 @@ fun AlarmEditScreen(
                 }
             },
         )
+    }
+
+    // Delete Confirmation Dialog
+    if (uiState.showDeleteConfirmDialog) {
+        DeleteAlarmDialog(
+            onConfirm = { viewModel.confirmDeleteAlarm() },
+            onDismiss = { viewModel.dismissDeleteConfirmDialog() }
+        )
+    }
+
+    // Delete Error Dialog (when alarm is used in a schedule)
+    if (uiState.showDeleteErrorDialog) {
+        DeleteErrorDialog(onDismiss = { viewModel.dismissDeleteErrorDialog() })
     }
 }
 
@@ -414,13 +436,16 @@ fun AlarmEditMapContent(
 }
 
 
+@OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
 fun AlarmEditRadiusControl(
+    modifier: Modifier = Modifier,
     radius: Float,
     onRadiusChange: (Float) -> Unit,
     onSaveClick: () -> Unit,
     saveEnabled: Boolean,
-    modifier: Modifier = Modifier,
+    isEditMode: Boolean = false,
+    onDeleteClick: () -> Unit = {},
     elevation: androidx.compose.ui.unit.Dp = 0.dp,
     shape: androidx.compose.ui.graphics.Shape = RoundedCornerShape(12.dp)
 ) {
@@ -443,10 +468,47 @@ fun AlarmEditRadiusControl(
                 value = radius, onValueChange = onRadiusChange, valueRange = 500f..5000f, steps = 45
             )
             Spacer(modifier = Modifier.height(16.dp))
-            Button(
-                onClick = onSaveClick, enabled = saveEnabled, modifier = Modifier.fillMaxWidth()
-            ) {
-                Text(stringResource(R.string.save))
+            
+            if (isEditMode) {
+                // Edit mode: Delete + Save buttons
+                ButtonGroup(
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    FilledIconButton(
+                        onClick = onDeleteClick,
+                        shape = RoundedCornerShape(
+                            topStart = 28.dp, bottomStart = 28.dp,
+                            topEnd = 4.dp, bottomEnd = 4.dp
+                        ),
+                        colors = IconButtonDefaults.filledIconButtonColors(
+                            containerColor = MaterialTheme.colorScheme.errorContainer,
+                            contentColor = MaterialTheme.colorScheme.onErrorContainer
+                        )
+                    ) {
+                        Icon(
+                            Icons.Default.Delete,
+                            contentDescription = stringResource(R.string.delete)
+                        )
+                    }
+                    Button(
+                        onClick = onSaveClick,
+                        enabled = saveEnabled,
+                        shape = RoundedCornerShape(
+                            topStart = 4.dp, bottomStart = 4.dp,
+                            topEnd = 28.dp, bottomEnd = 28.dp
+                        ),
+                        modifier = Modifier.weight(1f)
+                    ) {
+                        Text(stringResource(R.string.save))
+                    }
+                }
+            } else {
+                // New alarm mode: Only Save button
+                Button(
+                    onClick = onSaveClick, enabled = saveEnabled, modifier = Modifier.fillMaxWidth()
+                ) {
+                    Text(stringResource(R.string.save))
+                }
             }
         }
     }

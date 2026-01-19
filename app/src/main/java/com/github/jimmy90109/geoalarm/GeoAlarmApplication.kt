@@ -10,7 +10,7 @@ import com.google.android.libraries.places.api.Places
 
 class GeoAlarmApplication : Application() {
     val database by lazy { AppDatabase.getDatabase(this) }
-    val repository by lazy { AlarmRepository(database.alarmDao()) }
+    val repository by lazy { AlarmRepository(database.alarmDao(), database.scheduleDao()) }
     val settingsRepository by lazy { SettingsRepository(this) }
 
     override fun onCreate() {

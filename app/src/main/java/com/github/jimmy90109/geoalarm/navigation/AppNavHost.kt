@@ -17,6 +17,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -32,8 +33,10 @@ import androidx.navigation.toRoute
 import com.github.jimmy90109.geoalarm.ui.screens.AlarmEditScreen
 import com.github.jimmy90109.geoalarm.ui.screens.BatteryOptimizationScreen
 import com.github.jimmy90109.geoalarm.ui.screens.MainScreen
+import com.github.jimmy90109.geoalarm.ui.screens.ScheduleEditScreen
 import com.github.jimmy90109.geoalarm.ui.viewmodel.AlarmEditViewModel
 import com.github.jimmy90109.geoalarm.ui.viewmodel.HomeViewModel
+import com.github.jimmy90109.geoalarm.ui.viewmodel.ScheduleEditViewModel
 import com.github.jimmy90109.geoalarm.ui.viewmodel.ViewModelFactory
 
 // Material 3 Motion constants
@@ -114,14 +117,50 @@ fun AppNavHost(
             )
         },
     ) {
-        composable<AppRoutes.Main> {
-            val viewModel: HomeViewModel = viewModel(factory = viewModelFactory)
+        composable<AppRoutes.Main> { backStackEntry ->
+            val context = LocalContext.current
+            // Use Activity scope for HomeViewModel to share state with MainActivity intent handling
+            val activity = remember(context) { 
+                var ctx = context
+                while (ctx is android.content.ContextWrapper) {
+                    if (ctx is androidx.activity.ComponentActivity) return@remember ctx
+                    ctx = ctx.baseContext
+                }
+                null
+            } ?: throw IllegalStateException("Context is not a ComponentActivity")
+
+            val viewModel: HomeViewModel = viewModel(
+                viewModelStoreOwner = activity,
+                factory = viewModelFactory
+            )
+            // Observe savedStateHandle for highlight requests
+            val savedStateHandle = backStackEntry.savedStateHandle
+            val highlightedAlarmId = savedStateHandle.get<String>("highlight_alarm_id")
+            val highlightedScheduleId = savedStateHandle.get<String>("highlight_schedule_id")
+
+            LaunchedEffect(highlightedAlarmId) {
+                if (highlightedAlarmId != null) {
+                    viewModel.setHighlightedAlarm(highlightedAlarmId)
+                    savedStateHandle.remove<String>("highlight_alarm_id")
+                }
+            }
+            LaunchedEffect(highlightedScheduleId) {
+                if (highlightedScheduleId != null) {
+                    viewModel.setHighlightedSchedule(highlightedScheduleId)
+                    savedStateHandle.remove<String>("highlight_schedule_id")
+                }
+            }
+
             AnimatedNavScreen {
                 MainScreen(
                     viewModel = viewModel,
                     onAddAlarm = { navController.navigate(AppRoutes.AlarmEdit()) },
                     onAlarmClick = { alarmId ->
                         navController.navigate(AppRoutes.AlarmEdit(alarmId))
+                    },
+                    onAddSchedule = { navController.navigate(AppRoutes.ScheduleEdit()) },
+                    onScheduleClick = { scheduleId ->
+                        navController.navigate(AppRoutes.ScheduleEdit(scheduleId))
                     },
                     onNavigateToBatteryOptimization = {
                         navController.navigate(AppRoutes.BatteryOptimization)
@@ -137,7 +176,15 @@ fun AppNavHost(
                 AlarmEditScreen(
                     viewModel = viewModel,
                     alarmId = route.alarmId,
-                    onNavigateBack = { navController.popBackStack() })
+                    onNavigateBack = {
+                        val state = viewModel.uiState.value
+                        if (state.isSaved && state.savedAlarmId != null) {
+                            navController.previousBackStackEntry
+                                ?.savedStateHandle
+                                ?.set("highlight_alarm_id", state.savedAlarmId)
+                        }
+                        navController.popBackStack()
+                    })
             }
         }
 
@@ -152,6 +199,27 @@ fun AppNavHost(
                     onOptimizationDisabled = {
                         navController.popBackStack()
                     },
+                )
+            }
+        }
+
+        composable<AppRoutes.ScheduleEdit> { backStackEntry ->
+            val route = backStackEntry.toRoute<AppRoutes.ScheduleEdit>()
+            val viewModel: ScheduleEditViewModel = viewModel(factory = viewModelFactory)
+            AnimatedNavScreen {
+                ScheduleEditScreen(
+                    viewModel = viewModel,
+                    scheduleId = route.scheduleId,
+                    onBack = {
+                        val state = viewModel.uiState.value
+                        // We check savedScheduleId from ViewModel which we added previously
+                        if (state.savedScheduleId != null) {
+                             navController.previousBackStackEntry
+                                ?.savedStateHandle
+                                ?.set("highlight_schedule_id", state.savedScheduleId)
+                        }
+                        navController.popBackStack()
+                    }
                 )
             }
         }

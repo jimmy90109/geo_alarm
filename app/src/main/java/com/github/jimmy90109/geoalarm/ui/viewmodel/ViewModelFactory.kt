@@ -27,6 +27,10 @@ class ViewModelFactory(
                 SettingsViewModel(application, settingsRepository, repository) as T
             }
 
+            modelClass.isAssignableFrom(ScheduleEditViewModel::class.java) -> {
+                ScheduleEditViewModel(application, repository) as T
+            }
+
             else -> throw IllegalArgumentException("Unknown ViewModel class: ${modelClass.name}")
         }
     }

@@ -23,6 +23,7 @@ fun TopAppBar(
     modifier: Modifier = Modifier,
     navigationIcon: @Composable () -> Unit = {},
     actions: @Composable RowScope.() -> Unit = {},
+    containerColor: Color = MaterialTheme.colorScheme.surface
 ) {
     val statusBar = WindowInsets.statusBars.asPaddingValues().calculateTopPadding()
     val topPadding = maxOf(statusBar, 24.dp)
@@ -30,7 +31,7 @@ fun TopAppBar(
     Surface(
         modifier = modifier.padding(top = topPadding),
         shape = CircleShape,
-        color = MaterialTheme.colorScheme.surface,
+        color = containerColor,
         shadowElevation = 4.dp
     ) {
         CenterAlignedTopAppBar(

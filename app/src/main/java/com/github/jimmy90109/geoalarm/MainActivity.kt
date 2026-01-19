@@ -5,10 +5,12 @@ import android.os.Bundle
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.appcompat.app.AppCompatActivity
+import androidx.lifecycle.ViewModelProvider
 import androidx.navigation.compose.rememberNavController
 import com.github.jimmy90109.geoalarm.navigation.AppNavHost
 import com.github.jimmy90109.geoalarm.service.GeoAlarmService
 import com.github.jimmy90109.geoalarm.ui.theme.GeoAlarmTheme
+import com.github.jimmy90109.geoalarm.ui.viewmodel.HomeViewModel
 import com.github.jimmy90109.geoalarm.ui.viewmodel.ViewModelFactory
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
@@ -61,6 +63,19 @@ class MainActivity : AppCompatActivity() {
                         startService(stopIntent)
                     }
                 }
+            }
+        } else if (intent.action == "ENABLE_ALARM_FROM_SCHEDULE") {
+            val alarmId = intent.getStringExtra("ALARM_ID")
+            if (!alarmId.isNullOrEmpty()) {
+                
+                // Get Application and Repository
+                val app = application as GeoAlarmApplication
+                val factory = ViewModelFactory(app, app.repository, app.settingsRepository)
+                
+                // Get ViewModel (Activity Scoped)
+                val viewModel = ViewModelProvider(this, factory)[HomeViewModel::class.java]
+                
+                viewModel.handleScheduleIntent(alarmId)
             }
         }
     }
