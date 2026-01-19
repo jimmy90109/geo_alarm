@@ -193,3 +193,63 @@ fun AlreadyAtDestinationDialog(onDismiss: () -> Unit) {
         },
     )
 }
+
+/**
+ * Dialog shown when trying to delete an alarm that is bound to a schedule.
+ */
+@Composable
+fun DeleteErrorDialog(onDismiss: () -> Unit) {
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text(stringResource(R.string.delete_error_title)) },
+        text = { Text(stringResource(R.string.delete_error_message)) },
+        confirmButton = {
+            Button(onClick = onDismiss) {
+                Text(stringResource(R.string.ok))
+            }
+        },
+    )
+}
+
+/**
+ * Dialog to confirm schedule deletion.
+ */
+@Composable
+fun DeleteScheduleDialog(onConfirm: () -> Unit, onDismiss: () -> Unit) {
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text(stringResource(R.string.delete_schedule_title)) },
+        text = { Text(stringResource(R.string.delete_schedule_message)) },
+        confirmButton = {
+            Button(onClick = onConfirm) {
+                Text(stringResource(R.string.delete))
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) {
+                Text(stringResource(R.string.cancel))
+            }
+        },
+    )
+}
+/**
+ * Dialog to confirm switching alarms when one is already running.
+ */
+@Composable
+fun ScheduleConflictDialog(onConfirm: () -> Unit, onDismiss: () -> Unit) {
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text(stringResource(R.string.schedule_conflict_title)) },
+        text = { Text(stringResource(R.string.schedule_conflict_message)) },
+        confirmButton = {
+            Button(onClick = onConfirm) {
+                Text(stringResource(R.string.switch_alarm))
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) {
+                Text(stringResource(R.string.cancel))
+            }
+        },
+    )
+}

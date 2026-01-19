@@ -14,6 +14,8 @@
     <uses-permission android:name="android.permission.ACCESS_FULL_SCREEN_INTENT" />
     <uses-permission android:name="android.permission.REQUEST_INSTALL_PACKAGES" />
     <uses-permission android:name="android.permission.INTERNET" />
+    <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
+    <uses-permission android:name="android.permission.SCHEDULE_EXACT_ALARM" />
 
     <application
         android:name=".GeoAlarmApplication"
@@ -39,6 +41,15 @@
         <receiver
             android:name=".service.GeofenceBroadcastReceiver"
             android:exported="true" />
+
+        <receiver
+            android:name=".receiver.ScheduleReceiver"
+            android:exported="false">
+            <intent-filter>
+                <action android:name="android.intent.action.BOOT_COMPLETED" />
+                <action android:name="com.github.jimmy90109.geoalarm.ACTION_SCHEDULE_TRIGGER"/>
+            </intent-filter>
+        </receiver>
             
         <activity
             android:name=".MainActivity"

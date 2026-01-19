@@ -12,6 +12,7 @@
     <string name="cancel">取消</string>
     <string name="delete">刪除</string>
     <string name="enabled">啟用</string>
+    <string name="button_start">開始</string>
     <string name="status_on">狀態: 開啟</string>
     <string name="status_off">狀態: 關閉</string>
     <string name="language">語言</string>
@@ -21,6 +22,13 @@
     <string name="alarm_deleted">鬧鐘已刪除</string>
     <string name="delete_alarm_title">刪除鬧鐘</string>
     <string name="delete_alarm_message">確定要刪除這個鬧鐘嗎？</string>
+    <string name="delete_error_title">無法刪除</string>
+    <string name="delete_error_message">此鬧鐘已綁定到排程，請先刪除排程。</string>
+    <string name="delete_schedule_title">刪除排程</string>
+    <string name="delete_schedule_message">確定要刪除這個排程嗎？</string>
+    <string name="schedule_conflict_title">切換鬧鐘？</string>
+    <string name="schedule_conflict_message">目前已有鬧鐘正在執行。是否要停止目前的鬧鐘並啟用此排程鬧鐘？</string>
+    <string name="switch_alarm">切換</string>
     <string name="undo">復原</string>
     <string name="only_one_alarm_error">同時只能啟用一個鬧鐘</string>
     <string name="single_alarm_title">啟用限制</string>
@@ -52,10 +60,13 @@
     <string name="notification_power_saving">背景監控中</string>
     <string name="notification_balanced">正在追蹤行程</string>
     <string name="notification_high_accuracy">快到了！</string>
+    <string name="notification_schedule_title">正要前往 %s？</string>
+    <string name="notification_schedule_message">點擊以啟用鬧鐘</string>
 
     <!-- Settings -->
     <string name="settings">設定</string>
     <string name="back">返回</string>
+    <string name="close">關閉</string>
     <string name="monitoring_method">監聽方式</string>
     <string name="monitoring_method_locked">有鬧鐘正在執行時不能更改監聽方式</string>
     <string name="tab_alarms">鬧鐘</string>
@@ -82,4 +93,33 @@
     <string name="cancel_alarm">取消鬧鐘</string>
     <string name="distance_meters">剩餘 %d 公尺</string>
     <string name="arrived_status">已抵達</string>
+    <string name="section_all_alarm">所有鬧鐘</string>
+    <string name="section_schedules">排程</string>
+    <string name="new_alarm">新增鬧鐘</string>
+    <string name="new_schedule">新增排程</string>
+    <string name="edit_schedule">編輯排程</string>
+    <string name="select_alarm">選擇鬧鐘</string>
+    <string name="select_time">選擇時間</string>
+    <string name="schedule_time_format">%1$02d:%2$02d</string>
+    <string-array name="weekdays_short">
+        <item>日</item>
+        <item>一</item>
+        <item>二</item>
+        <item>三</item>
+        <item>四</item>
+        <item>五</item>
+        <item>六</item>
+    </string-array>
+    <string-array name="weekdays_display">
+        <item>週日</item>
+        <item>週一</item>
+        <item>週二</item>
+        <item>週三</item>
+        <item>週四</item>
+        <item>週五</item>
+        <item>週六</item>
+    </string-array>
+    <string name="mon_to_fri">週一至週五</string>
+    <string name="every_day">每天</string>
+    <string name="weekends">週末</string>
 </resources>

@@ -13,33 +13,18 @@ import androidx.compose.animation.fadeOut
 import androidx.compose.animation.slideInHorizontally
 import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.animation.togetherWith
-import androidx.compose.foundation.combinedClickable
-import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.PaddingValues
-import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.lazy.grid.GridCells
-import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
-import androidx.compose.foundation.lazy.grid.items
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Add
-import androidx.compose.material3.Card
-import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.Icon
+import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.LargeFlexibleTopAppBar
-import androidx.compose.material3.LargeFloatingActionButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
-import androidx.compose.material3.SnackbarDuration
-import androidx.compose.material3.SnackbarHost
-import androidx.compose.material3.SnackbarHostState
-import androidx.compose.material3.SnackbarResult
-import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
@@ -48,7 +33,6 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -56,15 +40,21 @@ import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.zIndex
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.github.jimmy90109.geoalarm.R
 import com.github.jimmy90109.geoalarm.data.Alarm
+import com.github.jimmy90109.geoalarm.data.ScheduleWithAlarm
+import com.github.jimmy90109.geoalarm.ui.components.AlarmList
 import com.github.jimmy90109.geoalarm.ui.components.AlreadyAtDestinationDialog
 import com.github.jimmy90109.geoalarm.ui.components.BackgroundLocationPermissionDialog
 import com.github.jimmy90109.geoalarm.ui.components.DeleteAlarmDialog
+import com.github.jimmy90109.geoalarm.ui.components.DeleteErrorDialog
 import com.github.jimmy90109.geoalarm.ui.components.EditDisabledDialog
+import com.github.jimmy90109.geoalarm.ui.components.HomeFabMenu
 import com.github.jimmy90109.geoalarm.ui.components.NotificationPermissionDialog
 import com.github.jimmy90109.geoalarm.ui.components.NotificationRationaleDialog
+import com.github.jimmy90109.geoalarm.ui.components.ScheduleConflictDialog
 import com.github.jimmy90109.geoalarm.ui.components.SingleAlarmDialog
 import com.github.jimmy90109.geoalarm.ui.viewmodel.HomeUiState
 import com.github.jimmy90109.geoalarm.ui.viewmodel.HomeViewModel
@@ -72,9 +62,12 @@ import com.google.accompanist.permissions.ExperimentalPermissionsApi
 import com.google.accompanist.permissions.isGranted
 import com.google.accompanist.permissions.rememberMultiplePermissionsState
 import com.google.accompanist.permissions.rememberPermissionState
-import kotlinx.coroutines.launch
 
-@OptIn(ExperimentalMaterial3Api::class, ExperimentalPermissionsApi::class, ExperimentalMaterial3ExpressiveApi::class)
+@OptIn(
+    ExperimentalMaterial3Api::class,
+    ExperimentalPermissionsApi::class,
+    ExperimentalMaterial3ExpressiveApi::class
+)
 /**
  * The main screen of the application displaying the list of alarms.
  * Handles permission requests (background location, notification) and navigation.
@@ -89,13 +82,14 @@ fun HomeScreen(
     viewModel: HomeViewModel,
     onAddAlarm: () -> Unit,
     onAlarmClick: (Alarm) -> Unit,
+    onAddSchedule: () -> Unit,
+    onScheduleClick: (ScheduleWithAlarm) -> Unit,
     onNavigateToBatteryOptimization: () -> Unit
 ) {
     val alarms by viewModel.alarms.collectAsStateWithLifecycle(initialValue = emptyList())
+    val schedules by viewModel.schedules.collectAsStateWithLifecycle(initialValue = emptyList())
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val context = LocalContext.current
-    val scope = rememberCoroutineScope()
-    val snackbarHostState = remember { SnackbarHostState() }
     val scrollBehavior = TopAppBarDefaults.exitUntilCollapsedScrollBehavior()
 
     // Permissions
@@ -109,7 +103,9 @@ fun HomeScreen(
     var notificationPermissionLaunchTime by remember { mutableLongStateOf(0L) }
     var preRationale by remember { mutableStateOf(false) }
     var pendingAlarm by remember { mutableStateOf<Alarm?>(null) }
-    var alarmToDelete by remember { mutableStateOf<Alarm?>(null) }
+
+    // FAB Menu State
+    var showFabMenu by remember { mutableStateOf(false) }
 
     // Helper: Check location permission -> Enable Alarm
     val checkLocationAndEnableAlarm = { alarm: Alarm ->
@@ -199,9 +195,18 @@ fun HomeScreen(
         floatingActionButton = {
             // Only show FAB if no alarm is active
             if (activeAlarm == null) {
-                LargeFloatingActionButton(
-                    onClick = {
-                        // Add Alarm Permission Check
+                // FAB Menu (Expressive)
+                HomeFabMenu(
+                    expanded = showFabMenu,
+                    onToggle = { showFabMenu = !showFabMenu },
+                    alarms = alarms,
+                    onAddSchedule = {
+                        showFabMenu = false
+                        onAddSchedule()
+                    },
+                    onAddAlarm = {
+                        showFabMenu = false
+                        // Add Alarm Permission Check Logic
                         val hasLocationPermission =
                             if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.Q) {
                                 backgroundLocationPermissionState.status.isGranted
@@ -214,33 +219,39 @@ fun HomeScreen(
                         } else {
                             viewModel.showBackgroundPermissionDialog()
                         }
-                    },
-                ) {
-                    Icon(
-                        Icons.Filled.Add,
-                        contentDescription = stringResource(R.string.add_alarm),
-                        modifier = Modifier.size(36.dp) // Standard Large FAB icon size
-                    )
-                }
+                    })
             }
         },
-        snackbarHost = { SnackbarHost(snackbarHostState) },
-    ) { innerPadding ->
+
+        ) { innerPadding ->
         Box {
+            // Scrim for FAB Menu
+            if (showFabMenu) {
+                Box(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .clickable(
+                            indication = null,
+                            interactionSource = remember { MutableInteractionSource() },
+                        ) {
+                            showFabMenu = false
+                        }
+                        .zIndex(1f) // Ensure it sits above content but below FAB if FAB is in Scaffold (it is)
+                )
+            }
+
             AnimatedContent(
                 targetState = activeAlarm,
                 transitionSpec = {
                     if (targetState != null) {
                         // Entering Active Mode: Slide in from Left
-                        (slideInHorizontally { -it } + fadeIn()).togetherWith(
-                            slideOutHorizontally { it } + fadeOut())
+                        (slideInHorizontally { -it } + fadeIn()).togetherWith(slideOutHorizontally { it } + fadeOut())
                     } else {
                         // Exiting Active Mode: Slide out to Left
-                        (slideInHorizontally { it } + fadeIn()).togetherWith(
-                            slideOutHorizontally { -it } + fadeOut())
+                        (slideInHorizontally { it } + fadeIn()).togetherWith(slideOutHorizontally { -it } + fadeOut())
                     }
                 },
-                label = "ActiveAlarmTransition"
+                label = "ActiveAlarmTransition",
             ) { targetAlarm ->
                 if (targetAlarm != null) {
                     ActiveAlarmScreen(
@@ -248,11 +259,11 @@ fun HomeScreen(
                         alarm = targetAlarm,
                         progress = uiState.monitoringProgress,
                         distanceMeters = uiState.monitoringDistance,
-                        onStopAlarm = { viewModel.disableAlarm(targetAlarm, context) }
+                        onStopAlarm = { viewModel.disableAlarm(targetAlarm, context) },
                     )
                 } else {
                     Box(modifier = Modifier.fillMaxSize()) {
-                        if (alarms.isEmpty()) {
+                        if (alarms.isEmpty() && schedules.isEmpty()) {
                             Box(
                                 modifier = Modifier.fillMaxSize(),
                                 contentAlignment = Alignment.Center,
@@ -265,6 +276,7 @@ fun HomeScreen(
                         } else {
                             AlarmList(
                                 alarms = alarms,
+                                schedules = schedules,
                                 // Add extra padding at bottom for the floating bar
                                 contentPadding = PaddingValues(
                                     top = innerPadding.calculateTopPadding() + 16.dp,
@@ -279,14 +291,14 @@ fun HomeScreen(
                                         onAlarmClick(alarm)
                                     }
                                 },
-                                onAlarmLongClick = { alarm ->
-                                    if (alarm.isEnabled) {
-                                        viewModel.showEditDisabledDialog()
-                                    } else {
-                                        alarmToDelete = alarm
-                                    }
+                                onToggleAlarm = handleAlarmToggle,
+                                onScheduleClick = { schedule -> onScheduleClick(schedule) },
+                                onToggleSchedule = { schedule, isEnabled ->
+                                    viewModel.toggleSchedule(schedule, isEnabled)
                                 },
-                                onToggle = handleAlarmToggle,
+                                highlightedAlarmId = uiState.highlightedAlarmId,
+                                highlightedScheduleId = uiState.highlightedScheduleId,
+                                onHighlightFinished = { viewModel.clearHighlight() },
                             )
                         }
                     }
@@ -309,26 +321,6 @@ fun HomeScreen(
                 }
             }
         },
-        showDeleteDialog = alarmToDelete != null,
-        onConfirmDelete = {
-            alarmToDelete?.let { alarm ->
-                scope.launch {
-                    val msgAlarmDeleted = context.getString(R.string.alarm_deleted)
-                    val labelUndo = context.getString(R.string.undo)
-                    viewModel.deleteAlarm(alarm)
-                    val result = snackbarHostState.showSnackbar(
-                        message = msgAlarmDeleted,
-                        actionLabel = labelUndo,
-                        duration = SnackbarDuration.Short
-                    )
-                    if (result == SnackbarResult.ActionPerformed) {
-                        viewModel.restoreAlarm(alarm)
-                    }
-                }
-            }
-            alarmToDelete = null
-        },
-        onDismissDelete = { alarmToDelete = null },
     )
 
     // Battery Optimization Check
@@ -357,84 +349,6 @@ private fun Context.findActivity(): Activity? {
 }
 
 /**
- * Displays the list of alarms.
- */
-@Composable
-private fun AlarmList(
-    alarms: List<Alarm>,
-    onAlarmClick: (Alarm) -> Unit,
-    onAlarmLongClick: (Alarm) -> Unit,
-    onToggle: (Alarm, Boolean) -> Unit,
-    contentPadding: PaddingValues = PaddingValues(bottom = 80.dp),
-) {
-    LazyVerticalGrid(
-        columns = GridCells.Adaptive(300.dp),
-        modifier = Modifier.fillMaxSize(),
-        contentPadding = contentPadding,
-        verticalArrangement = Arrangement.spacedBy(12.dp),
-        horizontalArrangement = Arrangement.spacedBy(12.dp)
-    ) {
-        items(
-            items = alarms, key = { it.id }) { alarm ->
-            AlarmItem(
-                alarm = alarm,
-                onClick = { onAlarmClick(alarm) },
-                onLongClick = { onAlarmLongClick(alarm) },
-                onToggle = { isChecked -> onToggle(alarm, isChecked) },
-            )
-        }
-    }
-}
-
-/**
- * A list item representing a single alarm.
- *
- * @param alarm The alarm data object.
- * @param modifier Modifier for layout adjustments.
- * @param onClick Callback when the item body is clicked.
- * @param onLongClick Callback when the item body is long-clicked (for delete).
- * @param onToggle Callback when the switch is toggled.
- */
-@OptIn(androidx.compose.foundation.ExperimentalFoundationApi::class)
-@Composable
-fun AlarmItem(
-    alarm: Alarm,
-    modifier: Modifier = Modifier,
-    onClick: () -> Unit,
-    onLongClick: () -> Unit,
-    onToggle: (Boolean) -> Unit,
-) {
-    Card(
-        colors = androidx.compose.material3.CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.surfaceContainer
-        ),
-        modifier = modifier
-            .fillMaxWidth()
-            .combinedClickable(
-                onClick = onClick, onLongClick = onLongClick,
-            ),
-    ) {
-        Row(
-            modifier = Modifier
-                .padding(16.dp)
-                .fillMaxWidth(),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.SpaceBetween,
-        ) {
-            Text(
-                modifier = Modifier.weight(1f),
-                text = alarm.name,
-                style = MaterialTheme.typography.titleLarge,
-            )
-
-            Switch(
-                checked = alarm.isEnabled, onCheckedChange = onToggle,
-            )
-        }
-    }
-}
-
-/**
  * Container for all Home Screen dialogs.
  */
 @Composable
@@ -442,9 +356,6 @@ private fun HomeDialogsContainer(
     uiState: HomeUiState,
     viewModel: HomeViewModel,
     onRetryNotificationPermission: () -> Unit,
-    onConfirmDelete: () -> Unit,
-    onDismissDelete: () -> Unit,
-    showDeleteDialog: Boolean,
 ) {
     val context = LocalContext.current
 
@@ -477,10 +388,15 @@ private fun HomeDialogsContainer(
         AlreadyAtDestinationDialog(onDismiss = { viewModel.dismissAlreadyAtDestinationDialog() })
     }
 
-    // Delete Alarm Dialog
-    if (showDeleteDialog) {
-        DeleteAlarmDialog(
-            onConfirm = onConfirmDelete, onDismiss = onDismissDelete,
-        )
+    // Delete Error Dialog
+    if (uiState.showDeleteErrorDialog) {
+        DeleteErrorDialog(onDismiss = { viewModel.dismissDeleteErrorDialog() })
+    }
+
+    // Schedule Conflict Dialog
+    if (uiState.showScheduleConflictDialog) {
+        ScheduleConflictDialog(
+            onConfirm = { viewModel.confirmScheduleConflict() },
+            onDismiss = { viewModel.dismissScheduleConflictDialog() })
     }
 }

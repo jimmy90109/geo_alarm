@@ -49,6 +49,8 @@ fun MainScreen(
     viewModel: HomeViewModel,
     onAddAlarm: () -> Unit,
     onAlarmClick: (String) -> Unit,
+    onAddSchedule: () -> Unit,
+    onScheduleClick: (String) -> Unit,
     onNavigateToBatteryOptimization: () -> Unit,
 ) {
     val navController = rememberNavController()
@@ -128,6 +130,8 @@ fun MainScreen(
                     settingsViewModel = settingsViewModel,
                     onAddAlarm = onAddAlarm,
                     onAlarmClick = onAlarmClick,
+                    onAddSchedule = onAddSchedule,
+                    onScheduleClick = onScheduleClick,
                     onNavigateToBatteryOptimization = onNavigateToBatteryOptimization,
                     isLandscape = true
                 )
@@ -154,6 +158,8 @@ fun MainScreen(
                 settingsViewModel = settingsViewModel,
                 onAddAlarm = onAddAlarm,
                 onAlarmClick = onAlarmClick,
+                onAddSchedule = onAddSchedule,
+                onScheduleClick = onScheduleClick,
                 onNavigateToBatteryOptimization = onNavigateToBatteryOptimization,
                 isLandscape = false
             )
@@ -181,6 +187,8 @@ fun MainNavHost(
     settingsViewModel: SettingsViewModel,
     onAddAlarm: () -> Unit,
     onAlarmClick: (String) -> Unit,
+    onAddSchedule: () -> Unit,
+    onScheduleClick: (String) -> Unit,
     onNavigateToBatteryOptimization: () -> Unit,
     isLandscape: Boolean
 ) {
@@ -237,6 +245,8 @@ fun MainNavHost(
                 viewModel = viewModel,
                 onAddAlarm = onAddAlarm,
                 onAlarmClick = { alarm -> onAlarmClick(alarm.id) },
+                onAddSchedule = onAddSchedule,
+                onScheduleClick = { schedule -> onScheduleClick(schedule.schedule.id) },
                 onNavigateToBatteryOptimization = onNavigateToBatteryOptimization
             )
         }

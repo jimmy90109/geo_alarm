@@ -4,10 +4,21 @@ import android.content.Context
 import androidx.room.Database
 import androidx.room.Room
 import androidx.room.RoomDatabase
+import androidx.room.TypeConverters
+import androidx.room.AutoMigration
 
-@Database(entities = [Alarm::class], version = 1, exportSchema = false)
+@Database(
+    entities = [Alarm::class, AlarmSchedule::class],
+    version = 2,
+    exportSchema = true,
+    autoMigrations = [
+        AutoMigration(from = 1, to = 2)
+    ]
+)
+@TypeConverters(Converters::class)
 abstract class AppDatabase : RoomDatabase() {
     abstract fun alarmDao(): AlarmDao
+    abstract fun scheduleDao(): ScheduleDao
 
     companion object {
         @Volatile
@@ -19,7 +30,8 @@ abstract class AppDatabase : RoomDatabase() {
                     context.applicationContext,
                     AppDatabase::class.java,
                     "geo_alarm_database"
-                ).build()
+                )
+                .build()
                 INSTANCE = instance
                 instance
             }

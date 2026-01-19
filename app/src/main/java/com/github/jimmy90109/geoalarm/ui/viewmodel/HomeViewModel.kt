@@ -8,6 +8,7 @@ import android.content.Context
 import android.content.Intent
 import android.content.IntentFilter
 import android.content.pm.PackageManager
+import android.database.sqlite.SQLiteConstraintException
 import android.location.Location
 import android.util.Log
 import androidx.core.content.ContextCompat
@@ -15,13 +16,14 @@ import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.github.jimmy90109.geoalarm.data.Alarm
 import com.github.jimmy90109.geoalarm.data.AlarmRepository
+import com.github.jimmy90109.geoalarm.data.AlarmSchedule
 import com.github.jimmy90109.geoalarm.service.GeoAlarmService
 import com.google.android.gms.location.LocationServices
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 
 data class HomeUiState(
@@ -32,8 +34,14 @@ data class HomeUiState(
     val showNotificationPermissionDialog: Boolean = false,
     val showNotificationRationaleDialog: Boolean = false,
     val showAlreadyAtDestinationDialog: Boolean = false,
+    val showDeleteErrorDialog: Boolean = false,
+    val showScheduleConflictDialog: Boolean = false,
+    val conflictingAlarmId: String? = null, // Alarm ID that schedule tried to enable
     val monitoringProgress: Int = 0,
-    val monitoringDistance: Int? = null
+    val monitoringDistance: Int? = null,
+    val alarmToDelete: Alarm? = null, // Alarm pending deletion (shows confirmation dialog if not null)
+    val highlightedAlarmId: String? = null, // Alarm ID to highlight (flash animation)
+    val highlightedScheduleId: String? = null, // Schedule ID to highlight (flash animation)
 )
 
 /**
@@ -44,6 +52,8 @@ class HomeViewModel(
     application: Application,
     private val repository: AlarmRepository,
 ) : AndroidViewModel(application) {
+
+    private val fusedLocationClient = LocationServices.getFusedLocationProviderClient(application)
 
     private val progressReceiver = object : BroadcastReceiver() {
         override fun onReceive(context: Context?, intent: Intent?) {
@@ -77,19 +87,21 @@ class HomeViewModel(
     private val _uiState = MutableStateFlow(HomeUiState())
     val uiState: StateFlow<HomeUiState> = _uiState.asStateFlow()
 
-    val alarms = repository.allAlarms
+    val alarms = repository.allAlarms.stateIn(
+        viewModelScope,
+        SharingStarted.WhileSubscribed(5000),
+        emptyList()
+    )
+    val schedules = repository.allSchedulesWithAlarm.stateIn(
+        viewModelScope,
+        SharingStarted.WhileSubscribed(5000),
+        emptyList()
+    )
 
-    private val fusedLocationClient = LocationServices.getFusedLocationProviderClient(application)
-
-    // Helper to convert Flow to StateFlow
-    private fun <T> Flow<T>.asStateFlow(
-        scope: CoroutineScope, initialValue: T
-    ): StateFlow<T> {
-        val state = MutableStateFlow(initialValue)
-        scope.launch {
-            collect { state.value = it }
+    fun toggleSchedule(schedule: AlarmSchedule, isEnabled: Boolean) {
+        viewModelScope.launch {
+            repository.updateSchedule(schedule.copy(isEnabled = isEnabled))
         }
-        return state.asStateFlow()
     }
 
     // Dialog controls
@@ -141,17 +153,29 @@ class HomeViewModel(
         _uiState.value = _uiState.value.copy(showAlreadyAtDestinationDialog = false)
     }
 
-    // Alarm operations
-    fun deleteAlarm(alarm: Alarm) {
-        viewModelScope.launch {
-            repository.delete(alarm)
-        }
+    fun dismissDeleteErrorDialog() {
+        _uiState.value = _uiState.value.copy(showDeleteErrorDialog = false)
     }
 
-    fun restoreAlarm(alarm: Alarm) {
-        viewModelScope.launch {
-            repository.insert(alarm)
-        }
+    fun setHighlightedAlarm(alarmId: String) {
+        _uiState.value = _uiState.value.copy(
+            highlightedAlarmId = alarmId,
+            highlightedScheduleId = null
+        )
+    }
+
+    fun setHighlightedSchedule(scheduleId: String) {
+        _uiState.value = _uiState.value.copy(
+            highlightedScheduleId = scheduleId,
+            highlightedAlarmId = null
+        )
+    }
+
+    fun clearHighlight() {
+        _uiState.value = _uiState.value.copy(
+            highlightedAlarmId = null,
+            highlightedScheduleId = null
+        )
     }
 
     /**
@@ -255,5 +279,74 @@ class HomeViewModel(
             action = GeoAlarmService.ACTION_STOP
         }
         context.startService(serviceIntent)
+    }
+
+    fun handleScheduleIntent(alarmId: String) {
+        viewModelScope.launch {
+            val alarm = repository.getAlarm(alarmId) ?: return@launch
+            
+            // Check for currently enabled alarms directly from DB to avoid race condition
+            // (ViewModel state might be empty if just created)
+            val allAlarms = repository.getAllAlarmsOneShot()
+            val runningAlarm = allAlarms.find { it.isEnabled }
+            
+            if (runningAlarm != null) {
+                if (runningAlarm.id == alarm.id) {
+                    // Same alarm already running, do nothing (or refresh UI if needed)
+                    return@launch
+                } else {
+                    // Conflict: Another alarm is running
+                    _uiState.value = _uiState.value.copy(
+                        showScheduleConflictDialog = true,
+                        conflictingAlarmId = alarm.id
+                    )
+                }
+            } else {
+                // No alarm running, proceed normally
+                // Pass the fresh list from DB to ensure consistency
+                enableAlarm(alarm, allAlarms, getApplication())
+            }
+        }
+    }
+
+    fun dismissScheduleConflictDialog() {
+        _uiState.value = _uiState.value.copy(
+            showScheduleConflictDialog = false,
+            conflictingAlarmId = null
+        )
+    }
+
+    fun confirmScheduleConflict() {
+        val newAlarmId = _uiState.value.conflictingAlarmId ?: return
+        viewModelScope.launch {
+            // 1. Get current state from DB
+            val allAlarms = repository.getAllAlarmsOneShot()
+            
+            // 2. Disable running alarm(s)
+            val runningAlarm = allAlarms.find { it.isEnabled }
+            if (runningAlarm != null) {
+                // Manually disable and WAIT for completion
+                repository.update(runningAlarm.copy(isEnabled = false))
+                
+                // Stop Service
+                val serviceIntent = Intent(getApplication(), GeoAlarmService::class.java).apply {
+                    action = GeoAlarmService.ACTION_STOP
+                }
+                getApplication<Application>().startService(serviceIntent)
+            }
+            
+            // 3. Enable new alarm
+            val newAlarm = repository.getAlarm(newAlarmId)
+            if (newAlarm != null) {
+                // We create a "simulated" list where the running alarm is already disabled
+                // This ensures enableAlarm's internal check passes
+                val updatedAlarms = allAlarms.map { 
+                    if (it.id == runningAlarm?.id) it.copy(isEnabled = false) else it 
+                }
+                enableAlarm(newAlarm, updatedAlarms, getApplication())
+            }
+            
+            dismissScheduleConflictDialog()
+        }
     }
 }

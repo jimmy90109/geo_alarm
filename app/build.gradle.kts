@@ -58,6 +58,11 @@ android {
     }
 }
 
+// Room Schema Export Location
+ksp {
+    arg("room.schemaLocation", "$projectDir/schemas")
+}
+
 dependencies {
 
     implementation(libs.androidx.core.ktx)
