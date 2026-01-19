@@ -511,7 +511,7 @@ class GeoAlarmService : Service() {
                     .setContentText(
                         getString(R.string.notification_distance, remainingDistance, progress)
                     ).setSubText(getString(R.string.notification_balanced))
-                    .setProgress(100, progress, false).setShortCriticalText(alarmName)
+                    .setProgress(100, progress, false).setShortCriticalText("$progress%")
             }
 
             MonitoringZone.NEAR -> {
@@ -519,7 +519,7 @@ class GeoAlarmService : Service() {
                     .setContentText(
                         getString(R.string.notification_distance, remainingDistance, progress)
                     ).setSubText(getString(R.string.notification_high_accuracy))
-                    .setProgress(100, progress, false).setShortCriticalText(alarmName)
+                    .setProgress(100, progress, false).setShortCriticalText("$progress%")
             }
         }
 
