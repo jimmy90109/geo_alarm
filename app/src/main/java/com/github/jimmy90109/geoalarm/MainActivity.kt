@@ -36,7 +36,9 @@ class MainActivity : AppCompatActivity() {
             }
         }
 
-        handleIntent(intent)
+        if (savedInstanceState == null) {
+            handleIntent(intent)
+        }
     }
 
     override fun onNewIntent(intent: Intent) {

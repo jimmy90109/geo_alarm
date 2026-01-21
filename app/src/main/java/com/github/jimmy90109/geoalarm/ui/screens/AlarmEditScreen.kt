@@ -8,7 +8,10 @@ import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.foundation.background
+import androidx.compose.foundation.gestures.awaitEachGesture
+import androidx.compose.foundation.gestures.awaitFirstDown
 import androidx.compose.foundation.isSystemInDarkTheme
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -56,8 +59,11 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalHapticFeedback
+import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -93,6 +99,7 @@ fun AlarmEditScreen(
     val scope = rememberCoroutineScope()
     val context = LocalContext.current
     val configuration = LocalConfiguration.current
+    val haptic = LocalHapticFeedback.current
     val isLandscape = configuration.orientation == Configuration.ORIENTATION_LANDSCAPE
 
     val cameraPositionState = rememberCameraPositionState {
@@ -200,7 +207,10 @@ fun AlarmEditScreen(
                                 )
                             },
                             navigationIcon = {
-                                IconButton(onClick = onNavigateBack) {
+                                IconButton(onClick = {
+                                    haptic.performHapticFeedback(HapticFeedbackType.ContextClick)
+                                    onNavigateBack()
+                                }) {
                                     Icon(
                                         Icons.Default.ArrowBack, // Updated to non-deprecated
                                         contentDescription = stringResource(R.string.cancel),
@@ -208,7 +218,10 @@ fun AlarmEditScreen(
                                 }
                             },
                             actions = {
-                                IconButton(onClick = { launchAutocomplete() }) {
+                                IconButton(onClick = {
+                                    haptic.performHapticFeedback(HapticFeedbackType.ContextClick)
+                                    launchAutocomplete()
+                                }) {
                                     Icon(
                                         Icons.Filled.Search,
                                         contentDescription = stringResource(R.string.search_location)
@@ -220,7 +233,10 @@ fun AlarmEditScreen(
                         AlarmEditRadiusControl(
                             radius = uiState.radius,
                             onRadiusChange = { viewModel.updateRadius(it) },
-                            onSaveClick = { viewModel.showNameDialog() },
+                            onSaveClick = {
+                                haptic.performHapticFeedback(HapticFeedbackType.Confirm)
+                                viewModel.showNameDialog()
+                            },
                             saveEnabled = uiState.selectedPosition != null,
                             isEditMode = uiState.existingAlarm != null,
                             onDeleteClick = { viewModel.requestDeleteAlarm() },
@@ -257,7 +273,10 @@ fun AlarmEditScreen(
                         )
                     },
                     navigationIcon = {
-                        IconButton(onClick = onNavigateBack) {
+                        IconButton(onClick = {
+                            haptic.performHapticFeedback(HapticFeedbackType.ContextClick)
+                            onNavigateBack()
+                        }) {
                             Icon(
                                 Icons.Default.ArrowBack, // Updated to non-deprecated
                                 contentDescription = stringResource(R.string.cancel),
@@ -265,7 +284,10 @@ fun AlarmEditScreen(
                         }
                     },
                     actions = {
-                        IconButton(onClick = { launchAutocomplete() }) {
+                        IconButton(onClick = {
+                            haptic.performHapticFeedback(HapticFeedbackType.ContextClick)
+                            launchAutocomplete()
+                        }) {
                             Icon(
                                 Icons.Filled.Search,
                                 contentDescription = stringResource(R.string.search_location)
@@ -287,10 +309,16 @@ fun AlarmEditScreen(
                     AlarmEditRadiusControl(
                         radius = uiState.radius,
                         onRadiusChange = { viewModel.updateRadius(it) },
-                        onSaveClick = { viewModel.showNameDialog() },
+                        onSaveClick = {
+                            haptic.performHapticFeedback(HapticFeedbackType.Confirm)
+                            viewModel.showNameDialog()
+                        },
                         saveEnabled = uiState.selectedPosition != null,
                         isEditMode = uiState.existingAlarm != null,
-                        onDeleteClick = { viewModel.requestDeleteAlarm() },
+                        onDeleteClick = {
+                            haptic.performHapticFeedback(HapticFeedbackType.Reject)
+                            viewModel.requestDeleteAlarm()
+                        },
                         elevation = 10.dp,
                         shape = RoundedCornerShape(44.dp)
                     )
@@ -351,8 +379,7 @@ fun AlarmEditScreen(
     if (uiState.showDeleteConfirmDialog) {
         DeleteAlarmDialog(
             onConfirm = { viewModel.confirmDeleteAlarm() },
-            onDismiss = { viewModel.dismissDeleteConfirmDialog() }
-        )
+            onDismiss = { viewModel.dismissDeleteConfirmDialog() })
     }
 
     // Delete Error Dialog (when alarm is used in a schedule)
@@ -397,7 +424,15 @@ fun AlarmEditMapContent(
         if (isSystemInDarkTheme) Color(0xFF1d2c4d) else MaterialTheme.colorScheme.surfaceVariant
     var isMapLoaded by remember { mutableStateOf(false) }
 
-    Box(modifier = modifier.background(backgroundColor)) {
+    val haptic = LocalHapticFeedback.current
+    Box(modifier = modifier
+        .background(backgroundColor)
+        .pointerInput(Unit) {
+            awaitEachGesture {
+                awaitFirstDown(requireUnconsumed = false)
+                haptic.performHapticFeedback(HapticFeedbackType.ContextClick)
+            }
+        }) {
         GoogleMap(
             modifier = Modifier.matchParentSize(),
             cameraPositionState = cameraPositionState,
@@ -423,9 +458,7 @@ fun AlarmEditMapContent(
         }
 
         // Cover white flash
-        androidx.compose.animation.AnimatedVisibility(
-            visible = !isMapLoaded, exit = androidx.compose.animation.fadeOut()
-        ) {
+        AnimatedVisibility(visible = !isMapLoaded, exit = fadeOut()) {
             Box(
                 modifier = Modifier
                     .fillMaxSize()
@@ -449,6 +482,7 @@ fun AlarmEditRadiusControl(
     elevation: androidx.compose.ui.unit.Dp = 0.dp,
     shape: androidx.compose.ui.graphics.Shape = RoundedCornerShape(12.dp)
 ) {
+    val view = LocalView.current
     Card(
         shape = shape,
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
@@ -465,22 +499,24 @@ fun AlarmEditRadiusControl(
             )
             Spacer(modifier = Modifier.height(8.dp))
             Slider(
-                value = radius, onValueChange = onRadiusChange, valueRange = 500f..5000f, steps = 45
+                value = radius, onValueChange = {
+                    if (it != radius) {
+                        view.performHapticFeedback(android.view.HapticFeedbackConstants.CLOCK_TICK)
+                        onRadiusChange(it)
+                    }
+                }, valueRange = 500f..5000f, steps = 45
             )
             Spacer(modifier = Modifier.height(16.dp))
-            
+
             if (isEditMode) {
                 // Edit mode: Delete + Save buttons
                 ButtonGroup(
                     modifier = Modifier.fillMaxWidth()
                 ) {
                     FilledIconButton(
-                        onClick = onDeleteClick,
-                        shape = RoundedCornerShape(
-                            topStart = 28.dp, bottomStart = 28.dp,
-                            topEnd = 4.dp, bottomEnd = 4.dp
-                        ),
-                        colors = IconButtonDefaults.filledIconButtonColors(
+                        onClick = onDeleteClick, shape = RoundedCornerShape(
+                            topStart = 28.dp, bottomStart = 28.dp, topEnd = 4.dp, bottomEnd = 4.dp
+                        ), colors = IconButtonDefaults.filledIconButtonColors(
                             containerColor = MaterialTheme.colorScheme.errorContainer,
                             contentColor = MaterialTheme.colorScheme.onErrorContainer
                         )
@@ -491,13 +527,9 @@ fun AlarmEditRadiusControl(
                         )
                     }
                     Button(
-                        onClick = onSaveClick,
-                        enabled = saveEnabled,
-                        shape = RoundedCornerShape(
-                            topStart = 4.dp, bottomStart = 4.dp,
-                            topEnd = 28.dp, bottomEnd = 28.dp
-                        ),
-                        modifier = Modifier.weight(1f)
+                        onClick = onSaveClick, enabled = saveEnabled, shape = RoundedCornerShape(
+                            topStart = 4.dp, bottomStart = 4.dp, topEnd = 28.dp, bottomEnd = 28.dp
+                        ), modifier = Modifier.weight(1f)
                     ) {
                         Text(stringResource(R.string.save))
                     }

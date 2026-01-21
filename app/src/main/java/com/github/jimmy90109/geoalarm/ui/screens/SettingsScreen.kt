@@ -341,8 +341,12 @@ fun SettingsCard(
     enabled: Boolean = true,
     subtitle: String? = null
 ) {
+    val haptic = androidx.compose.ui.platform.LocalHapticFeedback.current
     Card(
-        onClick = onClick, enabled = enabled,
+        onClick = {
+            haptic.performHapticFeedback(androidx.compose.ui.hapticfeedback.HapticFeedbackType.ContextClick)
+            onClick()
+        }, enabled = enabled,
         colors = CardDefaults.cardColors(
             containerColor = MaterialTheme.colorScheme.surfaceContainer,
             disabledContainerColor = MaterialTheme.colorScheme.surfaceContainer.copy(alpha = 0.6f)
@@ -389,11 +393,15 @@ fun SettingsSelectionItem(
     enabled: Boolean,
     onClick: () -> Unit,
 ) {
+    val haptic = androidx.compose.ui.platform.LocalHapticFeedback.current
     Row(
         Modifier
             .fillMaxWidth()
             .selectable(
-                selected = selected, role = Role.RadioButton, onClick = onClick, enabled = enabled
+                selected = selected, role = Role.RadioButton, onClick = {
+                    haptic.performHapticFeedback(androidx.compose.ui.hapticfeedback.HapticFeedbackType.ContextClick)
+                    onClick()
+                }, enabled = enabled
             )
             .padding(
                 vertical = 16.dp, horizontal = 24.dp,

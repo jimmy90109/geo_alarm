@@ -36,11 +36,14 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.zIndex
+import androidx.core.view.HapticFeedbackConstantsCompat
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.github.jimmy90109.geoalarm.R
 import com.github.jimmy90109.geoalarm.data.Alarm
@@ -90,6 +93,7 @@ fun HomeScreen(
     val schedules by viewModel.schedules.collectAsStateWithLifecycle(initialValue = emptyList())
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val context = LocalContext.current
+    val haptic = LocalHapticFeedback.current
     val scrollBehavior = TopAppBarDefaults.exitUntilCollapsedScrollBehavior()
 
     // Permissions
@@ -259,7 +263,10 @@ fun HomeScreen(
                         alarm = targetAlarm,
                         progress = uiState.monitoringProgress,
                         distanceMeters = uiState.monitoringDistance,
-                        onStopAlarm = { viewModel.disableAlarm(targetAlarm, context) },
+                        onStopAlarm = {
+                            haptic.performHapticFeedback(HapticFeedbackType.Confirm)
+                            viewModel.disableAlarm(targetAlarm, context)
+                        },
                     )
                 } else {
                     Box(modifier = Modifier.fillMaxSize()) {

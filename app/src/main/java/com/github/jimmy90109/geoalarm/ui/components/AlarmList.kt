@@ -28,6 +28,8 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
+import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import com.github.jimmy90109.geoalarm.R
@@ -52,6 +54,8 @@ fun AlarmList(
     highlightedScheduleId: String? = null,
     onHighlightFinished: () -> Unit = {},
 ) {
+    val haptic = LocalHapticFeedback.current
+
     LazyVerticalGrid(
         columns = GridCells.Adaptive(300.dp),
         modifier = Modifier.fillMaxSize(),
@@ -74,7 +78,12 @@ fun AlarmList(
                 ScheduleItem(
                     scheduleWithAlarm = item,
                     onClick = { onScheduleClick(item) },
-                    onToggle = { isChecked -> onToggleSchedule(item.schedule, isChecked) },
+                    onToggle = { isChecked ->
+                        val type = if (isChecked) HapticFeedbackType.ToggleOff
+                        else HapticFeedbackType.ToggleOn
+                        haptic.performHapticFeedback(type)
+                        onToggleSchedule(item.schedule, isChecked)
+                    },
                     isHighlighted = item.schedule.id == highlightedScheduleId,
                     onHighlightFinished = onHighlightFinished
                 )
@@ -120,6 +129,7 @@ fun AlarmItem(
 ) {
     val containerColor = MaterialTheme.colorScheme.surfaceContainer
     val highlightColor = MaterialTheme.colorScheme.primaryContainer
+    val haptic = LocalHapticFeedback.current
     val animatedColor = remember { Animatable(containerColor) }
 
     LaunchedEffect(isHighlighted) {
@@ -134,12 +144,14 @@ fun AlarmItem(
     }
 
     Card(
+        onClick = {
+            haptic.performHapticFeedback(HapticFeedbackType.ContextClick)
+            onClick()
+        },
         colors = CardDefaults.cardColors(
             containerColor = animatedColor.value
         ),
-        modifier = modifier
-            .fillMaxWidth()
-            .clickable(onClick = onClick),
+        modifier = modifier.fillMaxWidth(),
     ) {
         Row(
             modifier = Modifier
@@ -155,7 +167,10 @@ fun AlarmItem(
             )
 
             Button(
-                onClick = { onToggle(true) },
+                onClick = {
+                    haptic.performHapticFeedback(HapticFeedbackType.Reject)
+                    onToggle(true)
+                },
             ) {
                 Text(stringResource(R.string.button_start))
             }
@@ -166,7 +181,6 @@ fun AlarmItem(
 /**
  * A list item representing a single schedule.
  */
-@OptIn(ExperimentalFoundationApi::class)
 @Composable
 fun ScheduleItem(
     scheduleWithAlarm: ScheduleWithAlarm,
@@ -176,6 +190,8 @@ fun ScheduleItem(
     isHighlighted: Boolean = false,
     onHighlightFinished: () -> Unit = {},
 ) {
+    val haptic = LocalHapticFeedback.current
+
     val schedule = scheduleWithAlarm.schedule
     val alarm = scheduleWithAlarm.alarm
 
@@ -195,14 +211,14 @@ fun ScheduleItem(
     }
 
     Card(
+        onClick = {
+            haptic.performHapticFeedback(HapticFeedbackType.ContextClick)
+            onClick()
+        },
         colors = CardDefaults.cardColors(
             containerColor = animatedColor.value
         ),
-        modifier = modifier
-            .fillMaxWidth()
-            .combinedClickable(
-                onClick = onClick,
-            ),
+        modifier = modifier.fillMaxWidth(),
     ) {
         Row(
             modifier = Modifier
