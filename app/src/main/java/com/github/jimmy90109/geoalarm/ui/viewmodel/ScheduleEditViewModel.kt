@@ -7,6 +7,7 @@ import com.github.jimmy90109.geoalarm.data.Alarm
 import com.github.jimmy90109.geoalarm.data.AlarmRepository
 import com.github.jimmy90109.geoalarm.data.AlarmSchedule
 import com.github.jimmy90109.geoalarm.service.ScheduleManager
+import com.github.jimmy90109.geoalarm.utils.SharedPreferenceManager
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
@@ -24,16 +25,30 @@ data class ScheduleEditUiState(
     val isSaving: Boolean = false,
     val scheduleId: String? = null, // Null if new
     val savedScheduleId: String? = null, // ID of the schedule that was just saved (for highlight animation)
-    val showDeleteConfirmDialog: Boolean = false
+    val showDeleteConfirmDialog: Boolean = false,
+    val showOnboarding: Boolean = false,
 )
 
 class ScheduleEditViewModel(
     application: Application,
-    private val repository: AlarmRepository
+    private val repository: AlarmRepository,
+    private val sharedPreferenceManager: SharedPreferenceManager
 ) : AndroidViewModel(application) {
 
     private val _uiState = MutableStateFlow(ScheduleEditUiState())
     val uiState: StateFlow<ScheduleEditUiState> = _uiState.asStateFlow()
+
+    init {
+        // Check if user has seen onboarding
+        if (!sharedPreferenceManager.hasSeenScheduleOnboarding) {
+            _uiState.value = _uiState.value.copy(showOnboarding = true)
+        }
+    }
+    
+    fun dismissOnboarding() {
+        sharedPreferenceManager.hasSeenScheduleOnboarding = true
+        _uiState.value = _uiState.value.copy(showOnboarding = false)
+    }
     
     // ScheduleManager instance
     private val scheduleManager = ScheduleManager(application)
@@ -43,8 +58,9 @@ class ScheduleEditViewModel(
 
     fun loadSchedule(scheduleId: String?) {
         if (scheduleId == null) {
-            // New Schedule default
-            _uiState.value = ScheduleEditUiState()
+            // New Schedule default - preserve onboarding state
+            val currentShowOnboarding = _uiState.value.showOnboarding
+            _uiState.value = ScheduleEditUiState(showOnboarding = currentShowOnboarding)
             return
         }
 

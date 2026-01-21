@@ -1,6 +1,7 @@
 package com.github.jimmy90109.geoalarm.ui.screens
 
 import android.content.res.Configuration
+import android.view.HapticFeedbackConstants
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -28,6 +29,7 @@ import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.ArrowDropDown
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.outlined.Info
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonGroup
 import androidx.compose.material3.Card
@@ -54,16 +56,22 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.LocalConfiguration
+import androidx.compose.ui.platform.LocalHapticFeedback
+import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.github.jimmy90109.geoalarm.R
 import com.github.jimmy90109.geoalarm.ui.components.DeleteScheduleDialog
+import com.github.jimmy90109.geoalarm.ui.components.ScheduleOnboardingSheet
 import com.github.jimmy90109.geoalarm.ui.viewmodel.ScheduleEditViewModel
+import kotlinx.coroutines.flow.drop
 import kotlinx.coroutines.launch
 import java.util.Calendar
 
@@ -87,8 +95,30 @@ fun ScheduleEditScreen(
         )
     }
 
+
     val configuration = LocalConfiguration.current
     val isLandscape = configuration.orientation == Configuration.ORIENTATION_LANDSCAPE
+
+    val view = LocalView.current
+    val haptic = LocalHapticFeedback.current
+
+    LaunchedEffect(timePickerState) {
+        snapshotFlow { timePickerState.hour to timePickerState.minute }.drop(1).collect {
+            view.performHapticFeedback(HapticFeedbackConstants.CLOCK_TICK)
+        }
+    }
+
+    // Onboarding Bottom Sheet state - declared early so TopAppBar can access it
+    var showOnboardingSheet by remember { mutableStateOf(false) }
+    val onboardingSheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
+    val coroutineScope = rememberCoroutineScope()
+
+    LaunchedEffect(uiState.showOnboarding) {
+        if (uiState.showOnboarding) {
+            kotlinx.coroutines.delay(500) // Delay before showing
+            showOnboardingSheet = true
+        }
+    }
 
     Box(modifier = Modifier.fillMaxSize()) {
         if (isLandscape) {
@@ -115,7 +145,11 @@ fun ScheduleEditScreen(
                     Spacer(modifier = Modifier.height(24.dp))
                     DayOfWeekSelector(
                         selectedDays = uiState.daysOfWeek,
-                        onDayToggle = { viewModel.toggleDay(it) })
+                        onDayToggle = {
+                            haptic.performHapticFeedback(HapticFeedbackType.ToggleOn)
+                            viewModel.toggleDay(it)
+                        },
+                    )
                 }
 
                 // Controls Overlay - Right Side
@@ -142,10 +176,26 @@ fun ScheduleEditScreen(
                                 )
                             },
                             navigationIcon = {
-                                IconButton(onClick = onBack) {
+                                IconButton(onClick = {
+                                    haptic.performHapticFeedback(HapticFeedbackType.ContextClick)
+                                    onBack()
+                                }) {
                                     Icon(
                                         Icons.AutoMirrored.Filled.ArrowBack,
                                         contentDescription = stringResource(R.string.back)
+                                    )
+                                }
+                            },
+                            actions = {
+                                IconButton(
+                                    onClick = {
+                                        haptic.performHapticFeedback(HapticFeedbackType.ContextClick)
+                                        showOnboardingSheet = true
+                                    },
+                                ) {
+                                    Icon(
+                                        Icons.Outlined.Info,
+                                        contentDescription = stringResource(R.string.schedule_onboarding_title)
                                     )
                                 }
                             },
@@ -166,7 +216,10 @@ fun ScheduleEditScreen(
                                 AlarmSelector(
                                     alarms = alarms,
                                     selectedAlarmId = uiState.selectedAlarmId,
-                                    onAlarmSelected = { viewModel.selectAlarm(it) },
+                                    onAlarmSelected = {
+                                        haptic.performHapticFeedback(HapticFeedbackType.ToggleOn)
+                                        viewModel.selectAlarm(it)
+                                    },
                                 )
                                 Spacer(modifier = Modifier.height(8.dp))
                                 ButtonGroup(
@@ -174,14 +227,15 @@ fun ScheduleEditScreen(
                                 ) {
                                     if (scheduleId != null) {
                                         FilledIconButton(
-                                            onClick = { viewModel.requestDeleteSchedule() },
-                                            shape = RoundedCornerShape(
+                                            onClick = {
+                                                haptic.performHapticFeedback(HapticFeedbackType.Reject)
+                                                viewModel.requestDeleteSchedule()
+                                            }, shape = RoundedCornerShape(
                                                 topStart = 28.dp,
                                                 bottomStart = 28.dp,
                                                 topEnd = 4.dp,
                                                 bottomEnd = 4.dp
-                                            ),
-                                            colors = IconButtonDefaults.filledIconButtonColors(
+                                            ), colors = IconButtonDefaults.filledIconButtonColors(
                                                 containerColor = MaterialTheme.colorScheme.errorContainer,
                                                 contentColor = MaterialTheme.colorScheme.onErrorContainer
                                             )
@@ -194,6 +248,7 @@ fun ScheduleEditScreen(
                                     }
                                     Button(
                                         onClick = {
+                                            haptic.performHapticFeedback(HapticFeedbackType.Confirm)
                                             viewModel.setTime(
                                                 timePickerState.hour,
                                                 timePickerState.minute,
@@ -240,10 +295,26 @@ fun ScheduleEditScreen(
                     )
                 },
                     navigationIcon = {
-                        IconButton(onClick = onBack) {
+                        IconButton(onClick = {
+                            haptic.performHapticFeedback(HapticFeedbackType.ContextClick)
+                            onBack()
+                        }) {
                             Icon(
                                 Icons.AutoMirrored.Filled.ArrowBack,
                                 contentDescription = stringResource(R.string.back)
+                            )
+                        }
+                    },
+                    actions = {
+                        IconButton(
+                            onClick = {
+                                haptic.performHapticFeedback(HapticFeedbackType.ContextClick)
+                                showOnboardingSheet = true
+                            },
+                        ) {
+                            Icon(
+                                Icons.Outlined.Info,
+                                contentDescription = stringResource(R.string.schedule_onboarding_title)
                             )
                         }
                     },
@@ -271,7 +342,11 @@ fun ScheduleEditScreen(
                     Spacer(modifier = Modifier.height(24.dp))
                     DayOfWeekSelector(
                         selectedDays = uiState.daysOfWeek,
-                        onDayToggle = { viewModel.toggleDay(it) })
+                        onDayToggle = {
+                            haptic.performHapticFeedback(HapticFeedbackType.ToggleOn)
+                            viewModel.toggleDay(it)
+                        },
+                    )
                 }
 
                 // Bottom Control Card
@@ -290,21 +365,26 @@ fun ScheduleEditScreen(
                         AlarmSelector(
                             alarms = alarms,
                             selectedAlarmId = uiState.selectedAlarmId,
-                            onAlarmSelected = { viewModel.selectAlarm(it) })
+                            onAlarmSelected = {
+                                haptic.performHapticFeedback(HapticFeedbackType.ToggleOn)
+                                viewModel.selectAlarm(it)
+                            },
+                        )
                         Spacer(modifier = Modifier.height(8.dp))
                         ButtonGroup(
                             modifier = Modifier.fillMaxWidth()
                         ) {
                             if (scheduleId != null) {
                                 FilledIconButton(
-                                    onClick = { viewModel.requestDeleteSchedule() },
-                                    shape = RoundedCornerShape(
+                                    onClick = {
+                                        haptic.performHapticFeedback(HapticFeedbackType.Reject)
+                                        viewModel.requestDeleteSchedule()
+                                    }, shape = RoundedCornerShape(
                                         topStart = 28.dp,
                                         bottomStart = 28.dp,
                                         topEnd = 4.dp,
                                         bottomEnd = 4.dp
-                                    ),
-                                    colors = IconButtonDefaults.filledIconButtonColors(
+                                    ), colors = IconButtonDefaults.filledIconButtonColors(
                                         containerColor = MaterialTheme.colorScheme.errorContainer,
                                         contentColor = MaterialTheme.colorScheme.onErrorContainer
                                     )
@@ -317,6 +397,7 @@ fun ScheduleEditScreen(
                             }
                             Button(
                                 onClick = {
+                                    haptic.performHapticFeedback(HapticFeedbackType.Confirm)
                                     viewModel.setTime(
                                         timePickerState.hour, timePickerState.minute
                                     )
@@ -344,7 +425,21 @@ fun ScheduleEditScreen(
     if (uiState.showDeleteConfirmDialog) {
         DeleteScheduleDialog(
             onConfirm = { viewModel.confirmDeleteSchedule(onBack) },
-            onDismiss = { viewModel.dismissDeleteConfirmDialog() }
+            onDismiss = { viewModel.dismissDeleteConfirmDialog() },
+        )
+    }
+
+    // Onboarding Bottom Sheet
+    if (showOnboardingSheet) {
+        ScheduleOnboardingSheet(
+            onDismissRequest = {
+                coroutineScope.launch {
+                    onboardingSheetState.hide() // Animate slide down
+                    showOnboardingSheet = false
+                    viewModel.dismissOnboarding()
+                }
+            },
+            sheetState = onboardingSheetState,
         )
     }
 }
@@ -401,13 +496,17 @@ fun AlarmSelector(
     selectedAlarmId: String?,
     onAlarmSelected: (String) -> Unit
 ) {
+    val haptic = LocalHapticFeedback.current
     var showSheet by remember { mutableStateOf(false) }
     val selectedAlarm = alarms.find { it.id == selectedAlarmId }
     val sheetState = rememberModalBottomSheetState()
     val scope = rememberCoroutineScope()
 
     OutlinedCard(
-        onClick = { showSheet = true },
+        onClick = {
+            haptic.performHapticFeedback(HapticFeedbackType.ToggleOn)
+            showSheet = true
+        },
         shape = CircleShape,
         modifier = Modifier.fillMaxWidth(),
     ) {

@@ -122,4 +122,7 @@
     <string name="mon_to_fri">週一至週五</string>
     <string name="every_day">每天</string>
     <string name="weekends">週末</string>
+    <string name="schedule_onboarding_title">排程運作說明</string>
+    <string name="schedule_onboarding_message">設定的時間到達時，系統會發送確認通知。\n您需要點擊通知，該鬧鐘才會真正啟用。</string>
+    <string name="schedule_onboarding_button">我瞭解了</string>
 </resources>

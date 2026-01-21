@@ -16,18 +16,18 @@
             C216,54 178,16 128,16
             Z
 
-            M128,60
-            A44,44 0 1,1 127.9,60
+            M128,44
+            A60,60 0 1,1 127.9,44
             Z"/>
 
     <!-- 時針 -->
     <path
         android:fillColor="#FFFFFFFF"
         android:pathData="
-            M122,104
-            h12
-            v-30
-            h-12
+            M119,104
+            h18
+            v-45
+            h-18
             Z"/>
 
     <!-- 分針 -->
@@ -35,8 +35,8 @@
         android:fillColor="#FFFFFFFF"
         android:pathData="
             M128,104
-            l30,14
-            -6,10
-            -30,-14
+            l45,21
+            -9,15
+            -45,-21
             Z"/>
 </vector>

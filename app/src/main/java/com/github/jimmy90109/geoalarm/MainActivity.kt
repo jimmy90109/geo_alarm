@@ -23,7 +23,12 @@ class MainActivity : AppCompatActivity() {
         val app = application as GeoAlarmApplication
         val repository = app.repository
         val settingsRepository = app.settingsRepository
-        val viewModelFactory = ViewModelFactory(app, repository, settingsRepository)
+        val sharedPreferenceManager = app.sharedPreferenceManager
+        val viewModelFactory = ViewModelFactory(
+            app,
+            repository, settingsRepository,
+            sharedPreferenceManager,
+        )
 
         setContent {
             GeoAlarmTheme {
@@ -36,7 +41,9 @@ class MainActivity : AppCompatActivity() {
             }
         }
 
-        handleIntent(intent)
+        if (savedInstanceState == null) {
+            handleIntent(intent)
+        }
     }
 
     override fun onNewIntent(intent: Intent) {
@@ -67,14 +74,18 @@ class MainActivity : AppCompatActivity() {
         } else if (intent.action == "ENABLE_ALARM_FROM_SCHEDULE") {
             val alarmId = intent.getStringExtra("ALARM_ID")
             if (!alarmId.isNullOrEmpty()) {
-                
+
                 // Get Application and Repository
                 val app = application as GeoAlarmApplication
-                val factory = ViewModelFactory(app, app.repository, app.settingsRepository)
-                
+                val factory = ViewModelFactory(
+                    app, app.repository,
+                    app.settingsRepository,
+                    app.sharedPreferenceManager,
+                )
+
                 // Get ViewModel (Activity Scoped)
                 val viewModel = ViewModelProvider(this, factory)[HomeViewModel::class.java]
-                
+
                 viewModel.handleScheduleIntent(alarmId)
             }
         }

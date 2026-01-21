@@ -200,12 +200,13 @@ fun ActiveAlarmScreen(
                 ) {
                     Button(
                         onClick = onStopAlarm,
-                        modifier = Modifier.height(56.dp),
-                        shape = MaterialTheme.shapes.extraLarge
                     ) {
                         Text(
+                            modifier = Modifier.padding(16.dp),
                             text = stringResource(if (isArrived) R.string.notification_turn_off else R.string.cancel_alarm),
-                            style = MaterialTheme.typography.titleMedium
+                            style = MaterialTheme.typography.titleLarge.copy(
+                                fontWeight = FontWeight.Bold,
+                            )
                         )
                     }
                 }
@@ -260,12 +261,9 @@ fun ActiveAlarmScreen(
                 // Stop Button
                 Button(
                     onClick = onStopAlarm,
-                    modifier = Modifier
-                        .height(56.dp)
-                        .fillMaxSize(0.6f), // 60% width
-                    shape = MaterialTheme.shapes.extraLarge
                 ) {
                     Text(
+                        modifier = Modifier.padding(16.dp),
                         text = stringResource(if (isArrived) R.string.notification_turn_off else R.string.cancel_alarm),
                         style = MaterialTheme.typography.titleLarge.copy(
                             fontWeight = FontWeight.Bold,

@@ -36,7 +36,8 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
 import com.github.jimmy90109.geoalarm.R
 import com.github.jimmy90109.geoalarm.data.Alarm
-
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
+import androidx.compose.ui.platform.LocalHapticFeedback
 @OptIn(ExperimentalMaterial3ExpressiveApi::class, ExperimentalMaterial3Api::class)
 @Composable
 fun HomeFabMenu(
@@ -47,6 +48,7 @@ fun HomeFabMenu(
     onAddAlarm: () -> Unit,
     modifier: Modifier = Modifier
 ) {
+    val haptic = LocalHapticFeedback.current
     FloatingActionButtonMenu(
         modifier = modifier,
         expanded = expanded,
@@ -55,7 +57,10 @@ fun HomeFabMenu(
             val fabFocusRequester = remember { FocusRequester() }
             LargeFloatingActionButton(
                 modifier = Modifier.focusRequester(fabFocusRequester),
-                onClick = onToggle,
+                onClick = {
+                    haptic.performHapticFeedback(HapticFeedbackType.ContextClick)
+                    onToggle()
+                },
                 containerColor = if (expanded) MaterialTheme.colorScheme.secondaryContainer
                 else MaterialTheme.colorScheme.primaryContainer,
                 contentColor = if (expanded) MaterialTheme.colorScheme.onSecondaryContainer
@@ -90,6 +95,7 @@ fun HomeFabMenu(
                         return@onKeyEvent false
                     },
                 onClick = {
+                    haptic.performHapticFeedback(HapticFeedbackType.ContextClick)
                     onToggle() // Close menu
                     onAddSchedule()
                 },
@@ -111,6 +117,7 @@ fun HomeFabMenu(
             )
         },
             onClick = {
+                haptic.performHapticFeedback(HapticFeedbackType.LongPress)
                 onToggle() // Close menu
                 onAddAlarm()
             },

@@ -124,4 +124,7 @@
     <string name="mon_to_fri">Mon-Fri</string>
     <string name="every_day">Every day</string>
     <string name="weekends">Weekends</string>
+    <string name="schedule_onboarding_title">Schedule Operation Explanation</string>
+    <string name="schedule_onboarding_message">When the set time is reached, the system will send a confirmation notification.\nYou need to click the notification for the alarm to actually enable.</string>
+    <string name="schedule_onboarding_button">I Understand</string>
 </resources>

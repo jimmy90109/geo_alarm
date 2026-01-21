@@ -32,6 +32,8 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import com.github.jimmy90109.geoalarm.R
 
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
+import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.annotation.StringRes
 
 enum class NavTab(
@@ -62,6 +64,7 @@ fun BottomNavBar(
             modifier = Modifier.padding(vertical = 8.dp, horizontal = 8.dp),
         ) {
             val tabs = NavTab.entries.toTypedArray()
+            val haptic = LocalHapticFeedback.current
             tabs.forEachIndexed { index, tab ->
                 val selected = currentTab == tab
                 val onClick = when (tab) {
@@ -76,7 +79,10 @@ fun BottomNavBar(
                 }
 
                 ToggleButton(
-                    checked = selected, onCheckedChange = { onClick() }, shapes = shape
+                    checked = selected, onCheckedChange = {
+                        haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                        onClick()
+                    }, shapes = shape
                 ) {
                     Row(
                         verticalAlignment = Alignment.CenterVertically,
@@ -150,13 +156,17 @@ private fun RailItem(
         containerColor = if (selected) MaterialTheme.colorScheme.primaryContainer else Color.Transparent,
         contentColor = if (selected) MaterialTheme.colorScheme.onPrimaryContainer else MaterialTheme.colorScheme.onSurfaceVariant
     )
+    val haptic = LocalHapticFeedback.current
 
     Surface(
         color = colors.containerColor,
         shape = CircleShape,
         modifier = Modifier
             .clip(CircleShape)
-            .clickable(onClick = onClick)
+            .clickable(onClick = {
+                haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                onClick()
+            })
     ) {
         Column(
             horizontalAlignment = Alignment.CenterHorizontally,

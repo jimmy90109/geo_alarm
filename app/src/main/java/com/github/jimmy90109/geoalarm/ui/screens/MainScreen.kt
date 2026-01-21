@@ -67,7 +67,10 @@ fun MainScreen(
     val context = LocalContext.current
     val app = context.applicationContext as GeoAlarmApplication
     val factory = ViewModelFactory(
-        app, app.repository, app.settingsRepository
+        app,
+        app.repository,
+        app.settingsRepository,
+        app.sharedPreferenceManager,
     )
 
     // Get the SettingsViewModel
@@ -143,7 +146,7 @@ fun MainScreen(
         // Animation States (Only for Portrait)
         // Center BottomNavBar if on Settings OR if an alarm is active (ActiveAlarmScreen)
         val shouldCenterBottomBar = isSettings || hasActiveAlarm
-        
+
         val alignmentBias by animateFloatAsState(
             targetValue = if (shouldCenterBottomBar) 0f else -1f, label = "bias"
         )
