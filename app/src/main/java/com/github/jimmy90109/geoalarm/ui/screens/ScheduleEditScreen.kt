@@ -29,6 +29,7 @@ import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.ArrowDropDown
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.outlined.Info
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonGroup
 import androidx.compose.material3.Card
@@ -65,10 +66,10 @@ import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
-import androidx.core.view.HapticFeedbackConstantsCompat
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.github.jimmy90109.geoalarm.R
 import com.github.jimmy90109.geoalarm.ui.components.DeleteScheduleDialog
+import com.github.jimmy90109.geoalarm.ui.components.ScheduleOnboardingSheet
 import com.github.jimmy90109.geoalarm.ui.viewmodel.ScheduleEditViewModel
 import kotlinx.coroutines.flow.drop
 import kotlinx.coroutines.launch
@@ -104,6 +105,18 @@ fun ScheduleEditScreen(
     LaunchedEffect(timePickerState) {
         snapshotFlow { timePickerState.hour to timePickerState.minute }.drop(1).collect {
             view.performHapticFeedback(HapticFeedbackConstants.CLOCK_TICK)
+        }
+    }
+
+    // Onboarding Bottom Sheet state - declared early so TopAppBar can access it
+    var showOnboardingSheet by remember { mutableStateOf(false) }
+    val onboardingSheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
+    val coroutineScope = rememberCoroutineScope()
+
+    LaunchedEffect(uiState.showOnboarding) {
+        if (uiState.showOnboarding) {
+            kotlinx.coroutines.delay(500) // Delay before showing
+            showOnboardingSheet = true
         }
     }
 
@@ -170,6 +183,19 @@ fun ScheduleEditScreen(
                                     Icon(
                                         Icons.AutoMirrored.Filled.ArrowBack,
                                         contentDescription = stringResource(R.string.back)
+                                    )
+                                }
+                            },
+                            actions = {
+                                IconButton(
+                                    onClick = {
+                                        haptic.performHapticFeedback(HapticFeedbackType.ContextClick)
+                                        showOnboardingSheet = true
+                                    },
+                                ) {
+                                    Icon(
+                                        Icons.Outlined.Info,
+                                        contentDescription = stringResource(R.string.schedule_onboarding_title)
                                     )
                                 }
                             },
@@ -276,6 +302,19 @@ fun ScheduleEditScreen(
                             Icon(
                                 Icons.AutoMirrored.Filled.ArrowBack,
                                 contentDescription = stringResource(R.string.back)
+                            )
+                        }
+                    },
+                    actions = {
+                        IconButton(
+                            onClick = {
+                                haptic.performHapticFeedback(HapticFeedbackType.ContextClick)
+                                showOnboardingSheet = true
+                            },
+                        ) {
+                            Icon(
+                                Icons.Outlined.Info,
+                                contentDescription = stringResource(R.string.schedule_onboarding_title)
                             )
                         }
                     },
@@ -387,6 +426,20 @@ fun ScheduleEditScreen(
         DeleteScheduleDialog(
             onConfirm = { viewModel.confirmDeleteSchedule(onBack) },
             onDismiss = { viewModel.dismissDeleteConfirmDialog() },
+        )
+    }
+
+    // Onboarding Bottom Sheet
+    if (showOnboardingSheet) {
+        ScheduleOnboardingSheet(
+            onDismissRequest = {
+                coroutineScope.launch {
+                    onboardingSheetState.hide() // Animate slide down
+                    showOnboardingSheet = false
+                    viewModel.dismissOnboarding()
+                }
+            },
+            sheetState = onboardingSheetState,
         )
     }
 }
