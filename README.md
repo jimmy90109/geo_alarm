@@ -1,5 +1,11 @@
 # GeoAlarm - A Location-Based Alarm Clock
 
+![Downloads](https://img.shields.io/github/downloads/jimmy90109/geo_alarm/total)
+![GitHub release (latest by date)](https://img.shields.io/github/v/release/jimmy90109/geo_alarm)
+![GitHub last commit](https://img.shields.io/github/last-commit/jimmy90109/geo_alarm)
+![License](https://img.shields.io/badge/License-Apache%202.0-blue.svg)
+
+![Min SDK](https://img.shields.io/badge/Min%20SDK-31%2B-orange.svg)
 ![Platform: Android](https://img.shields.io/badge/Platform-Android-green.svg)
 ![Language: Kotlin](https://img.shields.io/badge/Language-Kotlin-purple.svg)
 ![UI: Jetpack Compose](https://img.shields.io/badge/UI-Jetpack%20Compose-blue.svg)
