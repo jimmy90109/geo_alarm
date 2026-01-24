@@ -349,4 +349,22 @@ class HomeViewModel(
             dismissScheduleConflictDialog()
         }
     }
+
+    /**
+     * Start a test alarm that simulates arrival after 10 seconds.
+     * Useful for testing without actually moving.
+     */
+    fun startTestAlarm(context: Context) {
+        val serviceIntent = Intent(context, GeoAlarmService::class.java).apply {
+            action = GeoAlarmService.ACTION_TEST
+            putExtra(GeoAlarmService.EXTRA_ALARM_ID, "test")
+            putExtra(GeoAlarmService.EXTRA_NAME, "Test Alarm")
+        }
+        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.O) {
+            context.startForegroundService(serviceIntent)
+        } else {
+            context.startService(serviceIntent)
+        }
+    }
 }
+

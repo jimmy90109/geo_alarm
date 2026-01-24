@@ -19,6 +19,7 @@ import androidx.core.app.NotificationCompat
 import com.github.jimmy90109.geoalarm.GeoAlarmApplication
 import com.github.jimmy90109.geoalarm.MainActivity
 import com.github.jimmy90109.geoalarm.R
+import com.github.jimmy90109.geoalarm.utils.AudioUtils
 import com.github.jimmy90109.geoalarm.utils.HyperIslandHelper
 import com.github.jimmy90109.geoalarm.utils.WakeLocker
 import com.google.android.gms.location.FusedLocationProviderClient
@@ -30,13 +31,21 @@ import com.google.android.gms.location.LocationRequest
 import com.google.android.gms.location.LocationResult
 import com.google.android.gms.location.LocationServices
 import com.google.android.gms.location.Priority
+import android.media.MediaPlayer
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.cancel
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.launch
 
 class GeoAlarmService : Service() {
 
     companion object {
         const val ACTION_START = "ACTION_START"
         const val ACTION_STOP = "ACTION_STOP"
+        const val ACTION_TEST = "ACTION_TEST"
         const val ACTION_GEOFENCE_TRIGGERED = "ACTION_GEOFENCE_TRIGGERED"
         const val ACTION_NOTIFICATION_DISMISSED = "ACTION_NOTIFICATION_DISMISSED"
         const val ACTION_WARNING_GEOFENCE_TRIGGERED = "ACTION_WARNING_GEOFENCE_TRIGGERED"
@@ -99,6 +108,8 @@ class GeoAlarmService : Service() {
     private var isArrived = false
 
     private var vibrator: Vibrator? = null
+    private var mediaPlayer: MediaPlayer? = null
+    private val serviceScope = CoroutineScope(Dispatchers.Main + Job())
     private var testJob: Job? = null  // For test mode
 
     override fun onCreate() {
@@ -149,8 +160,16 @@ class GeoAlarmService : Service() {
             }
 
             ACTION_NOTIFICATION_DISMISSED -> {
-                if (isServiceRunning && !isArrived) {
-                    startForegroundService() // Restores notification
+                if (isServiceRunning) {
+                    if (isArrived) {
+                        // Arrival notification dismissed, re-push it so user can turn off vibration/ringtone
+                        val notification = buildArrivalNotification()
+                        val manager = getSystemService(NotificationManager::class.java)
+                        manager.notify(NOTIFICATION_ID, notification)
+                    } else {
+                        // Zone notification dismissed, restore foreground service
+                        startForegroundService()
+                    }
                 }
                 WakeLocker.release()
             }
@@ -161,6 +180,43 @@ class GeoAlarmService : Service() {
                 removeAllGeofences()
                 WakeLocker.release()
                 stopSelf()
+            }
+
+            ACTION_TEST -> {
+                if (!isServiceRunning) {
+                    alarmId = intent.getStringExtra(EXTRA_ALARM_ID) ?: "test"
+                    alarmName = intent.getStringExtra(EXTRA_NAME) ?: "Test Alarm"
+                    destLat = 0.0
+                    destLng = 0.0
+                    radius = 100.0
+                    startLat = 0.0
+                    startLng = 0.0
+                    totalDistance = 1000f
+
+                    startForegroundService()
+                    isServiceRunning = true
+
+                    // Simulate progress updates and arrival after 10 seconds
+                    testJob = serviceScope.launch {
+                        for (i in 1..10) {
+                            delay(1000)
+                            val progress = i * 10
+                            val remaining = ((10 - i) * 100)
+                            broadcastProgress(progress, remaining)
+                            
+                            // Update notification with progress
+                            val zone = when {
+                                progress < 30 -> MonitoringZone.FAR
+                                progress < 70 -> MonitoringZone.MID
+                                else -> MonitoringZone.NEAR
+                            }
+                            val notification = buildZoneNotification(zone, progress, remaining)
+                            val manager = getSystemService(NotificationManager::class.java)
+                            manager.notify(NOTIFICATION_ID, notification)
+                        }
+                        triggerArrival()
+                    }
+                }
             }
         }
         return START_STICKY
@@ -442,6 +498,22 @@ class GeoAlarmService : Service() {
             )
         ) // 0 means repeat at index 0
 
+        // Play ringtone based on settings
+        serviceScope.launch {
+            val ringtoneSettings = settingsRepository.ringtoneSettingsFlow.first()
+            if (ringtoneSettings.enabled) {
+                if (AudioUtils.isHeadphoneConnected(this@GeoAlarmService)) {
+                    // Headphones connected - play via media channel
+                    mediaPlayer = AudioUtils.playRingtoneViaMedia(this@GeoAlarmService, ringtoneSettings.ringtoneUri)
+                    Log.d("GeoAlarmService", "Playing ringtone via headphones")
+                } else {
+                    // No headphones - vibration only (already triggered above)
+                    Log.d("GeoAlarmService", "No headphones connected, vibration only")
+                }
+            }
+            // When disabled: vibration only (already triggered above)
+        }
+
         val notification = buildArrivalNotification()
         val manager = getSystemService(NotificationManager::class.java)
         manager.notify(NOTIFICATION_ID, notification)
@@ -550,6 +622,17 @@ class GeoAlarmService : Service() {
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
         )
 
+        // Delete intent for when notification is swiped away
+        val deleteIntent = Intent(this, GeoAlarmService::class.java).apply {
+            action = ACTION_NOTIFICATION_DISMISSED
+        }
+        val deletePendingIntent = PendingIntent.getService(
+            this,
+            2, // Different request code from zone notification
+            deleteIntent,
+            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
+        )
+
         val notificationManager = getSystemService(NotificationManager::class.java)
         val canUseFullScreenIntent = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
             notificationManager.canUseFullScreenIntent()
@@ -567,6 +650,7 @@ class GeoAlarmService : Service() {
                 turnOffPendingIntent
             ).setOngoing(true).setOnlyAlertOnce(false)
             .setContentIntent(turnOffPendingIntent)
+            .setDeleteIntent(deletePendingIntent)
 
         if (canUseFullScreenIntent) {
             builder.setFullScreenIntent(turnOffPendingIntent, true)
@@ -594,6 +678,12 @@ class GeoAlarmService : Service() {
         stopGpsUpdates()
         removeAllGeofences()
         vibrator?.cancel()
+        mediaPlayer?.apply {
+            if (isPlaying) stop()
+            release()
+        }
+        mediaPlayer = null
+        serviceScope.cancel() // Cancel all coroutines
         WakeLocker.release()
     }
 

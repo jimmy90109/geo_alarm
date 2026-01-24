@@ -43,7 +43,6 @@ import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.zIndex
-import androidx.core.view.HapticFeedbackConstantsCompat
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.github.jimmy90109.geoalarm.R
 import com.github.jimmy90109.geoalarm.data.Alarm
@@ -51,7 +50,6 @@ import com.github.jimmy90109.geoalarm.data.ScheduleWithAlarm
 import com.github.jimmy90109.geoalarm.ui.components.AlarmList
 import com.github.jimmy90109.geoalarm.ui.components.AlreadyAtDestinationDialog
 import com.github.jimmy90109.geoalarm.ui.components.BackgroundLocationPermissionDialog
-import com.github.jimmy90109.geoalarm.ui.components.DeleteAlarmDialog
 import com.github.jimmy90109.geoalarm.ui.components.DeleteErrorDialog
 import com.github.jimmy90109.geoalarm.ui.components.EditDisabledDialog
 import com.github.jimmy90109.geoalarm.ui.components.HomeFabMenu
@@ -194,6 +192,17 @@ fun HomeScreen(
                     )
                 },
                 scrollBehavior = scrollBehavior,
+//                actions = {
+//                    // Debug test button
+//                    androidx.compose.material3.TextButton(
+//                        onClick = {
+//                            haptic.performHapticFeedback(HapticFeedbackType.ContextClick)
+//                            viewModel.startTestAlarm(context)
+//                        }
+//                    ) {
+//                        Text("🧪 Test Alarm (10s)")
+//                    }
+//                }
             )
         },
         floatingActionButton = {
