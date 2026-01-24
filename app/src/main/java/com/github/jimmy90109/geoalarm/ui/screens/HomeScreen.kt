@@ -312,6 +312,7 @@ fun HomeScreen(
                                 onToggleSchedule = { schedule, isEnabled ->
                                     viewModel.toggleSchedule(schedule, isEnabled)
                                 },
+                                onAddSchedule = onAddSchedule,
                                 highlightedAlarmId = uiState.highlightedAlarmId,
                                 highlightedScheduleId = uiState.highlightedScheduleId,
                                 onHighlightFinished = { viewModel.clearHighlight() },
