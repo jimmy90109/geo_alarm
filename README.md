@@ -19,9 +19,11 @@ An intelligent alarm clock app built with **Kotlin** and **Jetpack Compose** tha
 * **🔍 Search for Destinations**: Find your destination quickly by searching for addresses, landmarks, or station names.
 * **⭕ Adjustable Trigger Radius**: Define a geofence by setting a radius around your destination.
 * **🔔 Background Monitoring**: The app reliably tracks your location in the background using a foreground service.
-* **🔊 Loud & Intrusive Alarm**: When you enter the target area, a loud, vibrating alarm is triggered.
+* **🔊 Intrusive Alarm**: When you enter the target area, a vibrating alarm is triggered.
 * **🗂️ Alarm Management**: Save, view, edit, and delete your alarms in a clean and simple list.
 * **Toggle On/Off**: Easily activate or deactivate any saved alarm with a single switch.
+* **🎵 Ringtone Customization**: Choose your preferred ringtone or search for new ones.
+* **🎧 Intelligent Audio Output**: Plays arrival sound through headphones if connected to avoid public disturbance; otherwise vibrates.
 * **🌐 Multi-language**: Supports English and Traditional Chinese (繁體中文).
 
 ## 🛠️ Tech Stack & Architecture
@@ -39,12 +41,13 @@ This project is built using modern Android development practices with a clean ar
 
 ### Directory Structure
 ```
-app/src/main/java/com/example/geo_alarm/
+app/src/main/java/com/github/jimmy90109/geoalarm/
 ├── data/
 │   ├── Alarm.kt              # Data entity
 │   ├── AlarmDao.kt           # Room DAO
 │   ├── AlarmRepository.kt    # Repository
-│   └── AppDatabase.kt        # Room database
+│   ├── AppDatabase.kt        # Room database
+│   └── RingtoneSettings.kt   # Ringtone preferences
 │
 ├── service/
 │   └── GeoAlarmService.kt    # Foreground service for location monitoring
@@ -52,11 +55,15 @@ app/src/main/java/com/example/geo_alarm/
 ├── ui/
 │   ├── screens/
 │   │   ├── HomeScreen.kt     # Main alarm list screen
-│   │   └── AlarmEditScreen.kt # Create/Edit alarm screen
+│   │   ├── AlarmEditScreen.kt # Create/Edit alarm screen
+│   │   └── SettingsScreen.kt # Settings & Ringtone config
 │   └── theme/
 │       ├── Color.kt
 │       ├── Theme.kt
 │       └── Type.kt
+│
+├── utils/
+│   └── AudioUtils.kt         # Audio focus & output management
 │
 ├── GeoAlarmApplication.kt    # Application class
 └── MainActivity.kt           # Main entry point
