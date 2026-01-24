@@ -2,9 +2,7 @@ package com.github.jimmy90109.geoalarm.ui.components
 
 import androidx.compose.animation.Animatable
 import androidx.compose.animation.core.tween
-import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
@@ -16,6 +14,8 @@ import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.GridItemSpan
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Add
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
@@ -28,6 +28,11 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.drawBehind
+import androidx.compose.ui.geometry.CornerRadius
+import androidx.compose.ui.graphics.PathEffect
+import androidx.compose.ui.graphics.StrokeCap
+import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.res.stringResource
@@ -49,6 +54,7 @@ fun AlarmList(
     onToggleAlarm: (Alarm, Boolean) -> Unit,
     onScheduleClick: (ScheduleWithAlarm) -> Unit,
     onToggleSchedule: (AlarmSchedule, Boolean) -> Unit,
+    onAddSchedule: () -> Unit,
     contentPadding: PaddingValues = PaddingValues(bottom = 80.dp),
     highlightedAlarmId: String? = null,
     highlightedScheduleId: String? = null,
@@ -64,7 +70,7 @@ fun AlarmList(
         horizontalArrangement = Arrangement.spacedBy(12.dp)
     ) {
         // Schedules Section
-        if (schedules.isNotEmpty()) {
+        if (schedules.isNotEmpty() || alarms.isNotEmpty()) {
             item(span = { GridItemSpan(maxLineSpan) }) {
                 Text(
                     text = stringResource(R.string.section_schedules),
@@ -73,6 +79,9 @@ fun AlarmList(
                     modifier = Modifier.padding(start = 4.dp, top = 8.dp, bottom = 4.dp)
                 )
             }
+        }
+
+        if (schedules.isNotEmpty()) {
             items(
                 items = schedules, key = { "schedule_${it.schedule.id}" }) { item ->
                 ScheduleItem(
@@ -87,6 +96,11 @@ fun AlarmList(
                     isHighlighted = item.schedule.id == highlightedScheduleId,
                     onHighlightFinished = onHighlightFinished
                 )
+            }
+        } else if (alarms.isNotEmpty()) {
+             // Show Guide Item if no schedules but alarms exist
+            item(span = { GridItemSpan(maxLineSpan) }) {
+                ScheduleGuideItem(onClick = onAddSchedule)
             }
         }
 
@@ -246,6 +260,60 @@ fun ScheduleItem(
 
             Switch(
                 checked = schedule.isEnabled, onCheckedChange = onToggle,
+            )
+        }
+    }
+}
+
+
+/**
+ * A guide item encouraging users to add a schedule.
+ */
+@Composable
+fun ScheduleGuideItem(
+    modifier: Modifier = Modifier,
+    onClick: () -> Unit,
+) {
+    val haptic = LocalHapticFeedback.current
+    val stroke = StrokeCap.Round
+    val pathEffect = PathEffect.dashPathEffect(floatArrayOf(10f, 10f), 0f)
+    val borderColor = MaterialTheme.colorScheme.outline.copy(alpha = 0.5f)
+
+    androidx.compose.foundation.layout.Box(
+        modifier = modifier
+            .fillMaxWidth()
+            .clickable(onClick = {
+                haptic.performHapticFeedback(HapticFeedbackType.ContextClick)
+                onClick()
+            })
+            .drawBehind {
+                drawRoundRect(
+                    color = borderColor,
+                    style = Stroke(
+                        width = 2.dp.toPx(),
+                        pathEffect = pathEffect,
+                        cap = stroke
+                    ),
+                    cornerRadius = CornerRadius(12.dp.toPx())
+                )
+            }
+            .padding(16.dp),
+        contentAlignment = Alignment.Center
+    ) {
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.Center,
+        ) {
+            androidx.compose.material3.Icon(
+                imageVector = Icons.Default.Add,
+                contentDescription = null,
+                tint = MaterialTheme.colorScheme.primary,
+                modifier = Modifier.padding(end = 8.dp)
+            )
+            Text(
+                text = stringResource(R.string.schedule_guide_message),
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
             )
         }
     }

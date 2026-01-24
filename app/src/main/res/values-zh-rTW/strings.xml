@@ -70,8 +70,13 @@
     <string name="monitoring_method">監聽方式</string>
     <string name="monitoring_method_locked">有鬧鐘正在執行時不能更改監聽方式</string>
     <string name="tab_alarms">鬧鐘</string>
-    <string name="settings_section_general">一般設定</string>
-    <string name="settings_section_alarm">鬧鐘設定</string>
+    <string name="settings_section_general">一般</string>
+    <string name="settings_section_alarm">鬧鐘</string>
+    <string name="settings_ringtone">鈴聲</string>
+    <string name="ringtone_mode_none">關閉</string>
+    <string name="ringtone_default">預設鈴聲</string>
+    <string name="ringtone_select">選擇鈴聲…</string>
+    <string name="ringtone_feature_description">到站時從耳機播放鈴聲</string>
 
     <!-- Updates -->
     <string name="section_about">關於</string>
@@ -125,4 +130,5 @@
     <string name="schedule_onboarding_title">排程運作說明</string>
     <string name="schedule_onboarding_message">設定的時間到達時，系統會發送確認通知。\n您需要點擊通知，該鬧鐘才會真正啟用。</string>
     <string name="schedule_onboarding_button">我瞭解了</string>
+    <string name="schedule_guide_message">新增排程以自動化鬧鐘</string>
 </resources>

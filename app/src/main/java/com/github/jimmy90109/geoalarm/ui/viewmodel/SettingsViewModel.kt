@@ -1,22 +1,36 @@
 package com.github.jimmy90109.geoalarm.ui.viewmodel
 
 import android.app.Application
+import android.content.Context
+import android.media.MediaPlayer
+import android.os.Build
+import android.os.VibrationEffect
+import android.os.Vibrator
+import android.os.VibratorManager
 import androidx.appcompat.app.AppCompatDelegate
 import androidx.core.os.LocaleListCompat
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.github.jimmy90109.geoalarm.BuildConfig
 import com.github.jimmy90109.geoalarm.data.AlarmRepository
+import com.github.jimmy90109.geoalarm.data.RingtoneSettings
 import com.github.jimmy90109.geoalarm.data.SettingsRepository
 import com.github.jimmy90109.geoalarm.data.UpdateManager
+import com.github.jimmy90109.geoalarm.utils.AudioUtils
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 
 data class SettingsUiState(
     val showLanguageSheet: Boolean = false,
+    val showRingtoneSheet: Boolean = false,
     val anyAlarmEnabled: Boolean = false,
+    val isPreviewPlaying: Boolean = false,
+    val previewingUri: String? = null, // null = default ringtone, or custom URI
+    val isPreviewingDefault: Boolean = false, // true if previewing default ringtone
 )
 
 class SettingsViewModel(
@@ -31,6 +45,17 @@ class SettingsViewModel(
     private val updateManager = UpdateManager(application)
     val updateStatus = updateManager.status
     val currentVersion = BuildConfig.VERSION_NAME
+
+    // Ringtone Settings from DataStore
+    val ringtoneSettings: StateFlow<RingtoneSettings> = settingsRepository.ringtoneSettingsFlow
+        .stateIn(
+            scope = viewModelScope,
+            started = SharingStarted.WhileSubscribed(5000),
+            initialValue = RingtoneSettings()
+        )
+
+    // Preview player
+    private var previewMediaPlayer: MediaPlayer? = null
 
     init {
         // Observe alarms to update 'anyAlarmEnabled' state
@@ -69,9 +94,9 @@ class SettingsViewModel(
         }
     }
 
-    fun installUpdate(file: java.io.File, context: android.content.Context) {
+    fun installUpdate(file: java.io.File, context: Context) {
         val intent = updateManager.getInstallIntent(file)
-        val canInstall = if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.O) {
+        val canInstall = if (Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.O) {
             context.packageManager.canRequestPackageInstalls()
         } else {
             true
@@ -80,15 +105,14 @@ class SettingsViewModel(
         if (canInstall) {
             context.startActivity(intent)
         } else {
-            // Request permission to install unknown apps
-             if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.O) {
-                 val permissionIntent = android.content.Intent(
-                     android.provider.Settings.ACTION_MANAGE_UNKNOWN_APP_SOURCES
-                 ).apply {
-                     data = android.net.Uri.parse("package:${context.packageName}")
-                 }
-                 context.startActivity(permissionIntent)
-             }
+            if (Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.O) {
+                val permissionIntent = android.content.Intent(
+                    android.provider.Settings.ACTION_MANAGE_UNKNOWN_APP_SOURCES
+                ).apply {
+                    data = android.net.Uri.parse("package:${context.packageName}")
+                }
+                context.startActivity(permissionIntent)
+            }
         }
     }
 
@@ -106,5 +130,62 @@ class SettingsViewModel(
 
     fun dismissLanguageSheet() {
         _uiState.value = _uiState.value.copy(showLanguageSheet = false)
+    }
+
+    // Ringtone Settings Controls
+    fun showRingtoneSheet() {
+        _uiState.value = _uiState.value.copy(showRingtoneSheet = true)
+    }
+
+    fun dismissRingtoneSheet() {
+        stopPreview()
+        _uiState.value = _uiState.value.copy(showRingtoneSheet = false)
+    }
+
+    fun setRingtoneEnabled(enabled: Boolean) {
+        viewModelScope.launch {
+            settingsRepository.setRingtoneEnabled(enabled)
+        }
+    }
+
+    fun setRingtone(uri: String?, name: String?) {
+        viewModelScope.launch {
+            settingsRepository.setRingtone(uri, name)
+        }
+    }
+
+    // Preview Controls
+    fun playPreview(context: Context, uriString: String? = null, isDefault: Boolean = false) {
+        stopPreview()
+        _uiState.value = _uiState.value.copy(
+            isPreviewPlaying = true,
+            isPreviewingDefault = isDefault
+        )
+        previewMediaPlayer = AudioUtils.playPreview(context, uriString)
+        previewMediaPlayer?.setOnCompletionListener {
+            AudioUtils.abandonAudioFocus(context)
+            _uiState.value = _uiState.value.copy(
+                isPreviewPlaying = false,
+                isPreviewingDefault = false
+            )
+        }
+    }
+
+    fun stopPreview(context: Context? = null) {
+        previewMediaPlayer?.apply {
+            if (isPlaying) stop()
+            release()
+        }
+        previewMediaPlayer = null
+        context?.let { AudioUtils.abandonAudioFocus(it) }
+        _uiState.value = _uiState.value.copy(
+            isPreviewPlaying = false,
+            isPreviewingDefault = false
+        )
+    }
+
+    override fun onCleared() {
+        super.onCleared()
+        stopPreview()
     }
 }

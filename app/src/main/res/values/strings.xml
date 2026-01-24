@@ -74,6 +74,11 @@
     <string name="tab_alarms">Alarms</string>
     <string name="settings_section_general">General</string>
     <string name="settings_section_alarm">Alarm</string>
+    <string name="settings_ringtone">Ringtone</string>
+    <string name="ringtone_mode_none">Off</string>
+    <string name="ringtone_default">Default ringtone</string>
+    <string name="ringtone_select">Select ringtone…</string>
+    <string name="ringtone_feature_description">Plays ringtone via headphones on arrival</string>
 
     <!-- Updates -->
     <string name="section_about">About</string>
@@ -127,4 +132,5 @@
     <string name="schedule_onboarding_title">Schedule Operation Explanation</string>
     <string name="schedule_onboarding_message">When the set time is reached, the system will send a confirmation notification.\nYou need to click the notification for the alarm to actually enable.</string>
     <string name="schedule_onboarding_button">I Understand</string>
+    <string name="schedule_guide_message">Add a schedule to automate alarms</string>
 </resources>
