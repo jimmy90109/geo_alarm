@@ -176,8 +176,16 @@ class GeoAlarmService : Service() {
 
             ACTION_STOP -> {
                 testJob?.cancel()
+                serviceScope.cancel() // Cancel any pending ringtone coroutines first
                 stopGpsUpdates()
                 removeAllGeofences()
+                vibrator?.cancel()
+                mediaPlayer?.apply {
+                    if (isPlaying) stop()
+                    release()
+                }
+                mediaPlayer = null
+                AudioUtils.abandonAudioFocus(this)
                 WakeLocker.release()
                 stopSelf()
             }
