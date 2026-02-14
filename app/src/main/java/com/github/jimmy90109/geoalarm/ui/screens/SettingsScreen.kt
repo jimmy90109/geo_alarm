@@ -81,6 +81,7 @@ fun SettingsScreen(
     val currentLanguage = viewModel.currentLanguage
     val context = LocalContext.current
     val lifecycleOwner = LocalLifecycleOwner.current
+    val ringtonePickerTitle = stringResource(R.string.ringtone_select)
 
     DisposableEffect(lifecycleOwner, context) {
         val observer = LifecycleEventObserver { _, event ->
@@ -382,7 +383,7 @@ fun SettingsScreen(
                     onClick = {
                         val intent = Intent(RingtoneManager.ACTION_RINGTONE_PICKER).apply {
                             putExtra(RingtoneManager.EXTRA_RINGTONE_TYPE, RingtoneManager.TYPE_RINGTONE)
-                            putExtra(RingtoneManager.EXTRA_RINGTONE_TITLE, context.getString(R.string.ringtone_select))
+                            putExtra(RingtoneManager.EXTRA_RINGTONE_TITLE, ringtonePickerTitle)
                             putExtra(RingtoneManager.EXTRA_RINGTONE_SHOW_SILENT, false)
                             if (ringtoneSettings.ringtoneUri != null) {
                                 putExtra(RingtoneManager.EXTRA_RINGTONE_EXISTING_URI, android.net.Uri.parse(ringtoneSettings.ringtoneUri))
