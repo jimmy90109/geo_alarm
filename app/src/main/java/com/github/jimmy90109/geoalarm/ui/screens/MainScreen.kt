@@ -21,6 +21,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.navigationBars
 import androidx.compose.foundation.layout.padding
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.BiasAlignment
@@ -40,6 +41,7 @@ import com.github.jimmy90109.geoalarm.navigation.MainRoutes
 import com.github.jimmy90109.geoalarm.ui.components.AppNavigationRail
 import com.github.jimmy90109.geoalarm.ui.components.BottomNavBar
 import com.github.jimmy90109.geoalarm.ui.components.NavTab
+import com.github.jimmy90109.geoalarm.data.UpdateStatus
 import com.github.jimmy90109.geoalarm.ui.viewmodel.HomeViewModel
 import com.github.jimmy90109.geoalarm.ui.viewmodel.SettingsViewModel
 import com.github.jimmy90109.geoalarm.ui.viewmodel.ViewModelFactory
@@ -52,6 +54,7 @@ fun MainScreen(
     onAddSchedule: () -> Unit,
     onScheduleClick: (String) -> Unit,
     onNavigateToBatteryOptimization: () -> Unit,
+    onOpenOnboarding: () -> Unit,
 ) {
     val navController = rememberNavController()
     val navBackStackEntry by navController.currentBackStackEntryAsState()
@@ -70,11 +73,14 @@ fun MainScreen(
         app,
         app.repository,
         app.settingsRepository,
+        app.onboardingRepository,
         app.sharedPreferenceManager,
     )
 
     // Get the SettingsViewModel
     val settingsViewModel: SettingsViewModel = viewModel(factory = factory)
+    val updateStatus by settingsViewModel.updateStatus.collectAsStateWithLifecycle()
+    val showSettingsUpdateDot = updateStatus is UpdateStatus.Available
 
     // Navigation Actions
     val onHomeClick: () -> Unit = {
@@ -112,6 +118,12 @@ fun MainScreen(
         }
     }
 
+    LaunchedEffect(isSettings) {
+        if (!isSettings) {
+            settingsViewModel.checkForUpdatesOnHomeEntry()
+        }
+    }
+
     if (isLandscape) {
         // Landscape Layout: Navigation Rail + Content
         Row(
@@ -123,7 +135,8 @@ fun MainScreen(
             AppNavigationRail(
                 currentTab = if (isSettings) NavTab.SETTINGS else NavTab.HOME,
                 onHomeClick = onHomeClick,
-                onSettingsClick = onSettingsClick
+                onSettingsClick = onSettingsClick,
+                showSettingsUpdateDot = showSettingsUpdateDot
             )
 
             Box(modifier = Modifier.weight(1f)) {
@@ -136,6 +149,7 @@ fun MainScreen(
                     onAddSchedule = onAddSchedule,
                     onScheduleClick = onScheduleClick,
                     onNavigateToBatteryOptimization = onNavigateToBatteryOptimization,
+                    onOpenOnboarding = onOpenOnboarding,
                     isLandscape = true
                 )
             }
@@ -164,6 +178,7 @@ fun MainScreen(
                 onAddSchedule = onAddSchedule,
                 onScheduleClick = onScheduleClick,
                 onNavigateToBatteryOptimization = onNavigateToBatteryOptimization,
+                onOpenOnboarding = onOpenOnboarding,
                 isLandscape = false
             )
 
@@ -171,6 +186,7 @@ fun MainScreen(
                 currentTab = if (isSettings) NavTab.SETTINGS else NavTab.HOME,
                 onHomeClick = onHomeClick,
                 onSettingsClick = onSettingsClick,
+                showSettingsUpdateDot = showSettingsUpdateDot,
                 modifier = Modifier
                     .align(BiasAlignment(alignmentBias, 1f))
                     .padding(
@@ -193,6 +209,7 @@ fun MainNavHost(
     onAddSchedule: () -> Unit,
     onScheduleClick: (String) -> Unit,
     onNavigateToBatteryOptimization: () -> Unit,
+    onOpenOnboarding: () -> Unit,
     isLandscape: Boolean
 ) {
     NavHost(
@@ -250,7 +267,8 @@ fun MainNavHost(
                 onAlarmClick = { alarm -> onAlarmClick(alarm.id) },
                 onAddSchedule = onAddSchedule,
                 onScheduleClick = { schedule -> onScheduleClick(schedule.schedule.id) },
-                onNavigateToBatteryOptimization = onNavigateToBatteryOptimization
+                onNavigateToBatteryOptimization = onNavigateToBatteryOptimization,
+                onOpenOnboarding = onOpenOnboarding
             )
         }
 

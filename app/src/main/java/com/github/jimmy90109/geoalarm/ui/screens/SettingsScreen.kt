@@ -42,6 +42,7 @@ import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -59,7 +60,10 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.lifecycle.compose.LocalLifecycleOwner
 import com.github.jimmy90109.geoalarm.R
 import com.github.jimmy90109.geoalarm.data.RingtoneSettings
 import com.github.jimmy90109.geoalarm.data.UpdateStatus
@@ -76,6 +80,18 @@ fun SettingsScreen(
     val ringtoneSettings by viewModel.ringtoneSettings.collectAsStateWithLifecycle()
     val currentLanguage = viewModel.currentLanguage
     val context = LocalContext.current
+    val lifecycleOwner = LocalLifecycleOwner.current
+    val ringtonePickerTitle = stringResource(R.string.ringtone_select)
+
+    DisposableEffect(lifecycleOwner, context) {
+        val observer = LifecycleEventObserver { _, event ->
+            if (event == Lifecycle.Event.ON_RESUME) {
+                viewModel.retryPendingInstallIfPermitted(context)
+            }
+        }
+        lifecycleOwner.lifecycle.addObserver(observer)
+        onDispose { lifecycleOwner.lifecycle.removeObserver(observer) }
+    }
 
     // Ringtone picker launcher
     val ringtonePickerLauncher = rememberLauncherForActivityResult(
@@ -151,7 +167,7 @@ fun SettingsScreen(
                         confirmButton = {
                             TextButton(
                                 onClick = {
-                                    viewModel.downloadUpdate(status.downloadUrl)
+                                    viewModel.downloadUpdate(status.downloadUrl, status.sha256)
                                     showUpdateDialog = false
                                 },
                             ) {
@@ -211,7 +227,7 @@ fun SettingsScreen(
                                 when (status) {
                                     is UpdateStatus.Idle, is UpdateStatus.Error -> viewModel.checkForUpdates()
                                     is UpdateStatus.Available -> showUpdateDialog = true
-                                    is UpdateStatus.ReadyToInstall -> viewModel.installUpdate(status.file, context)
+                                    is UpdateStatus.ReadyToInstall -> viewModel.installUpdate(status.apkUri, context)
                                     is UpdateStatus.Downloading -> {
                                         android.widget.Toast.makeText(context, R.string.update_downloading, android.widget.Toast.LENGTH_SHORT).show()
                                     }
@@ -248,7 +264,7 @@ fun SettingsScreen(
                             when (status) {
                                 is UpdateStatus.Idle, is UpdateStatus.Error -> viewModel.checkForUpdates()
                                 is UpdateStatus.Available -> showUpdateDialog = true
-                                is UpdateStatus.ReadyToInstall -> viewModel.installUpdate(status.file, context)
+                                is UpdateStatus.ReadyToInstall -> viewModel.installUpdate(status.apkUri, context)
                                 is UpdateStatus.Downloading -> {
                                     android.widget.Toast.makeText(context, R.string.update_downloading, android.widget.Toast.LENGTH_SHORT).show()
                                 }
@@ -367,7 +383,7 @@ fun SettingsScreen(
                     onClick = {
                         val intent = Intent(RingtoneManager.ACTION_RINGTONE_PICKER).apply {
                             putExtra(RingtoneManager.EXTRA_RINGTONE_TYPE, RingtoneManager.TYPE_RINGTONE)
-                            putExtra(RingtoneManager.EXTRA_RINGTONE_TITLE, context.getString(R.string.ringtone_select))
+                            putExtra(RingtoneManager.EXTRA_RINGTONE_TITLE, ringtonePickerTitle)
                             putExtra(RingtoneManager.EXTRA_RINGTONE_SHOW_SILENT, false)
                             if (ringtoneSettings.ringtoneUri != null) {
                                 putExtra(RingtoneManager.EXTRA_RINGTONE_EXISTING_URI, android.net.Uri.parse(ringtoneSettings.ringtoneUri))
@@ -598,4 +614,3 @@ fun RingtoneSelectionItem(
         }
     }
 }
-

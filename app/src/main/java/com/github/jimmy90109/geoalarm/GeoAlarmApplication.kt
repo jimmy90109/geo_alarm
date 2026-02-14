@@ -5,6 +5,7 @@ import android.app.NotificationChannel
 import android.app.NotificationManager
 import com.github.jimmy90109.geoalarm.data.AppDatabase
 import com.github.jimmy90109.geoalarm.data.AlarmRepository
+import com.github.jimmy90109.geoalarm.data.OnboardingRepository
 import com.github.jimmy90109.geoalarm.data.SettingsRepository
 import com.github.jimmy90109.geoalarm.utils.SharedPreferenceManager
 import com.google.android.libraries.places.api.Places
@@ -14,6 +15,7 @@ class GeoAlarmApplication : Application() {
     val database by lazy { AppDatabase.getDatabase(this) }
     val repository by lazy { AlarmRepository(database.alarmDao(), database.scheduleDao()) }
     val settingsRepository by lazy { SettingsRepository(this) }
+    val onboardingRepository by lazy { OnboardingRepository(this) }
     val sharedPreferenceManager by lazy { SharedPreferenceManager(this) }
 
     override fun onCreate() {

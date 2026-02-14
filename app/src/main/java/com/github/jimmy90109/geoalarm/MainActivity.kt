@@ -6,6 +6,7 @@ import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.appcompat.app.AppCompatActivity
 import androidx.lifecycle.ViewModelProvider
+import com.github.jimmy90109.geoalarm.navigation.AppRoutes
 import androidx.navigation.compose.rememberNavController
 import com.github.jimmy90109.geoalarm.navigation.AppNavHost
 import com.github.jimmy90109.geoalarm.service.GeoAlarmService
@@ -14,6 +15,7 @@ import com.github.jimmy90109.geoalarm.ui.viewmodel.HomeViewModel
 import com.github.jimmy90109.geoalarm.ui.viewmodel.ViewModelFactory
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.runBlocking
 
 class MainActivity : AppCompatActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -23,10 +25,20 @@ class MainActivity : AppCompatActivity() {
         val app = application as GeoAlarmApplication
         val repository = app.repository
         val settingsRepository = app.settingsRepository
+        val onboardingRepository = app.onboardingRepository
         val sharedPreferenceManager = app.sharedPreferenceManager
+        val hasSeenOnboarding = runBlocking {
+            onboardingRepository.hasSeenLocationOnboarding()
+        }
+        val startDestination = if (hasSeenOnboarding) {
+            AppRoutes.Main
+        } else {
+            AppRoutes.Onboarding
+        }
         val viewModelFactory = ViewModelFactory(
             app,
             repository, settingsRepository,
+            onboardingRepository,
             sharedPreferenceManager,
         )
 
@@ -36,6 +48,7 @@ class MainActivity : AppCompatActivity() {
                 AppNavHost(
                     navController = navController,
                     viewModelFactory = viewModelFactory,
+                    startDestination = startDestination,
                 )
 
             }
@@ -80,6 +93,7 @@ class MainActivity : AppCompatActivity() {
                 val factory = ViewModelFactory(
                     app, app.repository,
                     app.settingsRepository,
+                    app.onboardingRepository,
                     app.sharedPreferenceManager,
                 )
 

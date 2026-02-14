@@ -1,15 +1,18 @@
 package com.github.jimmy90109.geoalarm.ui.components
 
+import androidx.annotation.StringRes
+import androidx.compose.animation.animateContentSize
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.animation.animateContentSize
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Alarm
 import androidx.compose.material.icons.filled.Settings
@@ -28,13 +31,13 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
-import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.unit.dp
-import com.github.jimmy90109.geoalarm.R
-
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.LocalHapticFeedback
-import androidx.annotation.StringRes
+import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.tooling.preview.Preview
+import androidx.compose.ui.unit.dp
+import com.github.jimmy90109.geoalarm.R
+import com.github.jimmy90109.geoalarm.ui.theme.GeoAlarmTheme
 
 enum class NavTab(
     @StringRes val labelRes: Int, val iconVec: ImageVector
@@ -47,10 +50,11 @@ enum class NavTab(
 @OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
 fun BottomNavBar(
+    modifier: Modifier = Modifier,
     currentTab: NavTab,
     onHomeClick: () -> Unit,
     onSettingsClick: () -> Unit,
-    modifier: Modifier = Modifier
+    showSettingsUpdateDot: Boolean = false,
 ) {
     Surface(
         color = MaterialTheme.colorScheme.surfaceContainerHigh,
@@ -78,30 +82,45 @@ fun BottomNavBar(
                     else -> ButtonGroupDefaults.connectedMiddleButtonShapes()
                 }
 
-                ToggleButton(
-                    checked = selected, onCheckedChange = {
-                        haptic.performHapticFeedback(HapticFeedbackType.LongPress)
-                        onClick()
-                    }, shapes = shape
-                ) {
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically,
-                        modifier = Modifier
-                            .padding(vertical = 4.dp, horizontal = 8.dp)
-                            .animateContentSize()
+                Box {
+                    ToggleButton(
+                        checked = selected, onCheckedChange = {
+                            haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                            onClick()
+                        }, shapes = shape
                     ) {
-                        Icon(
-                            tab.iconVec,
-                            contentDescription = stringResource(tab.labelRes),
-                            modifier = Modifier.size(24.dp),
-                        )
-                        if (selected) {
-                            Text(
-                                stringResource(tab.labelRes),
-                                modifier = Modifier.padding(start = 8.dp),
-                                style = MaterialTheme.typography.titleMedium,
-                            )
+                        Box(
+                            modifier = Modifier
+                                .padding(vertical = 4.dp, horizontal = 8.dp)
+                                .animateContentSize()
+                        ) {
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                Box(modifier = Modifier.size(24.dp)) {
+                                    Icon(
+                                        tab.iconVec,
+                                        contentDescription = stringResource(tab.labelRes),
+                                        modifier = Modifier.fillMaxSize(),
+                                    )
+                                }
+                                if (selected) {
+                                    Text(
+                                        stringResource(tab.labelRes),
+                                        modifier = Modifier.padding(start = 8.dp),
+                                        style = MaterialTheme.typography.titleMedium,
+                                    )
+                                }
+                            }
                         }
+                    }
+                    if (tab == NavTab.SETTINGS && showSettingsUpdateDot) {
+                        Surface(
+                            color = MaterialTheme.colorScheme.error,
+                            shape = CircleShape,
+                            modifier = Modifier
+                                .align(Alignment.TopEnd)
+                                .padding(8.dp)
+                                .size(8.dp)
+                        ) {}
                     }
                 }
             }
@@ -114,6 +133,7 @@ fun AppNavigationRail(
     currentTab: NavTab,
     onHomeClick: () -> Unit,
     onSettingsClick: () -> Unit,
+    showSettingsUpdateDot: Boolean = false,
     modifier: Modifier = Modifier
 ) {
     Surface(
@@ -139,7 +159,8 @@ fun AppNavigationRail(
                 selected = currentTab == NavTab.SETTINGS,
                 onClick = onSettingsClick,
                 icon = NavTab.SETTINGS.iconVec,
-                label = stringResource(NavTab.SETTINGS.labelRes)
+                label = stringResource(NavTab.SETTINGS.labelRes),
+                showUpdateDot = showSettingsUpdateDot
             )
         }
     }
@@ -151,6 +172,7 @@ private fun RailItem(
     onClick: () -> Unit,
     icon: ImageVector,
     label: String,
+    showUpdateDot: Boolean = false,
 ) {
     val colors = IconButtonDefaults.iconButtonColors(
         containerColor = if (selected) MaterialTheme.colorScheme.primaryContainer else Color.Transparent,
@@ -168,22 +190,64 @@ private fun RailItem(
                 onClick()
             })
     ) {
-        Column(
-            horizontalAlignment = Alignment.CenterHorizontally,
-            modifier = Modifier.padding(horizontal = 16.dp, vertical = 20.dp)
-        ) {
-            Icon(
-                imageVector = icon,
-                contentDescription = label,
-                tint = colors.contentColor,
-                modifier = Modifier.size(24.dp)
-            )
-            Spacer(Modifier.height(4.dp))
-            Text(
-                text = label,
-                style = MaterialTheme.typography.labelMedium,
-                color = colors.contentColor
+        Box {
+            Column(
+                horizontalAlignment = Alignment.CenterHorizontally,
+                modifier = Modifier.padding(horizontal = 16.dp, vertical = 20.dp)
+            ) {
+                Box(modifier = Modifier.size(24.dp)) {
+                    Icon(
+                        imageVector = icon,
+                        contentDescription = label,
+                        tint = colors.contentColor,
+                        modifier = Modifier.fillMaxSize()
+                    )
+                }
+                Spacer(Modifier.height(4.dp))
+                Text(
+                    text = label,
+                    style = MaterialTheme.typography.labelMedium,
+                    color = colors.contentColor
+                )
+            }
+            if (showUpdateDot) {
+                Surface(
+                    color = MaterialTheme.colorScheme.error,
+                    shape = CircleShape,
+                    modifier = Modifier
+                        .align(Alignment.TopEnd)
+                        .padding(12.dp)
+                        .size(8.dp)
+                ) {}
+            }
+        }
+    }
+}
+
+@Preview(showBackground = true)
+@Composable
+private fun BottomNavBarPreview() {
+    GeoAlarmTheme {
+        Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.BottomCenter) {
+            BottomNavBar(
+                currentTab = NavTab.HOME,
+                onHomeClick = {},
+                onSettingsClick = {},
+                showSettingsUpdateDot = true
             )
         }
+    }
+}
+
+@Preview(showBackground = true)
+@Composable
+private fun NavigationRailPreview() {
+    GeoAlarmTheme {
+        AppNavigationRail(
+            currentTab = NavTab.HOME,
+            onHomeClick = {},
+            onSettingsClick = {},
+            showSettingsUpdateDot = true
+        )
     }
 }
