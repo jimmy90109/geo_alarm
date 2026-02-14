@@ -84,7 +84,10 @@ dependencies {
     implementation(libs.accompanist.permissions)
     implementation(libs.kotlinx.serialization.json)
     implementation(libs.androidx.datastore.preferences)
-    
+
+    // Compose
+    implementation(libs.androidx.compose.foundation.layout)
+
     // Room
     implementation(libs.androidx.room.runtime)
     implementation(libs.androidx.room.ktx)

@@ -12,6 +12,9 @@ sealed interface AppRoutes {
     data object Main : AppRoutes
 
     @Serializable
+    data object Onboarding : AppRoutes
+
+    @Serializable
     data class AlarmEdit(val alarmId: String? = null) : AppRoutes
 
     @Serializable

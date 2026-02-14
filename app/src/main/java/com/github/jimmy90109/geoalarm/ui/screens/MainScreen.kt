@@ -52,6 +52,7 @@ fun MainScreen(
     onAddSchedule: () -> Unit,
     onScheduleClick: (String) -> Unit,
     onNavigateToBatteryOptimization: () -> Unit,
+    onOpenOnboarding: () -> Unit,
 ) {
     val navController = rememberNavController()
     val navBackStackEntry by navController.currentBackStackEntryAsState()
@@ -70,6 +71,7 @@ fun MainScreen(
         app,
         app.repository,
         app.settingsRepository,
+        app.onboardingRepository,
         app.sharedPreferenceManager,
     )
 
@@ -136,6 +138,7 @@ fun MainScreen(
                     onAddSchedule = onAddSchedule,
                     onScheduleClick = onScheduleClick,
                     onNavigateToBatteryOptimization = onNavigateToBatteryOptimization,
+                    onOpenOnboarding = onOpenOnboarding,
                     isLandscape = true
                 )
             }
@@ -164,6 +167,7 @@ fun MainScreen(
                 onAddSchedule = onAddSchedule,
                 onScheduleClick = onScheduleClick,
                 onNavigateToBatteryOptimization = onNavigateToBatteryOptimization,
+                onOpenOnboarding = onOpenOnboarding,
                 isLandscape = false
             )
 
@@ -193,6 +197,7 @@ fun MainNavHost(
     onAddSchedule: () -> Unit,
     onScheduleClick: (String) -> Unit,
     onNavigateToBatteryOptimization: () -> Unit,
+    onOpenOnboarding: () -> Unit,
     isLandscape: Boolean
 ) {
     NavHost(
@@ -250,7 +255,8 @@ fun MainNavHost(
                 onAlarmClick = { alarm -> onAlarmClick(alarm.id) },
                 onAddSchedule = onAddSchedule,
                 onScheduleClick = { schedule -> onScheduleClick(schedule.schedule.id) },
-                onNavigateToBatteryOptimization = onNavigateToBatteryOptimization
+                onNavigateToBatteryOptimization = onNavigateToBatteryOptimization,
+                onOpenOnboarding = onOpenOnboarding
             )
         }
 

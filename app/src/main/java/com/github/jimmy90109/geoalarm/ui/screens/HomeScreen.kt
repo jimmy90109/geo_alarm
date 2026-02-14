@@ -23,6 +23,8 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.offset
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.LargeFlexibleTopAppBar
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
@@ -45,6 +47,8 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.zIndex
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.outlined.Info
 import com.github.jimmy90109.geoalarm.R
 import com.github.jimmy90109.geoalarm.data.Alarm
 import com.github.jimmy90109.geoalarm.data.ScheduleWithAlarm
@@ -86,7 +90,8 @@ fun HomeScreen(
     onAlarmClick: (Alarm) -> Unit,
     onAddSchedule: () -> Unit,
     onScheduleClick: (ScheduleWithAlarm) -> Unit,
-    onNavigateToBatteryOptimization: () -> Unit
+    onNavigateToBatteryOptimization: () -> Unit,
+    onOpenOnboarding: () -> Unit
 ) {
     val alarms by viewModel.alarms.collectAsStateWithLifecycle(initialValue = emptyList())
     val schedules by viewModel.schedules.collectAsStateWithLifecycle(initialValue = emptyList())
@@ -193,7 +198,7 @@ fun HomeScreen(
                     )
                 },
                 scrollBehavior = scrollBehavior,
-//                actions = {
+                actions = {
 //                    // Debug test button
 //                    androidx.compose.material3.TextButton(
 //                        onClick = {
@@ -202,8 +207,19 @@ fun HomeScreen(
 //                        }
 //                    ) {
 //                        Text("🧪 Test Alarm (10s)")
-//                    }
-//                }
+//                    },
+                    IconButton(
+                        onClick = {
+                            haptic.performHapticFeedback(HapticFeedbackType.ContextClick)
+                            onOpenOnboarding()
+                        }
+                    ) {
+                        Icon(
+                            imageVector = Icons.Outlined.Info,
+                            contentDescription = stringResource(R.string.open_onboarding)
+                        )
+                    }
+                }
             )
         },
         floatingActionButton = {

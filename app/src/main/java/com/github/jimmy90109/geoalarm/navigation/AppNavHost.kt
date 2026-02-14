@@ -33,9 +33,11 @@ import androidx.navigation.toRoute
 import com.github.jimmy90109.geoalarm.ui.screens.AlarmEditScreen
 import com.github.jimmy90109.geoalarm.ui.screens.BatteryOptimizationScreen
 import com.github.jimmy90109.geoalarm.ui.screens.MainScreen
+import com.github.jimmy90109.geoalarm.ui.screens.OnboardingScreen
 import com.github.jimmy90109.geoalarm.ui.screens.ScheduleEditScreen
 import com.github.jimmy90109.geoalarm.ui.viewmodel.AlarmEditViewModel
 import com.github.jimmy90109.geoalarm.ui.viewmodel.HomeViewModel
+import com.github.jimmy90109.geoalarm.ui.viewmodel.OnboardingViewModel
 import com.github.jimmy90109.geoalarm.ui.viewmodel.ScheduleEditViewModel
 import com.github.jimmy90109.geoalarm.ui.viewmodel.ViewModelFactory
 
@@ -84,10 +86,11 @@ private fun AnimatedNavScreen(
 fun AppNavHost(
     navController: NavHostController,
     viewModelFactory: ViewModelFactory,
+    startDestination: AppRoutes = AppRoutes.Main,
     modifier: Modifier = Modifier
 ) {
     NavHost(
-        navController = navController, startDestination = AppRoutes.Main, modifier = modifier,
+        navController = navController, startDestination = startDestination, modifier = modifier,
         // Global default animations for all routes
         enterTransition = {
             slideInHorizontally(
@@ -165,6 +168,26 @@ fun AppNavHost(
                     onNavigateToBatteryOptimization = {
                         navController.navigate(AppRoutes.BatteryOptimization)
                     },
+                    onOpenOnboarding = { navController.navigate(AppRoutes.Onboarding) }
+                )
+            }
+        }
+
+        composable<AppRoutes.Onboarding> {
+            val onboardingViewModel: OnboardingViewModel = viewModel(factory = viewModelFactory)
+            AnimatedNavScreen {
+                OnboardingScreen(
+                    viewModel = onboardingViewModel,
+                    onFinished = {
+                        if (navController.previousBackStackEntry != null) {
+                            navController.popBackStack()
+                        } else {
+                            navController.navigate(AppRoutes.Main) {
+                                popUpTo(AppRoutes.Onboarding) { inclusive = true }
+                                launchSingleTop = true
+                            }
+                        }
+                    }
                 )
             }
         }
