@@ -1,0 +1,81 @@
+name: Android Release
+
+on:
+  push:
+    tags:
+      - "v*"
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    env:
+      JAVA_TOOL_OPTIONS: -Xmx2g
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+
+      - name: Set up Gradle cache
+        uses: gradle/actions/setup-gradle@v4
+
+      - name: Grant execute permission for gradlew
+        run: chmod +x ./gradlew
+
+      - name: Build release APK
+        run: ./gradlew :app:assembleRelease --no-daemon --stacktrace
+
+      - name: Extract app version
+        id: app_version
+        run: |
+          set -euo pipefail
+          VERSION_NAME="$(grep -m1 'versionName[[:space:]]*=' app/build.gradle.kts | sed -E 's/.*"([^"]+)".*/\1/')"
+          VERSION_CODE="$(grep -m1 'versionCode[[:space:]]*=' app/build.gradle.kts | sed -E 's/.*=[[:space:]]*([0-9]+).*/\1/')"
+
+          if [ -z "${VERSION_NAME}" ] || [ -z "${VERSION_CODE}" ]; then
+            echo "Failed to parse versionName/versionCode from app/build.gradle.kts"
+            exit 1
+          fi
+
+          echo "version_name=${VERSION_NAME}" >> "$GITHUB_OUTPUT"
+          echo "version_code=${VERSION_CODE}" >> "$GITHUB_OUTPUT"
+
+      - name: Sign release APK
+        id: sign_apk
+        uses: r0adkll/sign-android-release@v1
+        with:
+          releaseDirectory: app/build/outputs/apk/release
+          signingKeyBase64: ${{ secrets.SIGNING_KEYSTORE_BASE64 }}
+          alias: ${{ secrets.SIGNING_KEY_ALIAS }}
+          keyStorePassword: ${{ secrets.SIGNING_KEYSTORE_PASSWORD }}
+          keyPassword: ${{ secrets.SIGNING_KEY_PASSWORD }}
+
+      - name: Prepare release assets
+        run: |
+          set -euo pipefail
+          TAG_NAME="${GITHUB_REF_NAME}"
+          mkdir -p dist
+
+          SIGNED_APK="$(ls app/build/outputs/apk/release/*-signed.apk | head -n 1)"
+          OUTPUT_APK="GeoAlarm-${TAG_NAME}.apk"
+          cp "${SIGNED_APK}" "dist/${OUTPUT_APK}"
+
+          shasum -a 256 "dist/${OUTPUT_APK}" | awk '{print $1}' > "dist/${OUTPUT_APK}.sha256"
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ github.ref_name }}
+          name: GeoAlarm ${{ steps.app_version.outputs.version_name }}+${{ steps.app_version.outputs.version_code }}
+          prerelease: ${{ contains(github.ref_name, '-') }}
+          generate_release_notes: true
+          files: |
+            dist/*.apk
+            dist/*.sha256

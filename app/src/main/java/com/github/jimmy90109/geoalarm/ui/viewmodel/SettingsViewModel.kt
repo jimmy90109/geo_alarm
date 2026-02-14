@@ -3,10 +3,8 @@ package com.github.jimmy90109.geoalarm.ui.viewmodel
 import android.app.Application
 import android.content.Context
 import android.media.MediaPlayer
+import android.net.Uri
 import android.os.Build
-import android.os.VibrationEffect
-import android.os.Vibrator
-import android.os.VibratorManager
 import androidx.appcompat.app.AppCompatDelegate
 import androidx.core.os.LocaleListCompat
 import androidx.lifecycle.AndroidViewModel
@@ -45,6 +43,8 @@ class SettingsViewModel(
     private val updateManager = UpdateManager(application)
     val updateStatus = updateManager.status
     val currentVersion = BuildConfig.VERSION_NAME
+    private var pendingInstallUri: Uri? = null
+    private var hasCheckedUpdatesOnHomeEntry = false
 
     // Ringtone Settings from DataStore
     val ringtoneSettings: StateFlow<RingtoneSettings> = settingsRepository.ringtoneSettingsFlow
@@ -88,14 +88,20 @@ class SettingsViewModel(
         }
     }
 
-    fun downloadUpdate(url: String) {
+    fun checkForUpdatesOnHomeEntry() {
+        if (hasCheckedUpdatesOnHomeEntry) return
+        hasCheckedUpdatesOnHomeEntry = true
+        checkForUpdates()
+    }
+
+    fun downloadUpdate(url: String, sha256: String) {
         viewModelScope.launch {
-            updateManager.downloadUpdate(url)
+            updateManager.downloadUpdate(url, sha256)
         }
     }
 
-    fun installUpdate(file: java.io.File, context: Context) {
-        val intent = updateManager.getInstallIntent(file)
+    fun installUpdate(apkUri: Uri, context: Context) {
+        val intent = updateManager.getInstallIntent(apkUri)
         val canInstall = if (Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.O) {
             context.packageManager.canRequestPackageInstalls()
         } else {
@@ -103,8 +109,10 @@ class SettingsViewModel(
         }
 
         if (canInstall) {
+            pendingInstallUri = null
             context.startActivity(intent)
         } else {
+            pendingInstallUri = apkUri
             if (Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.O) {
                 val permissionIntent = android.content.Intent(
                     android.provider.Settings.ACTION_MANAGE_UNKNOWN_APP_SOURCES
@@ -116,8 +124,15 @@ class SettingsViewModel(
         }
     }
 
-    fun getInstallIntent(file: java.io.File): android.content.Intent =
-        updateManager.getInstallIntent(file)
+    fun retryPendingInstallIfPermitted(context: Context) {
+        val apkUri = pendingInstallUri ?: return
+        val canInstall =
+            context.packageManager.canRequestPackageInstalls()
+        if (canInstall) {
+            pendingInstallUri = null
+            context.startActivity(updateManager.getInstallIntent(apkUri))
+        }
+    }
 
     fun resetUpdateState() {
         updateManager.resetState()
