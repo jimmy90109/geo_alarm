@@ -1,53 +1,52 @@
 [versions]
-agp = "9.0.0"
-kotlin = "2.2.21"
+agp = "9.0.1"
+kotlin = "2.3.10"
 coreKtx = "1.17.0"
 junit = "4.13.2"
-junitVersion = "1.1.5"
-espressoCore = "3.5.1"
-appcompat = "1.6.1"
-material = "1.10.0"
-
+junitVersion = "1.3.0"
+espressoCore = "3.7.0"
+appcompat = "1.7.1"
+material = "1.13.0"
 
 # Compose
-composeBom = "2024.12.01"
-activityCompose = "1.9.3"
-lifecycleRuntimeKtx = "2.7.0"
-material3 = "1.5.0-alpha11"
+composeBom = "2026.02.00"
+activityCompose = "1.12.4"
+lifecycleRuntimeKtx = "2.10.0"
+material3 = "1.5.0-alpha14"
 
 # Navigation
-navigationCompose = "2.8.5"
+navigationCompose = "2.9.7"
 
 # Serialization
-kotlinxSerializationJson = "1.6.3"
+kotlinxSerializationJson = "1.10.0"
 
 # Test
 coroutinesTest = "1.10.2"
 
 # Room
-room = "2.7.1"
+room = "2.8.4"
 ksp = "2.3.2"
 
 # Play Services
-playServicesLocation = "21.1.0"
+playServicesLocation = "21.3.0"
 mapsCompose = "4.3.3"
 
 # Permissions
-accompanistPermissions = "0.34.0"
+accompanistPermissions = "0.37.3"
 
 # Places SDK
 placesVersion = "4.1.0"
-datastore = "1.0.0"
+datastore = "1.2.0"
 
 # HyperIsland ToolKit
-hyperisland = "0.4.3"
+hyperisland = "0.4.4"
 
 # Hilt
-hilt = "2.57.2"
-hiltNavigationCompose = "1.2.0"
+hilt = "2.59.2"
+hiltNavigationCompose = "1.3.0"
 
 # Compose
-foundationLayout = "1.10.2"
+foundationLayout = "1.10.3"
 
 [libraries]
 androidx-core-ktx = { group = "androidx.core", name = "core-ktx", version.ref = "coreKtx" }
@@ -68,7 +67,7 @@ androidx-ui-test-junit4 = { group = "androidx.compose.ui", name = "ui-test-junit
 androidx-material3 = { group = "androidx.compose.material3", name = "material3", version.ref = "material3" }
 androidx-material-icons-extended = { group = "androidx.compose.material", name = "material-icons-extended" }
 androidx-navigation-compose = { group = "androidx.navigation", name = "navigation-compose", version.ref = "navigationCompose" }
-androidx-ui-text-google-fonts = { group = "androidx.compose.ui", name = "ui-text-google-fonts", version = "1.7.6" }
+androidx-ui-text-google-fonts = { group = "androidx.compose.ui", name = "ui-text-google-fonts", version = "1.10.3" }
 androidx-room-runtime = { group = "androidx.room", name = "room-runtime", version.ref = "room" }
 androidx-room-ktx = { group = "androidx.room", name = "room-ktx", version.ref = "room" }
 androidx-room-compiler = { group = "androidx.room", name = "room-compiler", version.ref = "room" }

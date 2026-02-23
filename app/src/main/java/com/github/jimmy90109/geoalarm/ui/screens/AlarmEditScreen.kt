@@ -25,6 +25,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.navigationBars
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -37,13 +38,13 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonGroup
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.CircularWavyProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.FilledIconButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.IconButtonDefaults
+import androidx.compose.material3.LoadingIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Slider
@@ -338,7 +339,9 @@ fun AlarmEditScreen(
                 .background(MaterialTheme.colorScheme.background),
             contentAlignment = Alignment.Center
         ) {
-            CircularWavyProgressIndicator()
+            LoadingIndicator(
+                modifier = Modifier.size(100.dp)
+            )
         }
     }
 
@@ -425,14 +428,15 @@ fun AlarmEditMapContent(
     var isMapLoaded by remember { mutableStateOf(false) }
 
     val haptic = LocalHapticFeedback.current
-    Box(modifier = modifier
-        .background(backgroundColor)
-        .pointerInput(Unit) {
-            awaitEachGesture {
-                awaitFirstDown(requireUnconsumed = false)
-                haptic.performHapticFeedback(HapticFeedbackType.ContextClick)
-            }
-        }) {
+    Box(
+        modifier = modifier
+            .background(backgroundColor)
+            .pointerInput(Unit) {
+                awaitEachGesture {
+                    awaitFirstDown(requireUnconsumed = false)
+                    haptic.performHapticFeedback(HapticFeedbackType.ContextClick)
+                }
+            }) {
         GoogleMap(
             modifier = Modifier.matchParentSize(),
             cameraPositionState = cameraPositionState,
@@ -545,6 +549,5 @@ fun AlarmEditRadiusControl(
         }
     }
 }
-
 
 
