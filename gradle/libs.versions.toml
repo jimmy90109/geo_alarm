@@ -21,6 +21,9 @@ navigationCompose = "2.8.5"
 # Serialization
 kotlinxSerializationJson = "1.6.3"
 
+# Test
+coroutinesTest = "1.10.2"
+
 # Room
 room = "2.7.1"
 ksp = "2.3.2"
@@ -38,6 +41,10 @@ datastore = "1.0.0"
 
 # HyperIsland ToolKit
 hyperisland = "0.4.3"
+
+# Hilt
+hilt = "2.57.2"
+hiltNavigationCompose = "1.2.0"
 
 # Compose
 foundationLayout = "1.10.2"
@@ -69,10 +76,14 @@ play-services-location = { group = "com.google.android.gms", name = "play-servic
 maps-compose = { group = "com.google.maps.android", name = "maps-compose", version.ref = "mapsCompose" }
 accompanist-permissions = { group = "com.google.accompanist", name = "accompanist-permissions", version.ref = "accompanistPermissions" }
 kotlinx-serialization-json = { group = "org.jetbrains.kotlinx", name = "kotlinx-serialization-json", version.ref = "kotlinxSerializationJson" }
+kotlinx-coroutines-test = { group = "org.jetbrains.kotlinx", name = "kotlinx-coroutines-test", version.ref = "coroutinesTest" }
 places = { group = "com.google.android.libraries.places", name = "places", version.ref = "placesVersion" }
 androidx-datastore-preferences = { group = "androidx.datastore", name = "datastore-preferences", version.ref = "datastore" }
 hyperisland-kit = { group = "io.github.d4viddf", name = "hyperisland_kit", version.ref = "hyperisland" }
 androidx-compose-foundation-layout = { group = "androidx.compose.foundation", name = "foundation-layout", version.ref = "foundationLayout" }
+hilt-android = { group = "com.google.dagger", name = "hilt-android", version.ref = "hilt" }
+hilt-compiler = { group = "com.google.dagger", name = "hilt-compiler", version.ref = "hilt" }
+androidx-hilt-navigation-compose = { group = "androidx.hilt", name = "hilt-navigation-compose", version.ref = "hiltNavigationCompose" }
 
 [plugins]
 android-application = { id = "com.android.application", version.ref = "agp" }
@@ -80,4 +91,4 @@ kotlin-android = { id = "org.jetbrains.kotlin.android", version.ref = "kotlin" }
 ksp = { id = "com.google.devtools.ksp", version.ref = "ksp" }
 compose-compiler = { id = "org.jetbrains.kotlin.plugin.compose", version.ref = "kotlin" }
 kotlin-serialization = { id = "org.jetbrains.kotlin.plugin.serialization", version.ref = "kotlin" }
-
+hilt-android = { id = "com.google.dagger.hilt.android", version.ref = "hilt" }

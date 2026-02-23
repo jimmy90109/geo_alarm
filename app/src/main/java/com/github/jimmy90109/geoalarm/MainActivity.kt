@@ -4,29 +4,36 @@ import android.content.Intent
 import android.os.Bundle
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
+import androidx.activity.viewModels
 import androidx.appcompat.app.AppCompatActivity
-import androidx.lifecycle.ViewModelProvider
 import com.github.jimmy90109.geoalarm.navigation.AppRoutes
 import androidx.navigation.compose.rememberNavController
+import com.github.jimmy90109.geoalarm.data.AlarmDataRepository
+import com.github.jimmy90109.geoalarm.data.OnboardingRepository
 import com.github.jimmy90109.geoalarm.navigation.AppNavHost
 import com.github.jimmy90109.geoalarm.service.GeoAlarmService
 import com.github.jimmy90109.geoalarm.ui.theme.GeoAlarmTheme
 import com.github.jimmy90109.geoalarm.ui.viewmodel.HomeViewModel
-import com.github.jimmy90109.geoalarm.ui.viewmodel.ViewModelFactory
+import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
+import javax.inject.Inject
 
+@AndroidEntryPoint
 class MainActivity : AppCompatActivity() {
+    @Inject
+    lateinit var alarmRepository: AlarmDataRepository
+
+    @Inject
+    lateinit var onboardingRepository: OnboardingRepository
+
+    private val homeViewModel: HomeViewModel by viewModels()
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
 
-        val app = application as GeoAlarmApplication
-        val repository = app.repository
-        val settingsRepository = app.settingsRepository
-        val onboardingRepository = app.onboardingRepository
-        val sharedPreferenceManager = app.sharedPreferenceManager
         val hasSeenOnboarding = runBlocking {
             onboardingRepository.hasSeenLocationOnboarding()
         }
@@ -35,19 +42,12 @@ class MainActivity : AppCompatActivity() {
         } else {
             AppRoutes.Onboarding
         }
-        val viewModelFactory = ViewModelFactory(
-            app,
-            repository, settingsRepository,
-            onboardingRepository,
-            sharedPreferenceManager,
-        )
 
         setContent {
             GeoAlarmTheme {
                 val navController = rememberNavController()
                 AppNavHost(
                     navController = navController,
-                    viewModelFactory = viewModelFactory,
                     startDestination = startDestination,
                 )
 
@@ -69,11 +69,10 @@ class MainActivity : AppCompatActivity() {
             val alarmId = intent.getStringExtra(GeoAlarmService.EXTRA_ALARM_ID)
             if (!alarmId.isNullOrEmpty()) {
                 // Find and disable the alarm
-                val app = application as GeoAlarmApplication
                 CoroutineScope(kotlinx.coroutines.Dispatchers.IO).launch {
-                    val alarm = app.repository.getAlarm(alarmId)
+                    val alarm = alarmRepository.getAlarm(alarmId)
                     if (alarm != null) {
-                        app.repository.update(alarm.copy(isEnabled = false))
+                        alarmRepository.update(alarm.copy(isEnabled = false))
                         // Also stop the service explicitly just in case
                         val stopIntent = Intent(
                             this@MainActivity,
@@ -87,20 +86,7 @@ class MainActivity : AppCompatActivity() {
         } else if (intent.action == "ENABLE_ALARM_FROM_SCHEDULE") {
             val alarmId = intent.getStringExtra("ALARM_ID")
             if (!alarmId.isNullOrEmpty()) {
-
-                // Get Application and Repository
-                val app = application as GeoAlarmApplication
-                val factory = ViewModelFactory(
-                    app, app.repository,
-                    app.settingsRepository,
-                    app.onboardingRepository,
-                    app.sharedPreferenceManager,
-                )
-
-                // Get ViewModel (Activity Scoped)
-                val viewModel = ViewModelProvider(this, factory)[HomeViewModel::class.java]
-
-                viewModel.handleScheduleIntent(alarmId)
+                homeViewModel.handleScheduleIntent(alarmId)
             }
         }
     }

@@ -3,8 +3,12 @@ package com.github.jimmy90109.geoalarm.utils
 import android.content.Context
 import android.content.SharedPreferences
 import androidx.core.content.edit
+import dagger.hilt.android.qualifiers.ApplicationContext
+import javax.inject.Inject
 
-class SharedPreferenceManager(context: Context) {
+class SharedPreferenceManager @Inject constructor(
+    @ApplicationContext context: Context
+) {
 
     private val prefs: SharedPreferences =
         context.getSharedPreferences(PREF_NAME, Context.MODE_PRIVATE)

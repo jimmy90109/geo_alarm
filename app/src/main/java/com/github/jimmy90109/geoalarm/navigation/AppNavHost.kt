@@ -25,7 +25,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.unit.dp
-import androidx.lifecycle.viewmodel.compose.viewModel
+import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavHostController
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
@@ -39,7 +39,6 @@ import com.github.jimmy90109.geoalarm.ui.viewmodel.AlarmEditViewModel
 import com.github.jimmy90109.geoalarm.ui.viewmodel.HomeViewModel
 import com.github.jimmy90109.geoalarm.ui.viewmodel.OnboardingViewModel
 import com.github.jimmy90109.geoalarm.ui.viewmodel.ScheduleEditViewModel
-import com.github.jimmy90109.geoalarm.ui.viewmodel.ViewModelFactory
 
 // Material 3 Motion constants
 private const val DURATION_MEDIUM = 300
@@ -84,10 +83,9 @@ private fun AnimatedNavScreen(
  */
 @Composable
 fun AppNavHost(
+    modifier: Modifier = Modifier,
     navController: NavHostController,
-    viewModelFactory: ViewModelFactory,
     startDestination: AppRoutes = AppRoutes.Main,
-    modifier: Modifier = Modifier
 ) {
     NavHost(
         navController = navController, startDestination = startDestination, modifier = modifier,
@@ -132,10 +130,7 @@ fun AppNavHost(
                 null
             } ?: throw IllegalStateException("Context is not a ComponentActivity")
 
-            val viewModel: HomeViewModel = viewModel(
-                viewModelStoreOwner = activity,
-                factory = viewModelFactory
-            )
+            val viewModel: HomeViewModel = hiltViewModel(activity)
             // Observe savedStateHandle for highlight requests
             val savedStateHandle = backStackEntry.savedStateHandle
             val highlightedAlarmId = savedStateHandle.get<String>("highlight_alarm_id")
@@ -174,7 +169,7 @@ fun AppNavHost(
         }
 
         composable<AppRoutes.Onboarding> {
-            val onboardingViewModel: OnboardingViewModel = viewModel(factory = viewModelFactory)
+            val onboardingViewModel: OnboardingViewModel = hiltViewModel()
             AnimatedNavScreen {
                 OnboardingScreen(
                     viewModel = onboardingViewModel,
@@ -194,7 +189,7 @@ fun AppNavHost(
 
         composable<AppRoutes.AlarmEdit> { backStackEntry ->
             val route = backStackEntry.toRoute<AppRoutes.AlarmEdit>()
-            val viewModel: AlarmEditViewModel = viewModel(factory = viewModelFactory)
+            val viewModel: AlarmEditViewModel = hiltViewModel()
             AnimatedNavScreen {
                 AlarmEditScreen(
                     viewModel = viewModel,
@@ -228,7 +223,7 @@ fun AppNavHost(
 
         composable<AppRoutes.ScheduleEdit> { backStackEntry ->
             val route = backStackEntry.toRoute<AppRoutes.ScheduleEdit>()
-            val viewModel: ScheduleEditViewModel = viewModel(factory = viewModelFactory)
+            val viewModel: ScheduleEditViewModel = hiltViewModel()
             AnimatedNavScreen {
                 ScheduleEditScreen(
                     viewModel = viewModel,

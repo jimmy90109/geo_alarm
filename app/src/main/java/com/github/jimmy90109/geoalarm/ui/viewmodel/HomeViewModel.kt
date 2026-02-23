@@ -8,17 +8,18 @@ import android.content.Context
 import android.content.Intent
 import android.content.IntentFilter
 import android.content.pm.PackageManager
-import android.database.sqlite.SQLiteConstraintException
 import android.location.Location
 import android.util.Log
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.github.jimmy90109.geoalarm.data.Alarm
-import com.github.jimmy90109.geoalarm.data.AlarmRepository
+import com.github.jimmy90109.geoalarm.data.AlarmDataRepository
 import com.github.jimmy90109.geoalarm.data.AlarmSchedule
 import com.github.jimmy90109.geoalarm.service.GeoAlarmService
 import com.google.android.gms.location.LocationServices
+import dagger.hilt.android.lifecycle.HiltViewModel
+import javax.inject.Inject
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
@@ -48,9 +49,10 @@ data class HomeUiState(
  * ViewModel for the Home Screen.
  * Manages alarm list state, dialog visibility states, and core alarm operations (enable/disable/delete).
  */
-class HomeViewModel(
+@HiltViewModel
+class HomeViewModel @Inject constructor(
     application: Application,
-    private val repository: AlarmRepository,
+    private val repository: AlarmDataRepository,
 ) : AndroidViewModel(application) {
 
     private val fusedLocationClient = LocationServices.getFusedLocationProviderClient(application)
@@ -367,4 +369,3 @@ class HomeViewModel(
         }
     }
 }
-

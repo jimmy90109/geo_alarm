@@ -10,11 +10,13 @@ import androidx.core.os.LocaleListCompat
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.github.jimmy90109.geoalarm.BuildConfig
-import com.github.jimmy90109.geoalarm.data.AlarmRepository
+import com.github.jimmy90109.geoalarm.data.AlarmDataRepository
 import com.github.jimmy90109.geoalarm.data.RingtoneSettings
 import com.github.jimmy90109.geoalarm.data.SettingsRepository
 import com.github.jimmy90109.geoalarm.data.UpdateManager
 import com.github.jimmy90109.geoalarm.utils.AudioUtils
+import dagger.hilt.android.lifecycle.HiltViewModel
+import javax.inject.Inject
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
@@ -31,10 +33,11 @@ data class SettingsUiState(
     val isPreviewingDefault: Boolean = false, // true if previewing default ringtone
 )
 
-class SettingsViewModel(
+@HiltViewModel
+class SettingsViewModel @Inject constructor(
     application: Application,
     private val settingsRepository: SettingsRepository,
-    private val alarmRepository: AlarmRepository
+    private val alarmRepository: AlarmDataRepository
 ) : AndroidViewModel(application) {
 
     private val _uiState = MutableStateFlow(SettingsUiState())

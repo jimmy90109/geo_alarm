@@ -3,8 +3,10 @@ package com.github.jimmy90109.geoalarm.ui.viewmodel
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.github.jimmy90109.geoalarm.data.Alarm
-import com.github.jimmy90109.geoalarm.data.AlarmRepository
+import com.github.jimmy90109.geoalarm.data.AlarmDataRepository
 import com.google.android.gms.maps.model.LatLng
+import dagger.hilt.android.lifecycle.HiltViewModel
+import javax.inject.Inject
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -25,8 +27,9 @@ data class AlarmEditUiState(
     val showDeleteConfirmDialog: Boolean = false
 )
 
-class AlarmEditViewModel(
-    private val repository: AlarmRepository
+@HiltViewModel
+class AlarmEditViewModel @Inject constructor(
+    private val repository: AlarmDataRepository
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(AlarmEditUiState())
