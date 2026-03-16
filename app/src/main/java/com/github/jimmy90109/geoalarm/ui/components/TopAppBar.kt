@@ -38,7 +38,7 @@ fun TopAppBar(
             title = title,
             navigationIcon = navigationIcon,
             actions = actions,
-            colors = TopAppBarDefaults.centerAlignedTopAppBarColors(
+            colors = TopAppBarDefaults.topAppBarColors(
                 containerColor = Color.Transparent,
                 scrolledContainerColor = Color.Transparent,
             ),

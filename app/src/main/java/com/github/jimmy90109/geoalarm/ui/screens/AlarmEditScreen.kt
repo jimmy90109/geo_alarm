@@ -30,14 +30,16 @@ import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.ArrowBack
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonGroup
+import androidx.compose.material3.ButtonGroupDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.FilledIconButton
@@ -119,7 +121,7 @@ fun AlarmEditScreen(
     ) { result ->
         if (result.resultCode == Activity.RESULT_OK && result.data != null) {
             val place = Autocomplete.getPlaceFromIntent(result.data!!)
-            place.latLng?.let { latLng ->
+            place.location?.let { latLng ->
                 viewModel.updatePositionFromSearch(
                     latLng, place.displayName ?: place.formattedAddress ?: ""
                 )
@@ -208,21 +210,25 @@ fun AlarmEditScreen(
                                 )
                             },
                             navigationIcon = {
-                                IconButton(onClick = {
-                                    haptic.performHapticFeedback(HapticFeedbackType.ContextClick)
-                                    onNavigateBack()
-                                }) {
+                                IconButton(
+                                    onClick = {
+                                        haptic.performHapticFeedback(HapticFeedbackType.ContextClick)
+                                        onNavigateBack()
+                                    },
+                                ) {
                                     Icon(
-                                        Icons.Default.ArrowBack, // Updated to non-deprecated
+                                        Icons.AutoMirrored.Filled.ArrowBack,
                                         contentDescription = stringResource(R.string.cancel),
                                     )
                                 }
                             },
                             actions = {
-                                IconButton(onClick = {
-                                    haptic.performHapticFeedback(HapticFeedbackType.ContextClick)
-                                    launchAutocomplete()
-                                }) {
+                                IconButton(
+                                    onClick = {
+                                        haptic.performHapticFeedback(HapticFeedbackType.ContextClick)
+                                        launchAutocomplete()
+                                    },
+                                ) {
                                     Icon(
                                         Icons.Filled.Search,
                                         contentDescription = stringResource(R.string.search_location)
@@ -274,12 +280,14 @@ fun AlarmEditScreen(
                         )
                     },
                     navigationIcon = {
-                        IconButton(onClick = {
-                            haptic.performHapticFeedback(HapticFeedbackType.ContextClick)
-                            onNavigateBack()
-                        }) {
+                        IconButton(
+                            onClick = {
+                                haptic.performHapticFeedback(HapticFeedbackType.ContextClick)
+                                onNavigateBack()
+                            },
+                        ) {
                             Icon(
-                                Icons.Default.ArrowBack, // Updated to non-deprecated
+                                Icons.AutoMirrored.Filled.ArrowBack,
                                 contentDescription = stringResource(R.string.cancel),
                             )
                         }
@@ -513,30 +521,72 @@ fun AlarmEditRadiusControl(
             Spacer(modifier = Modifier.height(16.dp))
 
             if (isEditMode) {
+                val deleteLabel = stringResource(R.string.delete)
+                val saveLabel = stringResource(R.string.save)
                 // Edit mode: Delete + Save buttons
                 ButtonGroup(
-                    modifier = Modifier.fillMaxWidth()
+                    overflowIndicator = { menuState ->
+                        ButtonGroupDefaults.OverflowIndicator(menuState = menuState)
+                    },
+                    modifier = Modifier.fillMaxWidth(),
                 ) {
-                    FilledIconButton(
-                        onClick = onDeleteClick, shape = RoundedCornerShape(
-                            topStart = 28.dp, bottomStart = 28.dp, topEnd = 4.dp, bottomEnd = 4.dp
-                        ), colors = IconButtonDefaults.filledIconButtonColors(
-                            containerColor = MaterialTheme.colorScheme.errorContainer,
-                            contentColor = MaterialTheme.colorScheme.onErrorContainer
-                        )
-                    ) {
-                        Icon(
-                            Icons.Default.Delete,
-                            contentDescription = stringResource(R.string.delete)
-                        )
-                    }
-                    Button(
-                        onClick = onSaveClick, enabled = saveEnabled, shape = RoundedCornerShape(
-                            topStart = 4.dp, bottomStart = 4.dp, topEnd = 28.dp, bottomEnd = 28.dp
-                        ), modifier = Modifier.weight(1f)
-                    ) {
-                        Text(stringResource(R.string.save))
-                    }
+                    val buttonGroupScope = this
+                    customItem(
+                        buttonGroupContent = {
+                            FilledIconButton(
+                                onClick = onDeleteClick,
+                                colors = IconButtonDefaults.filledIconButtonColors(
+                                    containerColor = MaterialTheme.colorScheme.errorContainer,
+                                    contentColor = MaterialTheme.colorScheme.onErrorContainer
+                                )
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.Delete,
+                                    contentDescription = deleteLabel
+                                )
+                            }
+                        },
+                        menuContent = { menuState ->
+                            DropdownMenuItem(
+                                text = { Text(deleteLabel) },
+                                onClick = {
+                                    onDeleteClick()
+                                    menuState.dismiss()
+                                },
+                                leadingIcon = {
+                                    Icon(
+                                        imageVector = Icons.Default.Delete,
+                                        contentDescription = deleteLabel
+                                    )
+                                },
+                            )
+                        },
+                    )
+                    customItem(
+                        buttonGroupContent = {
+                            Button(
+                                onClick = onSaveClick,
+                                enabled = saveEnabled,
+                                modifier = with(buttonGroupScope) {
+                                    Modifier.weight(1f)
+                                },
+                            ) {
+                                Text(saveLabel)
+                            }
+                        },
+                        menuContent = { menuState ->
+                            DropdownMenuItem(
+                                text = { Text(saveLabel) },
+                                onClick = {
+                                    if (saveEnabled) {
+                                        onSaveClick()
+                                    }
+                                    menuState.dismiss()
+                                },
+                                enabled = saveEnabled,
+                            )
+                        },
+                    )
                 }
             } else {
                 // New alarm mode: Only Save button
@@ -549,5 +599,3 @@ fun AlarmEditRadiusControl(
         }
     }
 }
-
-

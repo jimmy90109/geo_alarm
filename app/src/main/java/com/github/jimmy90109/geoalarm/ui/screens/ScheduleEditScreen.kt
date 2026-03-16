@@ -32,12 +32,14 @@ import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.outlined.Info
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonGroup
+import androidx.compose.material3.ButtonGroupDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.FilledIconButton
 import androidx.compose.material3.HorizontalDivider
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.IconButtonDefaults
@@ -222,30 +224,91 @@ fun ScheduleEditScreen(
                                     },
                                 )
                                 Spacer(modifier = Modifier.height(8.dp))
-                                ButtonGroup(
-                                    modifier = Modifier.fillMaxWidth()
-                                ) {
-                                    if (scheduleId != null) {
-                                        FilledIconButton(
-                                            onClick = {
-                                                haptic.performHapticFeedback(HapticFeedbackType.Reject)
-                                                viewModel.requestDeleteSchedule()
-                                            }, shape = RoundedCornerShape(
-                                                topStart = 28.dp,
-                                                bottomStart = 28.dp,
-                                                topEnd = 4.dp,
-                                                bottomEnd = 4.dp
-                                            ), colors = IconButtonDefaults.filledIconButtonColors(
-                                                containerColor = MaterialTheme.colorScheme.errorContainer,
-                                                contentColor = MaterialTheme.colorScheme.onErrorContainer
-                                            )
-                                        ) {
-                                            Icon(
-                                                Icons.Default.Delete,
-                                                contentDescription = stringResource(R.string.delete)
-                                            )
-                                        }
+                                if (scheduleId != null) {
+                                    val deleteLabel = stringResource(R.string.delete)
+                                    val saveLabel = stringResource(R.string.save)
+                                    val saveEnabled = uiState.selectedAlarmId != null && uiState.daysOfWeek.isNotEmpty()
+                                    ButtonGroup(
+                                        overflowIndicator = { menuState ->
+                                            ButtonGroupDefaults.OverflowIndicator(menuState = menuState)
+                                        },
+                                        modifier = Modifier.fillMaxWidth()
+                                    ) {
+                                        val buttonGroupScope = this
+                                        customItem(
+                                            buttonGroupContent = {
+                                                FilledIconButton(
+                                                    onClick = {
+                                                        haptic.performHapticFeedback(HapticFeedbackType.Reject)
+                                                        viewModel.requestDeleteSchedule()
+                                                    },
+                                                    colors = IconButtonDefaults.filledIconButtonColors(
+                                                        containerColor = MaterialTheme.colorScheme.errorContainer,
+                                                        contentColor = MaterialTheme.colorScheme.onErrorContainer
+                                                    )
+                                                ) {
+                                                    Icon(
+                                                        Icons.Default.Delete,
+                                                        contentDescription = deleteLabel
+                                                    )
+                                                }
+                                            },
+                                            menuContent = { menuState ->
+                                                DropdownMenuItem(
+                                                    text = { Text(deleteLabel) },
+                                                    onClick = {
+                                                        haptic.performHapticFeedback(HapticFeedbackType.Reject)
+                                                        viewModel.requestDeleteSchedule()
+                                                        menuState.dismiss()
+                                                    },
+                                                    leadingIcon = {
+                                                        Icon(
+                                                            imageVector = Icons.Default.Delete,
+                                                            contentDescription = deleteLabel
+                                                        )
+                                                    },
+                                                )
+                                            },
+                                        )
+                                        customItem(
+                                            buttonGroupContent = {
+                                                Button(
+                                                    onClick = {
+                                                        haptic.performHapticFeedback(HapticFeedbackType.Confirm)
+                                                        viewModel.setTime(
+                                                            timePickerState.hour,
+                                                            timePickerState.minute,
+                                                        )
+                                                        viewModel.saveSchedule { _ -> onBack() }
+                                                    },
+                                                    modifier = with(buttonGroupScope) {
+                                                        Modifier.weight(1f)
+                                                    },
+                                                    enabled = saveEnabled,
+                                                ) {
+                                                    Text(saveLabel)
+                                                }
+                                            },
+                                            menuContent = { menuState ->
+                                                DropdownMenuItem(
+                                                    text = { Text(saveLabel) },
+                                                    onClick = {
+                                                        if (saveEnabled) {
+                                                            haptic.performHapticFeedback(HapticFeedbackType.Confirm)
+                                                            viewModel.setTime(
+                                                                timePickerState.hour,
+                                                                timePickerState.minute,
+                                                            )
+                                                            viewModel.saveSchedule { _ -> onBack() }
+                                                        }
+                                                        menuState.dismiss()
+                                                    },
+                                                    enabled = saveEnabled,
+                                                )
+                                            },
+                                        )
                                     }
+                                } else {
                                     Button(
                                         onClick = {
                                             haptic.performHapticFeedback(HapticFeedbackType.Confirm)
@@ -255,13 +318,7 @@ fun ScheduleEditScreen(
                                             )
                                             viewModel.saveSchedule { _ -> onBack() }
                                         },
-                                        shape = if (scheduleId != null) RoundedCornerShape(
-                                            topStart = 4.dp,
-                                            bottomStart = 4.dp,
-                                            topEnd = 28.dp,
-                                            bottomEnd = 28.dp
-                                        ) else CircleShape,
-                                        modifier = Modifier.weight(1f),
+                                        modifier = Modifier.fillMaxWidth(),
                                         enabled = uiState.selectedAlarmId != null && uiState.daysOfWeek.isNotEmpty(),
                                     ) {
                                         Text(stringResource(R.string.save))
@@ -371,46 +428,102 @@ fun ScheduleEditScreen(
                             },
                         )
                         Spacer(modifier = Modifier.height(8.dp))
-                        ButtonGroup(
-                            modifier = Modifier.fillMaxWidth()
-                        ) {
-                            if (scheduleId != null) {
-                                FilledIconButton(
-                                    onClick = {
-                                        haptic.performHapticFeedback(HapticFeedbackType.Reject)
-                                        viewModel.requestDeleteSchedule()
-                                    }, shape = RoundedCornerShape(
-                                        topStart = 28.dp,
-                                        bottomStart = 28.dp,
-                                        topEnd = 4.dp,
-                                        bottomEnd = 4.dp
-                                    ), colors = IconButtonDefaults.filledIconButtonColors(
-                                        containerColor = MaterialTheme.colorScheme.errorContainer,
-                                        contentColor = MaterialTheme.colorScheme.onErrorContainer
-                                    )
-                                ) {
-                                    Icon(
-                                        Icons.Default.Delete,
-                                        contentDescription = stringResource(R.string.delete)
-                                    )
-                                }
+                        if (scheduleId != null) {
+                            val deleteLabel = stringResource(R.string.delete)
+                            val saveLabel = stringResource(R.string.save)
+                            val saveEnabled = uiState.selectedAlarmId != null && uiState.daysOfWeek.isNotEmpty()
+                            ButtonGroup(
+                                overflowIndicator = { menuState ->
+                                    ButtonGroupDefaults.OverflowIndicator(menuState = menuState)
+                                },
+                                modifier = Modifier.fillMaxWidth()
+                            ) {
+                                val buttonGroupScope = this
+                                customItem(
+                                    buttonGroupContent = {
+                                        FilledIconButton(
+                                            onClick = {
+                                                haptic.performHapticFeedback(HapticFeedbackType.Reject)
+                                                viewModel.requestDeleteSchedule()
+                                            },
+                                            colors = IconButtonDefaults.filledIconButtonColors(
+                                                containerColor = MaterialTheme.colorScheme.errorContainer,
+                                                contentColor = MaterialTheme.colorScheme.onErrorContainer
+                                            )
+                                        ) {
+                                            Icon(
+                                                Icons.Default.Delete,
+                                                contentDescription = deleteLabel
+                                            )
+                                        }
+                                    },
+                                    menuContent = { menuState ->
+                                        DropdownMenuItem(
+                                            text = { Text(deleteLabel) },
+                                            onClick = {
+                                                haptic.performHapticFeedback(HapticFeedbackType.Reject)
+                                                viewModel.requestDeleteSchedule()
+                                                menuState.dismiss()
+                                            },
+                                            leadingIcon = {
+                                                Icon(
+                                                    imageVector = Icons.Default.Delete,
+                                                    contentDescription = deleteLabel
+                                                )
+                                            },
+                                        )
+                                    },
+                                )
+                                customItem(
+                                    buttonGroupContent = {
+                                        Button(
+                                            onClick = {
+                                                haptic.performHapticFeedback(HapticFeedbackType.Confirm)
+                                                viewModel.setTime(
+                                                    timePickerState.hour,
+                                                    timePickerState.minute,
+                                                )
+                                                viewModel.saveSchedule { _ -> onBack() }
+                                            },
+                                            modifier = with(buttonGroupScope) {
+                                                Modifier.weight(1f)
+                                            },
+                                            enabled = saveEnabled,
+                                        ) {
+                                            Text(saveLabel)
+                                        }
+                                    },
+                                    menuContent = { menuState ->
+                                        DropdownMenuItem(
+                                            text = { Text(saveLabel) },
+                                            onClick = {
+                                                if (saveEnabled) {
+                                                    haptic.performHapticFeedback(HapticFeedbackType.Confirm)
+                                                    viewModel.setTime(
+                                                        timePickerState.hour,
+                                                        timePickerState.minute,
+                                                    )
+                                                    viewModel.saveSchedule { _ -> onBack() }
+                                                }
+                                                menuState.dismiss()
+                                            },
+                                            enabled = saveEnabled,
+                                        )
+                                    },
+                                )
                             }
+                        } else {
                             Button(
                                 onClick = {
                                     haptic.performHapticFeedback(HapticFeedbackType.Confirm)
                                     viewModel.setTime(
-                                        timePickerState.hour, timePickerState.minute
+                                        timePickerState.hour,
+                                        timePickerState.minute,
                                     )
                                     viewModel.saveSchedule { _ -> onBack() }
                                 },
-                                shape = if (scheduleId != null) RoundedCornerShape(
-                                    topStart = 4.dp,
-                                    bottomStart = 4.dp,
-                                    topEnd = 28.dp,
-                                    bottomEnd = 28.dp
-                                ) else CircleShape,
-                                modifier = Modifier.weight(1f),
-                                enabled = uiState.selectedAlarmId != null && uiState.daysOfWeek.isNotEmpty()
+                                modifier = Modifier.fillMaxWidth(),
+                                enabled = uiState.selectedAlarmId != null && uiState.daysOfWeek.isNotEmpty(),
                             ) {
                                 Text(stringResource(R.string.save))
                             }
