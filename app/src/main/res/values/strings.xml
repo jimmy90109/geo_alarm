@@ -162,4 +162,8 @@
     <string name="schedule_onboarding_message">When the set time is reached, the system will send a confirmation notification.\nYou need to click the notification for the alarm to actually enable.</string>
     <string name="schedule_onboarding_button">I Understand</string>
     <string name="schedule_guide_message">Add a schedule to automate alarms</string>
+    <string name="shortcut_add_alarm_short">New alarm</string>
+    <string name="shortcut_add_alarm_long">Create a new geo alarm</string>
+    <string name="shortcut_add_schedule_short">New schedule</string>
+    <string name="shortcut_add_schedule_long">Create a new alarm schedule</string>
 </resources>

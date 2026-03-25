@@ -1,11 +1,19 @@
 package com.github.jimmy90109.geoalarm
 
 import android.content.Intent
+import android.net.Uri
 import android.os.Bundle
+import android.util.Log
+import android.widget.Toast
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.viewModels
 import androidx.appcompat.app.AppCompatActivity
+import com.github.jimmy90109.geoalarm.appactions.AppActionContract
+import com.github.jimmy90109.geoalarm.appactions.AppActionParsers
+import com.github.jimmy90109.geoalarm.appactions.AppActionResult
+import com.github.jimmy90109.geoalarm.appactions.CreateGeoAlarmUseCase
+import com.github.jimmy90109.geoalarm.appactions.CreateScheduleUseCase
 import com.github.jimmy90109.geoalarm.navigation.AppRoutes
 import androidx.navigation.compose.rememberNavController
 import com.github.jimmy90109.geoalarm.data.AlarmDataRepository
@@ -22,11 +30,21 @@ import javax.inject.Inject
 
 @AndroidEntryPoint
 class MainActivity : AppCompatActivity() {
+    companion object {
+        private const val TAG = "MainActivity"
+    }
+
     @Inject
     lateinit var alarmRepository: AlarmDataRepository
 
     @Inject
     lateinit var onboardingRepository: OnboardingRepository
+
+    @Inject
+    lateinit var createGeoAlarmUseCase: CreateGeoAlarmUseCase
+
+    @Inject
+    lateinit var createScheduleUseCase: CreateScheduleUseCase
 
     private val homeViewModel: HomeViewModel by viewModels()
 
@@ -37,11 +55,7 @@ class MainActivity : AppCompatActivity() {
         val hasSeenOnboarding = runBlocking {
             onboardingRepository.hasSeenLocationOnboarding()
         }
-        val startDestination = if (hasSeenOnboarding) {
-            AppRoutes.Main
-        } else {
-            AppRoutes.Onboarding
-        }
+        val startDestination = resolveStartDestination(intent, hasSeenOnboarding)
 
         setContent {
             GeoAlarmTheme {
@@ -61,6 +75,11 @@ class MainActivity : AppCompatActivity() {
 
     override fun onNewIntent(intent: Intent) {
         super.onNewIntent(intent)
+        setIntent(intent)
+        if (resolveShortcutRoute(intent) != null) {
+            recreate()
+            return
+        }
         handleIntent(intent)
     }
 
@@ -83,11 +102,102 @@ class MainActivity : AppCompatActivity() {
                     }
                 }
             }
+        } else if (intent.action == AppActionContract.ACTION_CREATE_GEO_ALARM) {
+            handleCreateGeoAlarmIntent(intent)
+        } else if (intent.action == AppActionContract.ACTION_CREATE_SCHEDULE) {
+            handleCreateScheduleIntent(intent)
         } else if (intent.action == "ENABLE_ALARM_FROM_SCHEDULE") {
             val alarmId = intent.getStringExtra("ALARM_ID")
             if (!alarmId.isNullOrEmpty()) {
                 homeViewModel.handleScheduleIntent(alarmId)
             }
         }
+    }
+
+    private fun handleCreateGeoAlarmIntent(intent: Intent) {
+        val name = intent.getStringExtra(AppActionContract.EXTRA_NAME)?.trim().orEmpty()
+        val locationQuery = intent.getStringExtra(AppActionContract.EXTRA_LOCATION_QUERY)?.trim().orEmpty()
+        val radius = intent.getDoubleExtra(AppActionContract.EXTRA_RADIUS_METERS, -1.0)
+            .takeIf { it > 0 }
+
+        CoroutineScope(kotlinx.coroutines.Dispatchers.IO).launch {
+            val result = createGeoAlarmUseCase(
+                CreateGeoAlarmUseCase.Request(
+                    name = name,
+                    locationQuery = locationQuery,
+                    radiusMeters = radius
+                )
+            )
+            runOnUiThread {
+                when (result) {
+                    is AppActionResult.Success -> {
+                        logAndNotify("APP_ACTION_CREATE_GEO_ALARM_SUCCESS", "Created alarm: ${result.value.name}")
+                    }
+
+                    is AppActionResult.Error -> {
+                        logAndNotify(result.code, result.message)
+                    }
+                }
+            }
+        }
+    }
+
+    private fun handleCreateScheduleIntent(intent: Intent) {
+        val alarmName = intent.getStringExtra(AppActionContract.EXTRA_ALARM_NAME)?.trim().orEmpty()
+        val daysFromArray = intent.getStringArrayListExtra(AppActionContract.EXTRA_DAYS_OF_WEEK).orEmpty()
+        val daysFromString = AppActionParsers.parseDays(intent.getStringExtra(AppActionContract.EXTRA_DAYS_OF_WEEK))
+        val parsedDays = AppActionParsers.parseDays(daysFromArray) + daysFromString
+        val parsedTime = AppActionParsers.parseTime(intent.getStringExtra(AppActionContract.EXTRA_TIME))
+
+        if (parsedTime == null) {
+            logAndNotify("ERR_INVALID_TIME", "Invalid time format")
+            return
+        }
+
+        CoroutineScope(kotlinx.coroutines.Dispatchers.IO).launch {
+            val result = createScheduleUseCase(
+                CreateScheduleUseCase.Request(
+                    alarmName = alarmName,
+                    daysOfWeek = parsedDays,
+                    time = parsedTime
+                )
+            )
+            runOnUiThread {
+                when (result) {
+                    is AppActionResult.Success -> {
+                        logAndNotify("APP_ACTION_CREATE_SCHEDULE_SUCCESS", "Created schedule for $alarmName")
+                    }
+
+                    is AppActionResult.Error -> {
+                        logAndNotify(result.code, result.message)
+                    }
+                }
+            }
+        }
+    }
+
+    private fun logAndNotify(code: String, message: String) {
+        Log.i(TAG, "AppActionResult[$code]: $message")
+        Toast.makeText(this, message, Toast.LENGTH_SHORT).show()
+    }
+
+    private fun resolveStartDestination(intent: Intent, hasSeenOnboarding: Boolean): AppRoutes {
+        if (!hasSeenOnboarding) return AppRoutes.Onboarding
+        return resolveShortcutRoute(intent) ?: AppRoutes.Main
+    }
+
+    private fun resolveShortcutRoute(intent: Intent): AppRoutes? {
+        val data = intent.data ?: return null
+        if (!isShortcutDeepLink(data)) return null
+
+        return when (data.path) {
+            "/add-alarm" -> AppRoutes.AlarmEdit()
+            "/add-schedule" -> AppRoutes.ScheduleEdit()
+            else -> null
+        }
+    }
+
+    private fun isShortcutDeepLink(uri: Uri): Boolean {
+        return uri.scheme == "geoalarm" && uri.host == "shortcut"
     }
 }

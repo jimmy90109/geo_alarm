@@ -160,4 +160,8 @@
     <string name="schedule_onboarding_message">設定的時間到達時，系統會發送確認通知。\n您需要點擊通知，該鬧鐘才會真正啟用。</string>
     <string name="schedule_onboarding_button">我瞭解了</string>
     <string name="schedule_guide_message">新增排程以自動化鬧鐘</string>
+    <string name="shortcut_add_alarm_short">新增鬧鐘</string>
+    <string name="shortcut_add_alarm_long">建立新的定位鬧鐘</string>
+    <string name="shortcut_add_schedule_short">新增排程</string>
+    <string name="shortcut_add_schedule_long">建立新的鬧鐘排程</string>
 </resources>

@@ -1,6 +1,10 @@
 package com.github.jimmy90109.geoalarm.di
 
 import android.content.Context
+import com.github.jimmy90109.geoalarm.appactions.AlarmManagerScheduleGateway
+import com.github.jimmy90109.geoalarm.appactions.AndroidGeocodingService
+import com.github.jimmy90109.geoalarm.appactions.GeocodingService
+import com.github.jimmy90109.geoalarm.appactions.ScheduleGateway
 import com.github.jimmy90109.geoalarm.data.AlarmDao
 import com.github.jimmy90109.geoalarm.data.AlarmDataRepository
 import com.github.jimmy90109.geoalarm.data.AlarmRepository
@@ -38,4 +42,16 @@ abstract class RepositoryModule {
     abstract fun bindAlarmDataRepository(
         repository: AlarmRepository
     ): AlarmDataRepository
+
+    @Binds
+    @Singleton
+    abstract fun bindGeocodingService(
+        geocodingService: AndroidGeocodingService
+    ): GeocodingService
+
+    @Binds
+    @Singleton
+    abstract fun bindScheduleGateway(
+        scheduleGateway: AlarmManagerScheduleGateway
+    ): ScheduleGateway
 }

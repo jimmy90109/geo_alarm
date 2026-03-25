@@ -1,0 +1,69 @@
+<?xml version="1.0" encoding="utf-8"?>
+<shortcuts xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto">
+
+    <shortcut
+        android:shortcutId="shortcut_add_alarm"
+        android:enabled="true"
+        android:icon="@mipmap/ic_launcher"
+        android:shortcutShortLabel="@string/shortcut_add_alarm_short"
+        android:shortcutLongLabel="@string/shortcut_add_alarm_long">
+        <intent
+            android:action="android.intent.action.VIEW"
+            android:data="geoalarm://shortcut/add-alarm"
+            android:targetClass="com.github.jimmy90109.geoalarm.MainActivity" />
+    </shortcut>
+
+    <shortcut
+        android:shortcutId="shortcut_add_schedule"
+        android:enabled="true"
+        android:icon="@mipmap/ic_launcher"
+        android:shortcutShortLabel="@string/shortcut_add_schedule_short"
+        android:shortcutLongLabel="@string/shortcut_add_schedule_long">
+        <intent
+            android:action="android.intent.action.VIEW"
+            android:data="geoalarm://shortcut/add-schedule"
+            android:targetClass="com.github.jimmy90109.geoalarm.MainActivity" />
+    </shortcut>
+
+    <capability android:name="com.github.jimmy90109.geoalarm.capability.CREATE_GEO_ALARM">
+        <intent
+            android:action="com.github.jimmy90109.geoalarm.action.CREATE_GEO_ALARM"
+            android:targetClass="com.github.jimmy90109.geoalarm.MainActivity"
+            android:targetPackage="com.github.jimmy90109.geoalarm">
+            <parameter
+                android:key="name"
+                android:name="name"
+                android:required="true" />
+            <parameter
+                android:key="location_query"
+                android:name="location_query"
+                android:required="true" />
+            <parameter
+                android:key="radius_meters"
+                android:name="radius_meters"
+                android:required="false" />
+        </intent>
+    </capability>
+
+    <capability android:name="com.github.jimmy90109.geoalarm.capability.CREATE_SCHEDULE">
+        <intent
+            android:action="com.github.jimmy90109.geoalarm.action.CREATE_SCHEDULE"
+            android:targetClass="com.github.jimmy90109.geoalarm.MainActivity"
+            android:targetPackage="com.github.jimmy90109.geoalarm">
+            <parameter
+                android:key="alarm_name"
+                android:name="alarm_name"
+                android:required="true" />
+            <parameter
+                android:key="days_of_week"
+                android:name="days_of_week"
+                android:required="true" />
+            <parameter
+                android:key="time"
+                android:name="time"
+                android:required="true" />
+        </intent>
+    </capability>
+
+</shortcuts>

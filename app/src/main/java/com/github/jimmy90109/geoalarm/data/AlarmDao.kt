@@ -14,6 +14,9 @@ interface AlarmDao {
     @Query("SELECT * FROM alarms WHERE id = :id")
     suspend fun getAlarmById(id: String): Alarm?
 
+    @Query("SELECT * FROM alarms WHERE TRIM(name) = TRIM(:name)")
+    suspend fun findAlarmsByName(name: String): List<Alarm>
+
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertAlarm(alarm: Alarm)
 

@@ -15,6 +15,9 @@ interface ScheduleDao {
     @Query("SELECT * FROM alarm_schedules WHERE alarmId = :alarmId")
     fun getSchedulesForAlarm(alarmId: String): Flow<List<AlarmSchedule>>
 
+    @Query("SELECT * FROM alarm_schedules WHERE alarmId = :alarmId")
+    suspend fun getSchedulesForAlarmOneShot(alarmId: String): List<AlarmSchedule>
+
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertSchedule(schedule: AlarmSchedule)
 

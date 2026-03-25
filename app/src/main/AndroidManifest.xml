@@ -31,6 +31,9 @@
         android:localeConfig="@xml/locales_config"
         tools:targetApi="31">
         <meta-data
+            android:name="android.app.shortcuts"
+            android:resource="@xml/shortcuts" />
+        <meta-data
             android:name="com.google.android.geo.API_KEY"
             android:value="${GOOGLE_MAPS_API_KEY}" />
         <service
@@ -56,6 +59,32 @@
             android:exported="true"
             android:launchMode="singleTop"
             android:theme="@style/Theme.GeoAlarm">
+            <intent-filter>
+                <action android:name="com.github.jimmy90109.geoalarm.action.CREATE_GEO_ALARM" />
+                <category android:name="android.intent.category.DEFAULT" />
+            </intent-filter>
+            <intent-filter>
+                <action android:name="com.github.jimmy90109.geoalarm.action.CREATE_SCHEDULE" />
+                <category android:name="android.intent.category.DEFAULT" />
+            </intent-filter>
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data
+                    android:host="shortcut"
+                    android:pathPrefix="/add-alarm"
+                    android:scheme="geoalarm" />
+            </intent-filter>
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data
+                    android:host="shortcut"
+                    android:pathPrefix="/add-schedule"
+                    android:scheme="geoalarm" />
+            </intent-filter>
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />

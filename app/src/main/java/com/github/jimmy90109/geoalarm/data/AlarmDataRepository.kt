@@ -9,6 +9,7 @@ interface AlarmDataRepository {
 
     suspend fun getAlarm(id: String): Alarm?
     suspend fun getAllAlarmsOneShot(): List<Alarm>
+    suspend fun findAlarmsByName(name: String): List<Alarm>
     suspend fun insert(alarm: Alarm)
     suspend fun delete(alarm: Alarm)
     suspend fun update(alarm: Alarm)
@@ -18,5 +19,6 @@ interface AlarmDataRepository {
     suspend fun insertSchedule(schedule: AlarmSchedule)
     suspend fun deleteSchedule(schedule: AlarmSchedule)
     suspend fun updateSchedule(schedule: AlarmSchedule)
+    suspend fun existsDuplicateSchedule(alarmId: String, days: Set<Int>, hour: Int, minute: Int): Boolean
     suspend fun isAlarmUsedInSchedule(alarmId: String): Boolean
 }

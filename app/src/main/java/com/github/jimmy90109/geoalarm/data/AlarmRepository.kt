@@ -20,6 +20,10 @@ class AlarmRepository @Inject constructor(
         return alarmDao.getAllAlarmsOneShot()
     }
 
+    override suspend fun findAlarmsByName(name: String): List<Alarm> {
+        return alarmDao.findAlarmsByName(name)
+    }
+
     override suspend fun insert(alarm: Alarm) {
         alarmDao.insertAlarm(alarm)
     }
@@ -51,6 +55,17 @@ class AlarmRepository @Inject constructor(
 
     override suspend fun updateSchedule(schedule: AlarmSchedule) {
         scheduleDao.updateSchedule(schedule)
+    }
+
+    override suspend fun existsDuplicateSchedule(
+        alarmId: String,
+        days: Set<Int>,
+        hour: Int,
+        minute: Int
+    ): Boolean {
+        return scheduleDao.getSchedulesForAlarmOneShot(alarmId).any { schedule ->
+            schedule.daysOfWeek == days && schedule.hour == hour && schedule.minute == minute
+        }
     }
 
     override suspend fun isAlarmUsedInSchedule(alarmId: String): Boolean {
