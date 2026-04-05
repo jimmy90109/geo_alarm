@@ -2,6 +2,8 @@ package com.github.jimmy90109.geoalarm.di
 
 import android.content.Context
 import com.github.jimmy90109.geoalarm.appactions.AlarmManagerScheduleGateway
+import com.github.jimmy90109.geoalarm.appactions.AlarmServiceStarter
+import com.github.jimmy90109.geoalarm.appactions.AndroidAlarmServiceStarter
 import com.github.jimmy90109.geoalarm.appactions.AndroidGeocodingService
 import com.github.jimmy90109.geoalarm.appactions.GeocodingService
 import com.github.jimmy90109.geoalarm.appactions.ScheduleGateway
@@ -54,4 +56,10 @@ abstract class RepositoryModule {
     abstract fun bindScheduleGateway(
         scheduleGateway: AlarmManagerScheduleGateway
     ): ScheduleGateway
+
+    @Binds
+    @Singleton
+    abstract fun bindAlarmServiceStarter(
+        alarmServiceStarter: AndroidAlarmServiceStarter
+    ): AlarmServiceStarter
 }

@@ -14,6 +14,7 @@ import com.github.jimmy90109.geoalarm.appactions.AppActionParsers
 import com.github.jimmy90109.geoalarm.appactions.AppActionResult
 import com.github.jimmy90109.geoalarm.appactions.CreateGeoAlarmUseCase
 import com.github.jimmy90109.geoalarm.appactions.CreateScheduleUseCase
+import com.github.jimmy90109.geoalarm.appactions.StartAlarmUseCase
 import com.github.jimmy90109.geoalarm.navigation.AppRoutes
 import androidx.navigation.compose.rememberNavController
 import com.github.jimmy90109.geoalarm.data.AlarmDataRepository
@@ -45,6 +46,9 @@ class MainActivity : AppCompatActivity() {
 
     @Inject
     lateinit var createScheduleUseCase: CreateScheduleUseCase
+
+    @Inject
+    lateinit var startAlarmUseCase: StartAlarmUseCase
 
     private val homeViewModel: HomeViewModel by viewModels()
 
@@ -106,6 +110,8 @@ class MainActivity : AppCompatActivity() {
             handleCreateGeoAlarmIntent(intent)
         } else if (intent.action == AppActionContract.ACTION_CREATE_SCHEDULE) {
             handleCreateScheduleIntent(intent)
+        } else if (intent.action == AppActionContract.ACTION_START_ALARM) {
+            handleStartAlarmIntent(intent)
         } else if (intent.action == "ENABLE_ALARM_FROM_SCHEDULE") {
             val alarmId = intent.getStringExtra("ALARM_ID")
             if (!alarmId.isNullOrEmpty()) {
@@ -179,6 +185,25 @@ class MainActivity : AppCompatActivity() {
     private fun logAndNotify(code: String, message: String) {
         Log.i(TAG, "AppActionResult[$code]: $message")
         Toast.makeText(this, message, Toast.LENGTH_SHORT).show()
+    }
+
+    private fun handleStartAlarmIntent(intent: Intent) {
+        val alarmName = intent.getStringExtra(AppActionContract.EXTRA_ALARM_NAME)?.trim().orEmpty()
+
+        CoroutineScope(kotlinx.coroutines.Dispatchers.IO).launch {
+            val result = startAlarmUseCase(StartAlarmUseCase.Request(alarmName))
+            runOnUiThread {
+                when (result) {
+                    is AppActionResult.Success -> {
+                        logAndNotify("APP_ACTION_START_ALARM_SUCCESS", "Started alarm: ${result.value.name}")
+                    }
+
+                    is AppActionResult.Error -> {
+                        logAndNotify(result.code, result.message)
+                    }
+                }
+            }
+        }
     }
 
     private fun resolveStartDestination(intent: Intent, hasSeenOnboarding: Boolean): AppRoutes {

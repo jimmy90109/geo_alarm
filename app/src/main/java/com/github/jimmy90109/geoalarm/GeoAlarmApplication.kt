@@ -3,18 +3,30 @@ package com.github.jimmy90109.geoalarm
 import android.app.Application
 import android.app.NotificationChannel
 import android.app.NotificationManager
+import androidx.appfunctions.service.AppFunctionConfiguration
+import com.github.jimmy90109.geoalarm.appfunctions.AppFunctionsEntryPoint
+import com.github.jimmy90109.geoalarm.appfunctions.GeoAlarmFunctions
 import com.github.jimmy90109.geoalarm.data.AppDatabase
 import com.github.jimmy90109.geoalarm.data.AlarmRepository
 import com.github.jimmy90109.geoalarm.data.SettingsRepository
+import dagger.hilt.android.EntryPointAccessors
 import com.google.android.libraries.places.api.Places
 import dagger.hilt.android.HiltAndroidApp
 import kotlin.getValue
 
 @HiltAndroidApp
-class GeoAlarmApplication : Application() {
+class GeoAlarmApplication : Application(), AppFunctionConfiguration.Provider {
     val database by lazy { AppDatabase.getDatabase(this) }
     val repository by lazy { AlarmRepository(database.alarmDao(), database.scheduleDao()) }
     val settingsRepository by lazy { SettingsRepository(this) }
+    override val appFunctionConfiguration: AppFunctionConfiguration by lazy {
+        val entryPoint = EntryPointAccessors.fromApplication(this, AppFunctionsEntryPoint::class.java)
+        AppFunctionConfiguration.Builder()
+            .addEnclosingClassFactory(GeoAlarmFunctions::class.java) {
+                GeoAlarmFunctions(entryPoint.startAlarmUseCase())
+            }
+            .build()
+    }
 
     override fun onCreate() {
         super.onCreate()

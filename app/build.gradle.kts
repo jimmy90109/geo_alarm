@@ -54,6 +54,26 @@ android {
         sourceCompatibility = JavaVersion.VERSION_17
         targetCompatibility = JavaVersion.VERSION_17
     }
+    testOptions {
+        suites {
+            create("journeysTest") {
+                assets {
+                }
+                targets {
+                    create("default") {
+                    }
+                }
+                useJunitEngine {
+                    inputs += listOf(com.android.build.api.dsl.AgpTestSuiteInputParameters.TESTED_APKS)
+                    includeEngines += listOf("journeys-test-engine")
+                    enginesDependencies(libs.junit.platform.launcher)
+                    enginesDependencies(libs.junit.platform.engine)
+                    enginesDependencies(libs.journeys.junit.engine)
+                }
+                targetVariants += listOf("debug")
+            }
+        }
+    }
 }
 
 kotlin {
@@ -88,6 +108,8 @@ dependencies {
     implementation(libs.accompanist.permissions)
     implementation(libs.kotlinx.serialization.json)
     implementation(libs.androidx.datastore.preferences)
+    implementation(libs.androidx.appfunctions)
+    implementation(libs.androidx.appfunctions.service)
 
     // Compose
     implementation(libs.androidx.compose.foundation.layout)
@@ -96,6 +118,7 @@ dependencies {
     implementation(libs.androidx.room.runtime)
     implementation(libs.androidx.room.ktx)
     ksp(libs.androidx.room.compiler)
+    ksp(libs.androidx.appfunctions.compiler)
 
     // HyperIsland ToolKit for Xiaomi Dynamic Island notifications
     implementation(libs.hyperisland.kit)

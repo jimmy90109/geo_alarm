@@ -26,42 +26,14 @@
             android:targetClass="com.github.jimmy90109.geoalarm.MainActivity" />
     </shortcut>
 
-    <capability android:name="com.github.jimmy90109.geoalarm.capability.CREATE_GEO_ALARM">
+    <capability android:name="actions.intent.OPEN_APP_FEATURE">
         <intent
-            android:action="com.github.jimmy90109.geoalarm.action.CREATE_GEO_ALARM"
-            android:targetClass="com.github.jimmy90109.geoalarm.MainActivity"
-            android:targetPackage="com.github.jimmy90109.geoalarm">
-            <parameter
-                android:key="name"
-                android:name="name"
-                android:required="true" />
-            <parameter
-                android:key="location_query"
-                android:name="location_query"
-                android:required="true" />
-            <parameter
-                android:key="radius_meters"
-                android:name="radius_meters"
-                android:required="false" />
-        </intent>
-    </capability>
-
-    <capability android:name="com.github.jimmy90109.geoalarm.capability.CREATE_SCHEDULE">
-        <intent
-            android:action="com.github.jimmy90109.geoalarm.action.CREATE_SCHEDULE"
+            android:action="com.github.jimmy90109.geoalarm.action.START_ALARM"
             android:targetClass="com.github.jimmy90109.geoalarm.MainActivity"
             android:targetPackage="com.github.jimmy90109.geoalarm">
             <parameter
                 android:key="alarm_name"
-                android:name="alarm_name"
-                android:required="true" />
-            <parameter
-                android:key="days_of_week"
-                android:name="days_of_week"
-                android:required="true" />
-            <parameter
-                android:key="time"
-                android:name="time"
+                android:name="feature"
                 android:required="true" />
         </intent>
     </capability>

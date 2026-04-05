@@ -3,6 +3,7 @@ package com.github.jimmy90109.geoalarm.appactions
 object AppActionContract {
     const val ACTION_CREATE_GEO_ALARM = "com.github.jimmy90109.geoalarm.action.CREATE_GEO_ALARM"
     const val ACTION_CREATE_SCHEDULE = "com.github.jimmy90109.geoalarm.action.CREATE_SCHEDULE"
+    const val ACTION_START_ALARM = "com.github.jimmy90109.geoalarm.action.START_ALARM"
 
     const val EXTRA_NAME = "name"
     const val EXTRA_LOCATION_QUERY = "location_query"
