@@ -23,6 +23,8 @@ import com.github.jimmy90109.geoalarm.navigation.AppNavHost
 import com.github.jimmy90109.geoalarm.service.GeoAlarmService
 import com.github.jimmy90109.geoalarm.ui.theme.GeoAlarmTheme
 import com.github.jimmy90109.geoalarm.ui.viewmodel.HomeViewModel
+import com.github.jimmy90109.geoalarm.widget.GeoAlarmGlanceWidget
+import androidx.glance.appwidget.updateAll
 import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
@@ -33,6 +35,8 @@ import javax.inject.Inject
 class MainActivity : AppCompatActivity() {
     companion object {
         private const val TAG = "MainActivity"
+        const val ACTION_ENABLE_ALARM_FROM_WIDGET = "ENABLE_ALARM_FROM_WIDGET"
+        const val EXTRA_WIDGET_ALARM_ID = "WIDGET_ALARM_ID"
     }
 
     @Inject
@@ -103,6 +107,7 @@ class MainActivity : AppCompatActivity() {
                         )
                         stopIntent.action = GeoAlarmService.ACTION_STOP
                         startService(stopIntent)
+                        CoroutineScope(kotlinx.coroutines.Dispatchers.IO).launch { GeoAlarmGlanceWidget().updateAll(this@MainActivity) }
                     }
                 }
             }
@@ -116,6 +121,12 @@ class MainActivity : AppCompatActivity() {
             val alarmId = intent.getStringExtra("ALARM_ID")
             if (!alarmId.isNullOrEmpty()) {
                 homeViewModel.handleScheduleIntent(alarmId)
+            }
+        } else if (intent.action == ACTION_ENABLE_ALARM_FROM_WIDGET) {
+            val alarmId = intent.getStringExtra(EXTRA_WIDGET_ALARM_ID)
+            if (!alarmId.isNullOrEmpty()) {
+                homeViewModel.handleScheduleIntent(alarmId)
+                CoroutineScope(kotlinx.coroutines.Dispatchers.IO).launch { GeoAlarmGlanceWidget().updateAll(this@MainActivity) }
             }
         }
     }
@@ -196,6 +207,7 @@ class MainActivity : AppCompatActivity() {
                 when (result) {
                     is AppActionResult.Success -> {
                         logAndNotify("APP_ACTION_START_ALARM_SUCCESS", "Started alarm: ${result.value.name}")
+                        CoroutineScope(kotlinx.coroutines.Dispatchers.IO).launch { GeoAlarmGlanceWidget().updateAll(this@MainActivity) }
                     }
 
                     is AppActionResult.Error -> {
