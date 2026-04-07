@@ -56,6 +56,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.github.jimmy90109.geoalarm.GeoAlarmApplication
 import com.github.jimmy90109.geoalarm.R
 import com.github.jimmy90109.geoalarm.data.Alarm
+import com.github.jimmy90109.geoalarm.ui.components.AlarmIconBadge
 import com.github.jimmy90109.geoalarm.ui.theme.GeoAlarmTheme
 import kotlinx.coroutines.launch
 
@@ -293,16 +294,22 @@ private fun WidgetAlarmToggleRow(
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.SpaceBetween
         ) {
-            Text(
-                text = alarm.name,
-                style = MaterialTheme.typography.titleMedium,
-                color = when {
-                    !enabled -> MaterialTheme.colorScheme.onSurfaceVariant
-                    selected -> MaterialTheme.colorScheme.onPrimaryContainer
-                    else -> MaterialTheme.colorScheme.onSurfaceVariant
-                },
-                modifier = Modifier.weight(1f)
-            )
+            Row(
+                modifier = Modifier.weight(1f),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                AlarmIconBadge(iconKey = alarm.iconKey, modifier = Modifier.size(24.dp))
+                Text(
+                    text = alarm.name,
+                    style = MaterialTheme.typography.titleMedium,
+                    color = when {
+                        !enabled -> MaterialTheme.colorScheme.onSurfaceVariant
+                        selected -> MaterialTheme.colorScheme.onPrimaryContainer
+                        else -> MaterialTheme.colorScheme.onSurfaceVariant
+                    },
+                    modifier = Modifier.padding(start = 10.dp)
+                )
+            }
             // Keep a fixed right slot so card height/layout stays stable.
             Box(
                 modifier = Modifier

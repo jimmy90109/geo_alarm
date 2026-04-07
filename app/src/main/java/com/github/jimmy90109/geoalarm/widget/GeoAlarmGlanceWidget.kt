@@ -41,6 +41,7 @@ import com.github.jimmy90109.geoalarm.GeoAlarmApplication
 import com.github.jimmy90109.geoalarm.MainActivity
 import com.github.jimmy90109.geoalarm.R
 import com.github.jimmy90109.geoalarm.data.Alarm
+import com.github.jimmy90109.geoalarm.ui.components.normalizeAlarmIconKey
 
 class GeoAlarmGlanceWidget : GlanceAppWidget() {
     // Use exact sizing so padding/layout can react to every host resize step.
@@ -189,7 +190,7 @@ class GeoAlarmGlanceWidget : GlanceAppWidget() {
             verticalAlignment = Alignment.CenterVertically
         ) {
             Image(
-                provider = ImageProvider(R.drawable.ic_widget_location),
+                provider = ImageProvider(widgetIconResForKey(alarm.iconKey)),
                 contentDescription = null,
                 modifier = GlanceModifier.size(24.dp),
                 colorFilter = androidx.glance.ColorFilter.tint(GlanceTheme.colors.onSecondaryContainer)
@@ -210,6 +211,21 @@ class GeoAlarmGlanceWidget : GlanceAppWidget() {
         if (selectedIds.isEmpty()) return emptyList()
         val byId = allAlarms.associateBy { it.id }
         return selectedIds.mapNotNull { byId[it] }.take(2)
+    }
+
+    private fun widgetIconResForKey(rawKey: String): Int {
+        return when (normalizeAlarmIconKey(rawKey)) {
+            "home" -> R.drawable.ic_widget_home
+            "work" -> R.drawable.ic_widget_work
+            "school" -> R.drawable.ic_widget_school
+            "bus" -> R.drawable.ic_widget_bus
+            "train" -> R.drawable.ic_widget_train
+            "walk" -> R.drawable.ic_widget_walk
+            "bike" -> R.drawable.ic_widget_bike
+            "car" -> R.drawable.ic_widget_car
+            "gym" -> R.drawable.ic_widget_gym
+            else -> R.drawable.ic_widget_location
+        }
     }
 
     companion object {

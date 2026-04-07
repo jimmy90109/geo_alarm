@@ -39,7 +39,26 @@ val AlarmIconOptions = listOf(
 )
 
 fun alarmIconForKey(key: String): AlarmIconOption {
-    return AlarmIconOptions.firstOrNull { it.key == key } ?: AlarmIconOptions.first()
+    val normalizedKey = normalizeAlarmIconKey(key)
+    return AlarmIconOptions.firstOrNull { it.key == normalizedKey } ?: AlarmIconOptions.first()
+}
+
+fun normalizeAlarmIconKey(rawKey: String): String {
+    val key = rawKey.trim().lowercase()
+    if (key.isEmpty()) return DEFAULT_ALARM_ICON_KEY
+    return when {
+        key == DEFAULT_ALARM_ICON_KEY || key.contains("location") || key.contains("marker") -> DEFAULT_ALARM_ICON_KEY
+        key == "home" || key.contains("house") -> "home"
+        key == "work" || key.contains("briefcase") || key.contains("office") -> "work"
+        key == "school" || key.contains("class") || key.contains("education") -> "school"
+        key == "bus" || key.contains("directions_bus") -> "bus"
+        key == "train" || key.contains("rail") || key.contains("subway") -> "train"
+        key == "walk" || key.contains("directions_walk") || key.contains("walking") -> "walk"
+        key == "bike" || key.contains("bicycle") || key.contains("directions_bike") -> "bike"
+        key == "car" || key.contains("auto") || key.contains("drive") || key.contains("directions_car") -> "car"
+        key == "gym" || key.contains("fitness") || key.contains("dumbbell") -> "gym"
+        else -> DEFAULT_ALARM_ICON_KEY
+    }
 }
 
 @Composable
