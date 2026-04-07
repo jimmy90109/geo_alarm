@@ -36,6 +36,9 @@
     <string name="edit_alarm">編輯鬧鐘</string>
     <string name="alarm_name">鬧鐘名稱</string>
     <string name="enter_alarm_name">輸入鬧鐘名稱</string>
+    <string name="select_alarm_icon">選擇鬧鐘圖示</string>
+    <string name="next_step">下一步</string>
+    <string name="back_to_map_step">返回地圖</string>
     <string name="radius_label">半徑: %d 公尺</string>
     <string name="save">儲存</string>
     <string name="cancel">取消</string>

@@ -3,6 +3,7 @@ package com.github.jimmy90109.geoalarm.ui.viewmodel
 import com.github.jimmy90109.geoalarm.data.Alarm
 import com.github.jimmy90109.geoalarm.data.AlarmDao
 import com.github.jimmy90109.geoalarm.data.AlarmRepository
+import com.github.jimmy90109.geoalarm.data.DEFAULT_ALARM_ICON_KEY
 import com.github.jimmy90109.geoalarm.data.AlarmSchedule
 import com.github.jimmy90109.geoalarm.data.ScheduleDao
 import com.github.jimmy90109.geoalarm.data.ScheduleWithAlarm
@@ -55,6 +56,7 @@ class AlarmEditViewModelTest {
         assertEquals(LatLng(25.1, 121.5), state.selectedPosition)
         assertEquals(800f, state.radius)
         assertEquals("Office", state.name)
+        assertEquals(DEFAULT_ALARM_ICON_KEY, state.selectedIconKey)
         assertFalse(state.isLoading)
     }
 
@@ -75,7 +77,8 @@ class AlarmEditViewModelTest {
         val alarmDao = FakeAlarmDao()
         val viewModel = AlarmEditViewModel(buildRepository(alarmDao = alarmDao))
 
-        viewModel.saveAlarm("Home")
+        viewModel.updateName("Home")
+        viewModel.saveAlarm()
         advanceUntilIdle()
 
         assertTrue(alarmDao.inserted.isEmpty())
@@ -89,8 +92,9 @@ class AlarmEditViewModelTest {
         val viewModel = AlarmEditViewModel(buildRepository(alarmDao = alarmDao))
         viewModel.updatePosition(LatLng(24.9, 121.1))
         viewModel.updateRadius(1200f)
+        viewModel.updateName("Gym")
 
-        viewModel.saveAlarm("Gym")
+        viewModel.saveAlarm()
         advanceUntilIdle()
 
         assertEquals(1, alarmDao.inserted.size)
@@ -100,11 +104,11 @@ class AlarmEditViewModelTest {
         assertEquals(121.1, created.longitude, 0.0)
         assertEquals(1200.0, created.radius, 0.0)
         assertFalse(created.isEnabled)
+        assertEquals(DEFAULT_ALARM_ICON_KEY, created.iconKey)
 
         val state = viewModel.uiState.value
         assertTrue(state.isSaved)
         assertNotNull(state.savedAlarmId)
-        assertFalse(state.showNameDialog)
     }
 
     @Test
@@ -124,8 +128,9 @@ class AlarmEditViewModelTest {
         advanceUntilIdle()
         viewModel.updatePosition(LatLng(11.0, 12.0))
         viewModel.updateRadius(900f)
+        viewModel.updateName("New name")
 
-        viewModel.saveAlarm("New name")
+        viewModel.saveAlarm()
         advanceUntilIdle()
 
         assertEquals(1, alarmDao.updated.size)
@@ -138,6 +143,38 @@ class AlarmEditViewModelTest {
         assertTrue(updated.isEnabled)
         assertTrue(viewModel.uiState.value.isSaved)
         assertEquals(existing.id, viewModel.uiState.value.savedAlarmId)
+    }
+
+    @Test
+    fun `goToDetailsStep changes step when position exists and goToMapStep restores`() = runTest {
+        val viewModel = AlarmEditViewModel(buildRepository())
+        viewModel.loadAlarm(null)
+        advanceUntilIdle()
+
+        viewModel.goToDetailsStep()
+        assertEquals(AlarmEditStep.MapSelection, viewModel.uiState.value.step)
+
+        viewModel.updatePosition(LatLng(25.0, 121.0))
+        viewModel.goToDetailsStep()
+        assertEquals(AlarmEditStep.DetailsForm, viewModel.uiState.value.step)
+
+        viewModel.goToMapStep()
+        assertEquals(AlarmEditStep.MapSelection, viewModel.uiState.value.step)
+    }
+
+    @Test
+    fun `saveAlarm stores selected icon`() = runTest {
+        val alarmDao = FakeAlarmDao()
+        val viewModel = AlarmEditViewModel(buildRepository(alarmDao = alarmDao))
+        viewModel.updatePosition(LatLng(24.9, 121.1))
+        viewModel.updateName("Office")
+        viewModel.selectIcon("train")
+
+        viewModel.saveAlarm()
+        advanceUntilIdle()
+
+        val created = alarmDao.inserted.single()
+        assertEquals("train", created.iconKey)
     }
 
     @Test
