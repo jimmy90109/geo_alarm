@@ -13,6 +13,7 @@ import androidx.compose.ui.unit.DpSize
 import androidx.datastore.preferences.core.Preferences
 import androidx.datastore.preferences.core.longPreferencesKey
 import androidx.datastore.preferences.core.stringSetPreferencesKey
+import kotlinx.coroutines.flow.first
 import androidx.glance.GlanceId
 import androidx.glance.GlanceModifier
 import androidx.glance.GlanceTheme
@@ -57,6 +58,33 @@ class GeoAlarmGlanceWidget : GlanceAppWidget() {
     // Use exact sizing so padding/layout can react to every host resize step.
     override val sizeMode = SizeMode.Exact
 
+    override suspend fun providePreview(context: Context, widgetCategory: Int) {
+        val application = context.applicationContext as GeoAlarmApplication
+        val repository = application.repository
+        
+        // Fetch snapshot synchronously before composition
+        val alarms = repository.allAlarms.first()
+        val previewAlarms = alarms.take(2)
+
+        provideContent {
+            GlanceTheme {
+                val size = LocalSize.current
+                val outerPadding = widgetOuterPadding(size)
+                val titleBottomSpacing = if (outerPadding <= 8.dp) 8.dp else 16.dp
+                val useHorizontalButtons = size.width > size.height
+                
+                WidgetContent(
+                    context = context,
+                    appWidgetId = null,
+                    alarms = previewAlarms,
+                    outerPadding = outerPadding,
+                    titleBottomSpacing = titleBottomSpacing,
+                    useHorizontalButtons = useHorizontalButtons
+                )
+            }
+        }
+    }
+
     override suspend fun provideGlance(context: Context, id: GlanceId) {
         val application = context.applicationContext as GeoAlarmApplication
         val repository = application.repository
@@ -77,104 +105,125 @@ class GeoAlarmGlanceWidget : GlanceAppWidget() {
                 )
                 val selectedIds = prefs[SelectedAlarmIdsKey]?.toList().orEmpty()
                 val selectedAlarms = resolveSelectedAlarms(alarms, selectedIds)
-                val rootClickAction = if (selectedAlarms.isEmpty()) {
-                    actionStartActivity(
-                        Intent(context, GeoAlarmWidgetConfigActivity::class.java).apply {
-                            action = AppWidgetManager.ACTION_APPWIDGET_CONFIGURE
-                            putExtra(AppWidgetManager.EXTRA_APPWIDGET_ID, appWidgetId)
-                            flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_SINGLE_TOP
-                        }
-                    )
-                } else {
-                    actionStartActivity(Intent(context, MainActivity::class.java).apply {
-                        flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_SINGLE_TOP
-                    })
+
+                WidgetContent(
+                    context = context,
+                    appWidgetId = appWidgetId,
+                    alarms = selectedAlarms,
+                    outerPadding = outerPadding,
+                    titleBottomSpacing = titleBottomSpacing,
+                    useHorizontalButtons = useHorizontalButtons
+                )
+            }
+        }
+    }
+
+    @Composable
+    private fun WidgetContent(
+        context: Context,
+        appWidgetId: Int?,
+        alarms: List<Alarm>,
+        outerPadding: Dp,
+        titleBottomSpacing: Dp,
+        useHorizontalButtons: Boolean
+    ) {
+        val rootClickAction = if (alarms.isEmpty() && appWidgetId != null) {
+            actionStartActivity(
+                Intent(context, GeoAlarmWidgetConfigActivity::class.java).apply {
+                    action = AppWidgetManager.ACTION_APPWIDGET_CONFIGURE
+                    putExtra(AppWidgetManager.EXTRA_APPWIDGET_ID, appWidgetId)
+                    flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_SINGLE_TOP
                 }
+            )
+        } else {
+            actionStartActivity(Intent(context, MainActivity::class.java).apply {
+                flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_SINGLE_TOP
+            })
+        }
 
-                Column(
-                    modifier = GlanceModifier
-                        .fillMaxSize()
-                        .background(GlanceTheme.colors.surface)
-                        .cornerRadius(android.R.dimen.system_app_widget_background_radius)
-                        .padding(outerPadding)
-                        .clickable(rootClickAction)
-                ) {
+        Column(
+            modifier = GlanceModifier
+                .fillMaxSize()
+                .background(GlanceTheme.colors.surface)
+                .cornerRadius(android.R.dimen.system_app_widget_background_radius)
+                .padding(outerPadding)
+                .clickable(rootClickAction)
+        ) {
+            Row(
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Image(
+                    provider = ImageProvider(R.mipmap.ic_launcher_round),
+                    contentDescription = context.getString(R.string.app_name),
+                    modifier = GlanceModifier.size(18.dp)
+                )
+                Spacer(modifier = GlanceModifier.width(8.dp))
+                Text(
+                    text = context.getString(R.string.app_name),
+                    style = TextStyle(
+                        color = GlanceTheme.colors.onSurface,
+                        fontSize = androidx.compose.ui.unit.TextUnit(14f, androidx.compose.ui.unit.TextUnitType.Sp),
+                        fontWeight = androidx.glance.text.FontWeight.Bold
+                    )
+                )
+            }
+
+            Spacer(modifier = GlanceModifier.height(titleBottomSpacing))
+
+            if (alarms.isEmpty()) {
+                Text(
+                    text = context.getString(R.string.widget_empty_message),
+                    style = TextStyle(color = GlanceTheme.colors.onSurfaceVariant),
+                    modifier = if (appWidgetId != null) {
+                        GlanceModifier.clickable(
+                            actionStartActivity(
+                                Intent(context, GeoAlarmWidgetConfigActivity::class.java).apply {
+                                    action = AppWidgetManager.ACTION_APPWIDGET_CONFIGURE
+                                    putExtra(AppWidgetManager.EXTRA_APPWIDGET_ID, appWidgetId)
+                                    flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_SINGLE_TOP
+                                }
+                            )
+                        )
+                    } else GlanceModifier
+                )
+            } else {
+                if (useHorizontalButtons && alarms.size > 1) {
                     Row(
-                        verticalAlignment = Alignment.CenterVertically
+                        modifier = GlanceModifier
+                            .defaultWeight()
+                            .fillMaxWidth()
                     ) {
-                        Image(
-                            provider = ImageProvider(R.mipmap.ic_launcher_round),
-                            contentDescription = context.getString(R.string.app_name),
-                            modifier = GlanceModifier.size(18.dp)
-                        )
-                        Spacer(modifier = GlanceModifier.width(8.dp))
-                        Text(
-                            text = context.getString(R.string.app_name),
-                            style = TextStyle(
-                                color = GlanceTheme.colors.onSurface,
-                                fontSize = androidx.compose.ui.unit.TextUnit(14f, androidx.compose.ui.unit.TextUnitType.Sp),
-                                fontWeight = androidx.glance.text.FontWeight.Bold
-                            )
-                        )
-                    }
-
-                    Spacer(modifier = GlanceModifier.height(titleBottomSpacing))
-
-                    if (selectedAlarms.isEmpty()) {
-                        Text(
-                            text = context.getString(R.string.widget_empty_message),
-                            style = TextStyle(color = GlanceTheme.colors.onSurfaceVariant),
-                            modifier = GlanceModifier.clickable(
-                                actionStartActivity(
-                                    Intent(context, GeoAlarmWidgetConfigActivity::class.java).apply {
-                                        action = AppWidgetManager.ACTION_APPWIDGET_CONFIGURE
-                                        putExtra(AppWidgetManager.EXTRA_APPWIDGET_ID, appWidgetId)
-                                        flags =
-                                            Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_SINGLE_TOP
-                                    }
-                                )
-                            )
-                        )
-                    } else {
-                        if (useHorizontalButtons && selectedAlarms.size > 1) {
-                            Row(
+                        alarms.forEachIndexed { index, alarm ->
+                            AlarmButton(
+                                context = context,
+                                alarm = alarm,
+                                fillWidth = false,
                                 modifier = GlanceModifier
                                     .defaultWeight()
-                                    .fillMaxWidth()
-                            ) {
-                                selectedAlarms.forEachIndexed { index, alarm ->
-                                    AlarmButton(
-                                        context = context,
-                                        alarm = alarm,
-                                        fillWidth = false,
-                                        modifier = GlanceModifier
-                                            .defaultWeight()
-                                            .fillMaxHeight()
-                                    )
-                                    if (index < selectedAlarms.lastIndex) {
-                                        Spacer(modifier = GlanceModifier.width(8.dp))
-                                    }
-                                }
+                                    .fillMaxHeight()
+                            )
+                            if (index < alarms.lastIndex) {
+                                Spacer(modifier = GlanceModifier.width(8.dp))
                             }
-                        } else {
-                            Column(
+                        }
+                    }
+                } else {
+                    Column(
+                        modifier = GlanceModifier
+                            .defaultWeight()
+                            .fillMaxWidth()
+                    ) {
+                        alarms.forEachIndexed { index, alarm ->
+                            AlarmButton(
+                                context = context,
+                                alarm = alarm,
+                                fillWidth = true,
                                 modifier = GlanceModifier
                                     .defaultWeight()
                                     .fillMaxWidth()
-                            ) {
-                                selectedAlarms.forEachIndexed { index, alarm ->
-                                    AlarmButton(
-                                        context = context,
-                                        alarm = alarm,
-                                        fillWidth = true,
-                                        modifier = GlanceModifier
-                                            .defaultWeight()
-                                            .fillMaxWidth()
-                                    )
-                                    if (index < selectedAlarms.lastIndex) {
-                                        Spacer(modifier = GlanceModifier.height(8.dp))
-                                    }
-                                }
+                            )
+                            if (index < alarms.lastIndex) {
+                                Spacer(modifier = GlanceModifier.height(8.dp))
                             }
                         }
                     }

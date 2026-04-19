@@ -13,7 +13,7 @@ composeBom = "2026.02.00"
 activityCompose = "1.12.4"
 lifecycleRuntimeKtx = "2.10.0"
 material3 = "1.5.0-alpha14"
-glance = "1.1.1"
+glance = "1.2.0-rc01"
 
 # Navigation
 navigationCompose = "2.9.7"
