@@ -2,6 +2,7 @@ package com.github.jimmy90109.geoalarm.ui.viewmodel
 
 import android.Manifest.permission.ACCESS_COARSE_LOCATION
 import android.Manifest.permission.ACCESS_FINE_LOCATION
+import android.Manifest.permission.POST_NOTIFICATIONS
 import android.app.Application
 import android.content.BroadcastReceiver
 import android.content.Context
@@ -11,12 +12,14 @@ import android.content.pm.PackageManager
 import android.location.Location
 import android.util.Log
 import androidx.core.content.ContextCompat
+import androidx.glance.appwidget.updateAll
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.github.jimmy90109.geoalarm.data.Alarm
 import com.github.jimmy90109.geoalarm.data.AlarmDataRepository
 import com.github.jimmy90109.geoalarm.data.AlarmSchedule
 import com.github.jimmy90109.geoalarm.service.GeoAlarmService
+import com.github.jimmy90109.geoalarm.widget.GeoAlarmGlanceWidget
 import com.google.android.gms.location.LocationServices
 import dagger.hilt.android.lifecycle.HiltViewModel
 import javax.inject.Inject
@@ -198,6 +201,18 @@ class HomeViewModel @Inject constructor(
             return
         }
 
+        // Check notification permission (Android 13+) for non-UI entry points (widget/schedule).
+        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.TIRAMISU) {
+            val hasNotificationPermission = ContextCompat.checkSelfPermission(
+                context,
+                POST_NOTIFICATIONS
+            ) == PackageManager.PERMISSION_GRANTED
+            if (!hasNotificationPermission) {
+                showNotificationPermissionDialog()
+                return
+            }
+        }
+
         // Check location to see if already at destination
         if (ContextCompat.checkSelfPermission(
                 context, ACCESS_FINE_LOCATION
@@ -205,7 +220,9 @@ class HomeViewModel @Inject constructor(
                 context, ACCESS_COARSE_LOCATION
             ) != PackageManager.PERMISSION_GRANTED
         ) {
-            proceedEnableAlarm(alarm, context, null)
+            // Do not start location foreground service without runtime location permission.
+            // This path can be reached from non-UI triggers (e.g. widget/schedule intent).
+            showBackgroundPermissionDialog()
             return
         }
 
@@ -274,13 +291,13 @@ class HomeViewModel @Inject constructor(
     fun disableAlarm(alarm: Alarm, context: Context) {
         viewModelScope.launch {
             repository.update(alarm.copy(isEnabled = false))
+            // Stop Service after DB state is persisted to avoid widget refresh races.
+            val serviceIntent = Intent(context, GeoAlarmService::class.java).apply {
+                action = GeoAlarmService.ACTION_STOP
+            }
+            context.startService(serviceIntent)
+            GeoAlarmGlanceWidget().updateAll(context)
         }
-
-        // Stop Service
-        val serviceIntent = Intent(context, GeoAlarmService::class.java).apply {
-            action = GeoAlarmService.ACTION_STOP
-        }
-        context.startService(serviceIntent)
     }
 
     fun handleScheduleIntent(alarmId: String) {

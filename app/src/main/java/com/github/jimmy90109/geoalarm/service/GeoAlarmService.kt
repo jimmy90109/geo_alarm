@@ -22,6 +22,9 @@ import com.github.jimmy90109.geoalarm.R
 import com.github.jimmy90109.geoalarm.utils.AudioUtils
 import com.github.jimmy90109.geoalarm.utils.HyperIslandHelper
 import com.github.jimmy90109.geoalarm.utils.WakeLocker
+import com.github.jimmy90109.geoalarm.widget.GeoAlarmGlanceWidget
+import com.github.jimmy90109.geoalarm.widget.GeoAlarmWidgetRuntimeStore
+import androidx.glance.appwidget.updateAll
 import com.google.android.gms.location.FusedLocationProviderClient
 import com.google.android.gms.location.Geofence
 import com.google.android.gms.location.GeofencingClient
@@ -141,6 +144,8 @@ class GeoAlarmService : Service() {
                     totalDistance = 0f
 
                     startForegroundService()
+                    GeoAlarmWidgetRuntimeStore.saveProgress(this, 0, -1)
+                    CoroutineScope(Dispatchers.IO).launch { GeoAlarmGlanceWidget().updateAll(this@GeoAlarmService) }
                     startSmartHybridMonitoring()
                     isServiceRunning = true
                 }
@@ -187,6 +192,8 @@ class GeoAlarmService : Service() {
                 mediaPlayer = null
                 AudioUtils.abandonAudioFocus(this)
                 WakeLocker.release()
+                GeoAlarmWidgetRuntimeStore.clear(this)
+                CoroutineScope(Dispatchers.IO).launch { GeoAlarmGlanceWidget().updateAll(this@GeoAlarmService) }
                 stopSelf()
             }
 
@@ -671,6 +678,8 @@ class GeoAlarmService : Service() {
     }
 
     private fun broadcastProgress(progress: Int, remainingDistance: Int) {
+        GeoAlarmWidgetRuntimeStore.saveProgress(this, progress, remainingDistance)
+        CoroutineScope(Dispatchers.IO).launch { GeoAlarmGlanceWidget().updateAll(this@GeoAlarmService) }
         val intent = Intent(ACTION_PROGRESS_UPDATE).apply {
             setPackage(packageName) // Explicitly set package for security and receiver matching
             putExtra(EXTRA_PROGRESS, progress)
@@ -693,6 +702,8 @@ class GeoAlarmService : Service() {
         mediaPlayer = null
         serviceScope.cancel() // Cancel all coroutines
         WakeLocker.release()
+        GeoAlarmWidgetRuntimeStore.clear(this)
+        CoroutineScope(Dispatchers.IO).launch { GeoAlarmGlanceWidget().updateAll(this@GeoAlarmService) }
     }
 
     override fun onBind(intent: Intent?): IBinder? = null

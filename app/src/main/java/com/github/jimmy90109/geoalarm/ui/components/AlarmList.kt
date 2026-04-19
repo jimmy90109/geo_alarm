@@ -174,11 +174,17 @@ fun AlarmItem(
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.SpaceBetween,
         ) {
-            Text(
+            Row(
                 modifier = Modifier.weight(1f),
-                text = alarm.name,
-                style = MaterialTheme.typography.titleLarge,
-            )
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                AlarmIconBadge(iconKey = alarm.iconKey)
+                Text(
+                    modifier = Modifier.padding(start = 12.dp),
+                    text = alarm.name,
+                    style = MaterialTheme.typography.titleLarge,
+                )
+            }
 
             Button(
                 onClick = {

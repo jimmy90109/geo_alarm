@@ -36,6 +36,9 @@
     <string name="edit_alarm">Edit Alarm</string>
     <string name="alarm_name">Alarm Name</string>
     <string name="enter_alarm_name">Enter Alarm Name</string>
+    <string name="select_alarm_icon">Select Alarm Icon</string>
+    <string name="next_step">Next</string>
+    <string name="back_to_map_step">Back to map</string>
     <string name="radius_label">Radius: %d m</string>
     <string name="save">Save</string>
     <string name="cancel">Cancel</string>
@@ -166,4 +169,12 @@
     <string name="shortcut_add_alarm_long">Create a new geo alarm</string>
     <string name="shortcut_add_schedule_short">New schedule</string>
     <string name="shortcut_add_schedule_long">Create a new alarm schedule</string>
+    <string name="widget_description">Quickly start one of your selected alarms from the home screen</string>
+    <string name="widget_select_title">Geo Alarm Widget</string>
+    <string name="widget_select_subtitle">Select up to 2 alarms for quick start</string>
+    <string name="widget_empty_message">No alarms selected. Tap widget to configure in app.</string>
+    <string name="widget_active_title">Active alarm: %s</string>
+    <string name="widget_config_title">Configure Widget Alarms</string>
+    <string name="widget_config_subtitle">Pick up to two alarms for this widget instance.</string>
+    <string name="widget_selection_limit">You can select at most 2 alarms.</string>
 </resources>

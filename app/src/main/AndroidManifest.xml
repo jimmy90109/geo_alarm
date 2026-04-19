@@ -53,6 +53,26 @@
                 <action android:name="com.github.jimmy90109.geoalarm.ACTION_SCHEDULE_TRIGGER"/>
             </intent-filter>
         </receiver>
+
+        <receiver
+            android:name=".widget.GeoAlarmGlanceWidgetReceiver"
+            android:exported="true"
+            android:permission="android.permission.BIND_APPWIDGET">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+            </intent-filter>
+            <meta-data
+                android:name="android.appwidget.provider"
+                android:resource="@xml/geo_alarm_widget_info" />
+        </receiver>
+
+        <activity
+            android:name=".widget.GeoAlarmWidgetConfigActivity"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_CONFIGURE" />
+            </intent-filter>
+        </activity>
             
         <activity
             android:name=".MainActivity"

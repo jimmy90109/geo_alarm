@@ -114,6 +114,10 @@ dependencies {
     // Compose
     implementation(libs.androidx.compose.foundation.layout)
 
+    // Glance Widget
+    implementation(libs.androidx.glance.appwidget)
+    implementation(libs.androidx.glance.material3)
+
     // Room
     implementation(libs.androidx.room.runtime)
     implementation(libs.androidx.room.ktx)

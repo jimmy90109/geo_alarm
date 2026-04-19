@@ -11,6 +11,7 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.asPaddingValues
+import androidx.compose.foundation.layout.calculateEndPadding
 import androidx.compose.foundation.layout.displayCutout
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -65,6 +66,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalHapticFeedback
+import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
@@ -155,12 +157,16 @@ fun ScheduleEditScreen(
                 }
 
                 // Controls Overlay - Right Side
+                val navInsets = WindowInsets.navigationBars.asPaddingValues()
+                val layoutDirection = LocalLayoutDirection.current
+                val bottomPadding = maxOf(24.dp, navInsets.calculateBottomPadding())
+                val endPadding = maxOf(24.dp, navInsets.calculateEndPadding(layoutDirection))
+
                 Box(
                     modifier = Modifier
                         .align(Alignment.CenterEnd)
-                        .padding(end = 24.dp)
+                        .padding(end = endPadding, bottom = bottomPadding, top = 24.dp)
                         .windowInsetsPadding(WindowInsets.displayCutout)
-                        .windowInsetsPadding(WindowInsets.navigationBars)
                         .widthIn(max = 360.dp)
                 ) {
                     Column(

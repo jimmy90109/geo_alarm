@@ -36,6 +36,9 @@
     <string name="edit_alarm">編輯鬧鐘</string>
     <string name="alarm_name">鬧鐘名稱</string>
     <string name="enter_alarm_name">輸入鬧鐘名稱</string>
+    <string name="select_alarm_icon">選擇鬧鐘圖示</string>
+    <string name="next_step">下一步</string>
+    <string name="back_to_map_step">返回地圖</string>
     <string name="radius_label">半徑: %d 公尺</string>
     <string name="save">儲存</string>
     <string name="cancel">取消</string>
@@ -61,7 +64,9 @@
     <string name="undo">復原</string>
     <string name="only_one_alarm_error">同時只能啟用一個鬧鐘</string>
     <string name="single_alarm_title">啟用限制</string>
-    <string name="edit_disabled_error">請先關閉鬧鐘才能編輯</string>\n    <string name="already_at_destination_title">已在目的地</string>\n    <string name="already_at_destination_message">您已在鬧鐘範圍內，啟用後會立即觸發。</string>
+    <string name="edit_disabled_error">請先關閉鬧鐘才能編輯</string>
+    <string name="already_at_destination_title">已在目的地</string>
+    <string name="already_at_destination_message">您已在鬧鐘範圍內，啟用後會立即觸發。</string>
     <string name="background_location_title">需要背景定位權限</string>
     <string name="background_location_message">此應用程式需要「一律允許」的定位權限才能在背景追蹤您的位置。請前往設定並將定位權限設為「一律允許」。</string>
     <string name="go_to_settings">前往設定</string>
@@ -164,4 +169,12 @@
     <string name="shortcut_add_alarm_long">建立新的定位鬧鐘</string>
     <string name="shortcut_add_schedule_short">新增排程</string>
     <string name="shortcut_add_schedule_long">建立新的鬧鐘排程</string>
+    <string name="widget_description">在桌面快速啟用你選定的鬧鐘</string>
+    <string name="widget_select_title">定位鬧鐘小工具</string>
+    <string name="widget_select_subtitle">可設定最多 2 個鬧鐘快捷啟用</string>
+    <string name="widget_empty_message">尚未選擇鬧鐘，點擊小工具到 App 設定。</string>
+    <string name="widget_active_title">目前啟用：%s</string>
+    <string name="widget_config_title">設定小工具鬧鐘</string>
+    <string name="widget_config_subtitle">為這個小工具選擇最多兩個鬧鐘。</string>
+    <string name="widget_selection_limit">最多只能選擇 2 個鬧鐘。</string>
 </resources>

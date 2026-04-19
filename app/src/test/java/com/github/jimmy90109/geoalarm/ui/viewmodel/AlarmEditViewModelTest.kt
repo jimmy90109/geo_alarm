@@ -3,9 +3,11 @@ package com.github.jimmy90109.geoalarm.ui.viewmodel
 import com.github.jimmy90109.geoalarm.data.Alarm
 import com.github.jimmy90109.geoalarm.data.AlarmDao
 import com.github.jimmy90109.geoalarm.data.AlarmRepository
+import com.github.jimmy90109.geoalarm.data.DEFAULT_ALARM_ICON_KEY
 import com.github.jimmy90109.geoalarm.data.AlarmSchedule
 import com.github.jimmy90109.geoalarm.data.ScheduleDao
 import com.github.jimmy90109.geoalarm.data.ScheduleWithAlarm
+import com.github.jimmy90109.geoalarm.widget.WidgetUpdater
 import com.google.android.gms.maps.model.LatLng
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -45,7 +47,7 @@ class AlarmEditViewModelTest {
             isEnabled = false
         )
         val repository = buildRepository(alarms = listOf(existing))
-        val viewModel = AlarmEditViewModel(repository)
+        val viewModel = createViewModel(repository)
 
         viewModel.loadAlarm(existing.id)
         advanceUntilIdle()
@@ -55,12 +57,13 @@ class AlarmEditViewModelTest {
         assertEquals(LatLng(25.1, 121.5), state.selectedPosition)
         assertEquals(800f, state.radius)
         assertEquals("Office", state.name)
+        assertEquals(DEFAULT_ALARM_ICON_KEY, state.selectedIconKey)
         assertFalse(state.isLoading)
     }
 
     @Test
     fun `loadAlarm with null id only clears loading`() = runTest {
-        val viewModel = AlarmEditViewModel(buildRepository())
+        val viewModel = createViewModel(buildRepository())
 
         viewModel.loadAlarm(null)
         advanceUntilIdle()
@@ -73,9 +76,10 @@ class AlarmEditViewModelTest {
     @Test
     fun `saveAlarm without position does nothing`() = runTest {
         val alarmDao = FakeAlarmDao()
-        val viewModel = AlarmEditViewModel(buildRepository(alarmDao = alarmDao))
+        val viewModel = createViewModel(buildRepository(alarmDao = alarmDao))
 
-        viewModel.saveAlarm("Home")
+        viewModel.updateName("Home")
+        viewModel.saveAlarm()
         advanceUntilIdle()
 
         assertTrue(alarmDao.inserted.isEmpty())
@@ -86,11 +90,12 @@ class AlarmEditViewModelTest {
     @Test
     fun `saveAlarm creates new alarm and marks saved`() = runTest {
         val alarmDao = FakeAlarmDao()
-        val viewModel = AlarmEditViewModel(buildRepository(alarmDao = alarmDao))
+        val viewModel = createViewModel(buildRepository(alarmDao = alarmDao))
         viewModel.updatePosition(LatLng(24.9, 121.1))
         viewModel.updateRadius(1200f)
+        viewModel.updateName("Gym")
 
-        viewModel.saveAlarm("Gym")
+        viewModel.saveAlarm()
         advanceUntilIdle()
 
         assertEquals(1, alarmDao.inserted.size)
@@ -100,11 +105,11 @@ class AlarmEditViewModelTest {
         assertEquals(121.1, created.longitude, 0.0)
         assertEquals(1200.0, created.radius, 0.0)
         assertFalse(created.isEnabled)
+        assertEquals(DEFAULT_ALARM_ICON_KEY, created.iconKey)
 
         val state = viewModel.uiState.value
         assertTrue(state.isSaved)
         assertNotNull(state.savedAlarmId)
-        assertFalse(state.showNameDialog)
     }
 
     @Test
@@ -119,13 +124,14 @@ class AlarmEditViewModelTest {
         )
         val alarmDao = FakeAlarmDao(initialAlarms = listOf(existing))
         val repository = buildRepository(alarmDao = alarmDao)
-        val viewModel = AlarmEditViewModel(repository)
+        val viewModel = createViewModel(repository)
         viewModel.loadAlarm(existing.id)
         advanceUntilIdle()
         viewModel.updatePosition(LatLng(11.0, 12.0))
         viewModel.updateRadius(900f)
+        viewModel.updateName("New name")
 
-        viewModel.saveAlarm("New name")
+        viewModel.saveAlarm()
         advanceUntilIdle()
 
         assertEquals(1, alarmDao.updated.size)
@@ -141,6 +147,38 @@ class AlarmEditViewModelTest {
     }
 
     @Test
+    fun `goToDetailsStep changes step when position exists and goToMapStep restores`() = runTest {
+        val viewModel = createViewModel(buildRepository())
+        viewModel.loadAlarm(null)
+        advanceUntilIdle()
+
+        viewModel.goToDetailsStep()
+        assertEquals(AlarmEditStep.MapSelection, viewModel.uiState.value.step)
+
+        viewModel.updatePosition(LatLng(25.0, 121.0))
+        viewModel.goToDetailsStep()
+        assertEquals(AlarmEditStep.DetailsForm, viewModel.uiState.value.step)
+
+        viewModel.goToMapStep()
+        assertEquals(AlarmEditStep.MapSelection, viewModel.uiState.value.step)
+    }
+
+    @Test
+    fun `saveAlarm stores selected icon`() = runTest {
+        val alarmDao = FakeAlarmDao()
+        val viewModel = createViewModel(buildRepository(alarmDao = alarmDao))
+        viewModel.updatePosition(LatLng(24.9, 121.1))
+        viewModel.updateName("Office")
+        viewModel.selectIcon("train")
+
+        viewModel.saveAlarm()
+        advanceUntilIdle()
+
+        val created = alarmDao.inserted.single()
+        assertEquals("train", created.iconKey)
+    }
+
+    @Test
     fun `requestDeleteAlarm shows error dialog when alarm used by schedule`() = runTest {
         val existing = Alarm(
             id = "alarm-3",
@@ -151,7 +189,7 @@ class AlarmEditViewModelTest {
             isEnabled = false
         )
         val scheduleDao = FakeScheduleDao(isAlarmUsed = true)
-        val viewModel = AlarmEditViewModel(
+        val viewModel = createViewModel(
             buildRepository(
                 alarms = listOf(existing),
                 scheduleDao = scheduleDao
@@ -179,7 +217,7 @@ class AlarmEditViewModelTest {
         )
         val alarmDao = FakeAlarmDao(initialAlarms = listOf(existing))
         val scheduleDao = FakeScheduleDao(isAlarmUsed = false)
-        val viewModel = AlarmEditViewModel(
+        val viewModel = createViewModel(
             buildRepository(
                 alarmDao = alarmDao,
                 scheduleDao = scheduleDao
@@ -203,6 +241,11 @@ class AlarmEditViewModelTest {
         alarmDao: FakeAlarmDao = FakeAlarmDao(initialAlarms = alarms),
         scheduleDao: FakeScheduleDao = FakeScheduleDao()
     ): AlarmRepository = AlarmRepository(alarmDao, scheduleDao)
+
+    private fun createViewModel(
+        repository: AlarmRepository,
+        widgetUpdater: WidgetUpdater = FakeWidgetUpdater()
+    ): AlarmEditViewModel = AlarmEditViewModel(repository, widgetUpdater)
 }
 
 @OptIn(ExperimentalCoroutinesApi::class)
@@ -216,6 +259,10 @@ class MainDispatcherRule(
     override fun finished(description: Description) {
         Dispatchers.resetMain()
     }
+}
+
+private class FakeWidgetUpdater : WidgetUpdater {
+    override suspend fun refreshAll() = Unit
 }
 
 private class FakeAlarmDao(
