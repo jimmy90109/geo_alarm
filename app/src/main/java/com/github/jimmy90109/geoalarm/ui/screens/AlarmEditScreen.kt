@@ -3,6 +3,7 @@ package com.github.jimmy90109.geoalarm.ui.screens
 import android.app.Activity
 import android.os.Build
 import android.content.res.Configuration
+import androidx.activity.compose.BackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.AnimatedVisibility
@@ -25,6 +26,8 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.asPaddingValues
+import androidx.compose.foundation.layout.calculateEndPadding
+import androidx.compose.foundation.layout.calculateStartPadding
 import androidx.compose.foundation.layout.displayCutout
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
@@ -87,6 +90,7 @@ import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalHapticFeedback
+import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
@@ -183,6 +187,10 @@ fun AlarmEditScreen(
         if (uiState.isSaved) {
             onNavigateBack()
         }
+    }
+
+    BackHandler(enabled = isDetailsStep) {
+        viewModel.goToMapStep()
     }
 
     Box(modifier = Modifier.fillMaxSize()) {
@@ -520,7 +528,6 @@ private fun AlarmEditPortraitStepOnePage(
                 isEditMode = uiState.existingAlarm != null,
                 onDeleteClick = onDelete,
                 elevation = 10.dp,
-                shape = RoundedCornerShape(44.dp)
             )
         }
 
@@ -553,6 +560,10 @@ private fun AlarmEditLandscapeStepOnePage(
     val haptic = LocalHapticFeedback.current
     val deviceCorner = rememberSystemDisplayCornerRadiusDp()
     val deviceShape = RoundedCornerShape(deviceCorner)
+    val navInsets = WindowInsets.navigationBars.asPaddingValues()
+    val layoutDirection = LocalLayoutDirection.current
+    val bottomPadding = maxOf(24.dp, navInsets.calculateBottomPadding())
+    val endPadding = maxOf(24.dp, navInsets.calculateEndPadding(layoutDirection))
     Box(modifier = modifier.fillMaxSize()) {
         AlarmEditMapContent(
             cameraPositionState = cameraPositionState,
@@ -565,9 +576,8 @@ private fun AlarmEditLandscapeStepOnePage(
         Box(
             modifier = Modifier
                 .align(Alignment.CenterEnd)
-                .padding(end = 24.dp)
+                .padding(end = endPadding, bottom = bottomPadding, top = 24.dp)
                 .windowInsetsPadding(WindowInsets.displayCutout)
-                .windowInsetsPadding(WindowInsets.navigationBars)
                 .widthIn(max = 360.dp)
         ) {
             Column(
@@ -618,7 +628,6 @@ private fun AlarmEditLandscapeStepOnePage(
                     isEditMode = uiState.existingAlarm != null,
                     onDeleteClick = onDelete,
                     elevation = 10.dp,
-                    shape = RoundedCornerShape(24.dp)
                 )
             }
         }
@@ -649,10 +658,15 @@ private fun AlarmDetailsForm(
     modifier: Modifier = Modifier
 ) {
     val statusBarPlaceholder = WindowInsets.statusBars.asPaddingValues().calculateTopPadding()
+    val navInsets = WindowInsets.navigationBars.asPaddingValues()
+    val layoutDirection = LocalLayoutDirection.current
+    val bottomPadding = maxOf(24.dp, navInsets.calculateBottomPadding())
+    val startPadding = maxOf(24.dp, navInsets.calculateStartPadding(layoutDirection))
+    val endPadding = maxOf(24.dp, navInsets.calculateEndPadding(layoutDirection))
     BoxWithConstraints(
         modifier = modifier
             .background(MaterialTheme.colorScheme.surface)
-            .padding(start = 24.dp, end = 24.dp, bottom = 24.dp)
+            .padding(start = startPadding, end = endPadding, bottom = bottomPadding)
     ) {
         val iconAreaMaxHeight = (maxHeight - 220.dp).coerceAtLeast(120.dp)
         Column(
@@ -957,11 +971,10 @@ fun AlarmEditRadiusControl(
     isEditMode: Boolean = false,
     onDeleteClick: () -> Unit = {},
     elevation: androidx.compose.ui.unit.Dp = 0.dp,
-    shape: androidx.compose.ui.graphics.Shape = RoundedCornerShape(12.dp)
 ) {
     val view = LocalView.current
     Card(
-        shape = shape,
+        shape = RoundedCornerShape(44.dp),
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
         elevation = CardDefaults.cardElevation(defaultElevation = elevation),
         modifier = modifier.fillMaxWidth()

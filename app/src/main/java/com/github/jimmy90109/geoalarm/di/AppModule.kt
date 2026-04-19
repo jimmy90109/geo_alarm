@@ -12,6 +12,8 @@ import com.github.jimmy90109.geoalarm.data.AlarmDataRepository
 import com.github.jimmy90109.geoalarm.data.AlarmRepository
 import com.github.jimmy90109.geoalarm.data.AppDatabase
 import com.github.jimmy90109.geoalarm.data.ScheduleDao
+import com.github.jimmy90109.geoalarm.widget.AppWidgetUpdater
+import com.github.jimmy90109.geoalarm.widget.WidgetUpdater
 import dagger.Binds
 import dagger.Module
 import dagger.Provides
@@ -62,4 +64,10 @@ abstract class RepositoryModule {
     abstract fun bindAlarmServiceStarter(
         alarmServiceStarter: AndroidAlarmServiceStarter
     ): AlarmServiceStarter
+
+    @Binds
+    @Singleton
+    abstract fun bindWidgetUpdater(
+        widgetUpdater: AppWidgetUpdater
+    ): WidgetUpdater
 }

@@ -8,16 +8,24 @@ import androidx.activity.compose.setContent
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.WindowInsetsSides
 import androidx.compose.foundation.layout.asPaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.navigationBars
+import androidx.compose.foundation.layout.only
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.safeDrawing
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.layout.widthIn
+import androidx.compose.foundation.layout.windowInsetsPadding
+import androidx.compose.foundation.lazy.grid.GridCells
+import androidx.compose.foundation.lazy.grid.GridItemSpan
+import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
+import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonGroup
 import androidx.compose.material3.ButtonGroupDefaults
@@ -29,14 +37,16 @@ import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.FilledIconButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButtonDefaults
+import androidx.compose.material3.LargeFlexibleTopAppBar
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
-import androidx.compose.material3.TopAppBar
+import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -44,6 +54,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
+import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -129,15 +140,27 @@ private fun WidgetConfigScreen(
     onSave: (List<String>) -> Unit,
     onSelectionLimitReached: () -> Unit
 ) {
+    val availableAlarmIds = remember(alarms) { alarms.map { it.id }.toSet() }
     var selectedIds by remember(appWidgetId) {
-        mutableStateOf(initialSelection.distinct().take(2))
+        mutableStateOf(
+            initialSelection
+                .distinct()
+                .filter { it in availableAlarmIds }
+                .take(2)
+        )
+    }
+    LaunchedEffect(availableAlarmIds) {
+        selectedIds = selectedIds.filter { it in availableAlarmIds }.take(2)
     }
 
+    val scrollBehavior = TopAppBarDefaults.exitUntilCollapsedScrollBehavior()
+
     Scaffold(
+        modifier = Modifier.nestedScroll(scrollBehavior.nestedScrollConnection),
         topBar = {
-            TopAppBar(
+            LargeFlexibleTopAppBar(
                 title = {
-                    Column {
+                    Column(modifier = Modifier.fillMaxWidth()) {
                         Text(
                             text = stringResource(R.string.widget_config_title),
                             style = MaterialTheme.typography.titleLarge
@@ -148,22 +171,79 @@ private fun WidgetConfigScreen(
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
                     }
-                }
+                },
+                scrollBehavior = scrollBehavior
             )
-        },
-        bottomBar = {
-            val navigationBottom = WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding()
+        }
+    ) { innerPadding ->
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .windowInsetsPadding(
+                    WindowInsets.safeDrawing.only(WindowInsetsSides.Horizontal)
+                )
+        ) {
+            LazyVerticalGrid(
+                columns = GridCells.Adaptive(300.dp),
+                modifier = Modifier.fillMaxSize(),
+                contentPadding = PaddingValues(
+                    top = innerPadding.calculateTopPadding(),
+                    bottom = innerPadding.calculateBottomPadding() + 100.dp,
+                    start = 16.dp, 
+                    end = 16.dp
+                ),
+                verticalArrangement = Arrangement.spacedBy(12.dp),
+                horizontalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
+                item(span = { GridItemSpan(maxLineSpan) }) {
+                    // Add some top padding before the first item
+                    androidx.compose.foundation.layout.Spacer(modifier = Modifier.padding(4.dp))
+                }
+                items(alarms, key = { it.id }) { alarm ->
+                    val selectedIndex = selectedIds.indexOf(alarm.id)
+                    val isSelected = selectedIndex >= 0
+                    val activeSelectionCount = selectedIds.count { it in availableAlarmIds }
+                    val isEnabled = isSelected || activeSelectionCount < 2
+                    WidgetAlarmToggleRow(
+                        alarm = alarm,
+                        selected = isSelected,
+                        selectedOrder = if (isSelected) selectedIndex + 1 else null,
+                        enabled = isEnabled,
+                        onCheckedChange = { checked ->
+                            selectedIds = when {
+                                checked && selectedIds.contains(alarm.id) -> selectedIds
+                                checked && selectedIds.size >= 2 -> {
+                                    onSelectionLimitReached()
+                                    selectedIds
+                                }
+                                checked -> selectedIds + alarm.id
+                                else -> selectedIds.filterNot { it == alarm.id }
+                            }
+                        }
+                    )
+                }
+                item(span = { GridItemSpan(maxLineSpan) }) {
+                    // Add some bottom padding after the last item
+                    androidx.compose.foundation.layout.Spacer(modifier = Modifier.padding(16.dp))
+                }
+            }
+
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(start = 16.dp, end = 16.dp, top = 12.dp, bottom = navigationBottom + 12.dp)
+                    .align(Alignment.BottomCenter)
+                    .padding(
+                        start = 16.dp, 
+                        end = 16.dp, 
+                        bottom = innerPadding.calculateBottomPadding() + 16.dp
+                    ),
+                contentAlignment = Alignment.Center
             ) {
                 ButtonGroup(
                     overflowIndicator = { menuState ->
                         ButtonGroupDefaults.OverflowIndicator(menuState = menuState)
                     },
-                    modifier = Modifier
-                        .fillMaxWidth()
+                    modifier = Modifier.widthIn(max = 480.dp).fillMaxWidth()
                 ) {
                     val buttonGroupScope = this
                     customItem(
@@ -200,7 +280,7 @@ private fun WidgetConfigScreen(
                     customItem(
                         buttonGroupContent = {
                             Button(
-                                onClick = { onSave(selectedIds) },
+                                onClick = { onSave(selectedIds.filter { it in availableAlarmIds }.take(2)) },
                                 modifier = with(buttonGroupScope) {
                                     Modifier.weight(1f)
                                 }
@@ -212,52 +292,13 @@ private fun WidgetConfigScreen(
                             DropdownMenuItem(
                                 text = { Text(stringResource(R.string.save)) },
                                 onClick = {
-                                    onSave(selectedIds)
+                                    onSave(selectedIds.filter { it in availableAlarmIds }.take(2))
                                     menuState.dismiss()
                                 }
                             )
                         }
                     )
                 }
-            }
-        }
-    ) { innerPadding ->
-        LazyColumn(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(innerPadding)
-                .padding(horizontal = 16.dp),
-            verticalArrangement = Arrangement.spacedBy(12.dp)
-        ) {
-            item {
-                // Add some top padding before the first item
-                androidx.compose.foundation.layout.Spacer(modifier = Modifier.padding(4.dp))
-            }
-            items(alarms, key = { it.id }) { alarm ->
-                val selectedIndex = selectedIds.indexOf(alarm.id)
-                val isSelected = selectedIndex >= 0
-                val isEnabled = isSelected || selectedIds.size < 2
-                WidgetAlarmToggleRow(
-                    alarm = alarm,
-                    selected = isSelected,
-                    selectedOrder = if (isSelected) selectedIndex + 1 else null,
-                    enabled = isEnabled,
-                    onCheckedChange = { checked ->
-                        selectedIds = when {
-                            checked && selectedIds.contains(alarm.id) -> selectedIds
-                            checked && selectedIds.size >= 2 -> {
-                                onSelectionLimitReached()
-                                selectedIds
-                            }
-                            checked -> selectedIds + alarm.id
-                            else -> selectedIds.filterNot { it == alarm.id }
-                        }
-                    }
-                )
-            }
-            item {
-                // Add some bottom padding after the last item
-                androidx.compose.foundation.layout.Spacer(modifier = Modifier.padding(16.dp))
             }
         }
     }
@@ -281,9 +322,9 @@ private fun WidgetAlarmToggleRow(
         shape = cardShape,
         colors = CardDefaults.cardColors(
             containerColor = when {
-                !enabled -> MaterialTheme.colorScheme.surfaceVariant
+                !enabled -> MaterialTheme.colorScheme.surfaceContainer
                 selected -> MaterialTheme.colorScheme.primaryContainer
-                else -> MaterialTheme.colorScheme.surfaceVariant
+                else -> MaterialTheme.colorScheme.surfaceContainer
             },
         )
     ) {

@@ -5,6 +5,7 @@ import androidx.lifecycle.viewModelScope
 import com.github.jimmy90109.geoalarm.data.Alarm
 import com.github.jimmy90109.geoalarm.data.AlarmDataRepository
 import com.github.jimmy90109.geoalarm.data.DEFAULT_ALARM_ICON_KEY
+import com.github.jimmy90109.geoalarm.widget.WidgetUpdater
 import com.google.android.gms.maps.model.LatLng
 import dagger.hilt.android.lifecycle.HiltViewModel
 import javax.inject.Inject
@@ -36,7 +37,8 @@ data class AlarmEditUiState(
 
 @HiltViewModel
 class AlarmEditViewModel @Inject constructor(
-    private val repository: AlarmDataRepository
+    private val repository: AlarmDataRepository,
+    private val widgetUpdater: WidgetUpdater
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(AlarmEditUiState())
@@ -145,6 +147,7 @@ class AlarmEditViewModel @Inject constructor(
                 )
                 repository.insert(newAlarm)
             }
+            widgetUpdater.refreshAll()
             _uiState.value = _uiState.value.copy(
                 isSaved = true,
                 savedAlarmId = alarmId,
@@ -175,6 +178,7 @@ class AlarmEditViewModel @Inject constructor(
         val existing = _uiState.value.existingAlarm ?: return
         viewModelScope.launch {
             repository.delete(existing)
+            widgetUpdater.refreshAll()
             _uiState.value = _uiState.value.copy(
                 isSaved = true,
                 showDeleteConfirmDialog = false

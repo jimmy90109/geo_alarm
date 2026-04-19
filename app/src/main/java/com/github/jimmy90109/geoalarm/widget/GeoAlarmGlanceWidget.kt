@@ -3,11 +3,15 @@ package com.github.jimmy90109.geoalarm.widget
 import android.appwidget.AppWidgetManager
 import android.content.Context
 import android.content.Intent
+import android.util.Log
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.DpSize
 import androidx.datastore.preferences.core.Preferences
+import androidx.datastore.preferences.core.longPreferencesKey
 import androidx.datastore.preferences.core.stringSetPreferencesKey
 import androidx.glance.GlanceId
 import androidx.glance.GlanceModifier
@@ -44,6 +48,12 @@ import com.github.jimmy90109.geoalarm.data.Alarm
 import com.github.jimmy90109.geoalarm.ui.components.normalizeAlarmIconKey
 
 class GeoAlarmGlanceWidget : GlanceAppWidget() {
+    companion object {
+        private const val TAG = "GeoAlarmGlanceWidget"
+        val SelectedAlarmIdsKey = stringSetPreferencesKey("selected_alarm_ids")
+        val LastRefreshEpochMsKey = longPreferencesKey("last_refresh_epoch_ms")
+    }
+
     // Use exact sizing so padding/layout can react to every host resize step.
     override val sizeMode = SizeMode.Exact
 
@@ -52,15 +62,19 @@ class GeoAlarmGlanceWidget : GlanceAppWidget() {
         val repository = application.repository
         val appWidgetId = GlanceAppWidgetManager(context).getAppWidgetId(id)
 
-        val alarms = repository.getAllAlarmsOneShot()
-
         provideContent {
             GlanceTheme {
+                val alarms by repository.allAlarms.collectAsState(initial = emptyList())
                 val size = LocalSize.current
                 val outerPadding = widgetOuterPadding(size)
                 val titleBottomSpacing = if (outerPadding <= 8.dp) 8.dp else 16.dp
                 val useHorizontalButtons = size.width > size.height
                 val prefs = currentState<Preferences>()
+                val _lastRefresh = prefs[LastRefreshEpochMsKey]
+                Log.d(
+                    TAG,
+                    "provideContent appWidgetId=$appWidgetId alarms=${alarms.joinToString(prefix = "[", postfix = "]") { "${it.id}:${it.iconKey}:${it.name}" }}"
+                )
                 val selectedIds = prefs[SelectedAlarmIdsKey]?.toList().orEmpty()
                 val selectedAlarms = resolveSelectedAlarms(alarms, selectedIds)
                 val rootClickAction = if (selectedAlarms.isEmpty()) {
@@ -85,14 +99,24 @@ class GeoAlarmGlanceWidget : GlanceAppWidget() {
                         .padding(outerPadding)
                         .clickable(rootClickAction)
                 ) {
-                    Text(
-                        text = context.getString(R.string.app_name),
-                        style = TextStyle(
-                            color = GlanceTheme.colors.onSurface,
-                            fontSize = androidx.compose.ui.unit.TextUnit(14f, androidx.compose.ui.unit.TextUnitType.Sp),
-                            fontWeight = androidx.glance.text.FontWeight.Bold
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Image(
+                            provider = ImageProvider(R.mipmap.ic_launcher_round),
+                            contentDescription = context.getString(R.string.app_name),
+                            modifier = GlanceModifier.size(18.dp)
                         )
-                    )
+                        Spacer(modifier = GlanceModifier.width(8.dp))
+                        Text(
+                            text = context.getString(R.string.app_name),
+                            style = TextStyle(
+                                color = GlanceTheme.colors.onSurface,
+                                fontSize = androidx.compose.ui.unit.TextUnit(14f, androidx.compose.ui.unit.TextUnitType.Sp),
+                                fontWeight = androidx.glance.text.FontWeight.Bold
+                            )
+                        )
+                    }
 
                     Spacer(modifier = GlanceModifier.height(titleBottomSpacing))
 
@@ -210,7 +234,13 @@ class GeoAlarmGlanceWidget : GlanceAppWidget() {
     private fun resolveSelectedAlarms(allAlarms: List<Alarm>, selectedIds: List<String>): List<Alarm> {
         if (selectedIds.isEmpty()) return emptyList()
         val byId = allAlarms.associateBy { it.id }
-        return selectedIds.mapNotNull { byId[it] }.take(2)
+        val selected = selectedIds.mapNotNull { byId[it] }.take(2)
+        Log.d(
+            TAG,
+            "resolveSelectedAlarms selectedIds=${selectedIds.joinToString(prefix = "[", postfix = "]")} " +
+                "resolved=${selected.joinToString(prefix = "[", postfix = "]") { "${it.id}:${it.iconKey}:${it.name}" }}"
+        )
+        return selected
     }
 
     private fun widgetIconResForKey(rawKey: String): Int {
@@ -226,10 +256,6 @@ class GeoAlarmGlanceWidget : GlanceAppWidget() {
             "gym" -> R.drawable.ic_widget_gym
             else -> R.drawable.ic_widget_location
         }
-    }
-
-    companion object {
-        val SelectedAlarmIdsKey = stringSetPreferencesKey("selected_alarm_ids")
     }
 
     private fun widgetOuterPadding(size: DpSize): Dp {
