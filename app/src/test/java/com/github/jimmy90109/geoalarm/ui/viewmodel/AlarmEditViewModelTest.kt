@@ -148,7 +148,7 @@ class AlarmEditViewModelTest {
 
     @Test
     fun `goToDetailsStep changes step when position exists and goToMapStep restores`() = runTest {
-        val viewModel = AlarmEditViewModel(buildRepository())
+        val viewModel = createViewModel(buildRepository())
         viewModel.loadAlarm(null)
         advanceUntilIdle()
 
@@ -166,7 +166,7 @@ class AlarmEditViewModelTest {
     @Test
     fun `saveAlarm stores selected icon`() = runTest {
         val alarmDao = FakeAlarmDao()
-        val viewModel = AlarmEditViewModel(buildRepository(alarmDao = alarmDao))
+        val viewModel = createViewModel(buildRepository(alarmDao = alarmDao))
         viewModel.updatePosition(LatLng(24.9, 121.1))
         viewModel.updateName("Office")
         viewModel.selectIcon("train")
