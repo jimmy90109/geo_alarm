@@ -4,18 +4,19 @@ import android.app.Application
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.github.jimmy90109.geoalarm.data.Alarm
-import com.github.jimmy90109.geoalarm.data.AlarmRepository
+import com.github.jimmy90109.geoalarm.data.AlarmDataRepository
 import com.github.jimmy90109.geoalarm.data.AlarmSchedule
 import com.github.jimmy90109.geoalarm.service.ScheduleManager
 import com.github.jimmy90109.geoalarm.utils.SharedPreferenceManager
+import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
-import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import java.util.UUID
+import javax.inject.Inject
 
 data class ScheduleEditUiState(
     val selectedAlarmId: String? = null,
@@ -29,9 +30,10 @@ data class ScheduleEditUiState(
     val showOnboarding: Boolean = false,
 )
 
-class ScheduleEditViewModel(
+@HiltViewModel
+class ScheduleEditViewModel @Inject constructor(
     application: Application,
-    private val repository: AlarmRepository,
+    private val repository: AlarmDataRepository,
     private val sharedPreferenceManager: SharedPreferenceManager
 ) : AndroidViewModel(application) {
 

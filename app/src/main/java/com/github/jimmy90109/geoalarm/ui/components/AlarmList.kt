@@ -16,10 +16,14 @@ import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.Widgets
+import androidx.compose.material.icons.outlined.Widgets
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
@@ -55,6 +59,7 @@ fun AlarmList(
     onScheduleClick: (ScheduleWithAlarm) -> Unit,
     onToggleSchedule: (AlarmSchedule, Boolean) -> Unit,
     onAddSchedule: () -> Unit,
+    onOpenWidgetPicker: () -> Unit,
     contentPadding: PaddingValues = PaddingValues(bottom = 80.dp),
     highlightedAlarmId: String? = null,
     highlightedScheduleId: String? = null,
@@ -107,12 +112,30 @@ fun AlarmList(
         // All Alarms Section
         if (alarms.isNotEmpty()) {
             item(span = { GridItemSpan(maxLineSpan) }) {
-                Text(
-                    text = stringResource(R.string.section_all_alarm),
-                    style = MaterialTheme.typography.titleMedium,
-                    color = MaterialTheme.colorScheme.primary,
-                    modifier = Modifier.padding(start = 4.dp, top = 16.dp, bottom = 4.dp)
-                )
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(start = 4.dp, top = 16.dp, bottom = 4.dp),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(
+                        text = stringResource(R.string.section_all_alarm),
+                        style = MaterialTheme.typography.titleMedium,
+                        color = MaterialTheme.colorScheme.primary
+                    )
+                    IconButton(
+                        onClick = {
+                            haptic.performHapticFeedback(HapticFeedbackType.ContextClick)
+                            onOpenWidgetPicker()
+                        }
+                    ) {
+                        Icon(
+                            imageVector = Icons.Outlined.Widgets,
+                            contentDescription = stringResource(R.string.open_widget_picker)
+                        )
+                    }
+                }
             }
             items(
                 items = alarms, key = { "alarm_${it.id}" }) { alarm ->
@@ -174,11 +197,17 @@ fun AlarmItem(
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.SpaceBetween,
         ) {
-            Text(
+            Row(
                 modifier = Modifier.weight(1f),
-                text = alarm.name,
-                style = MaterialTheme.typography.titleLarge,
-            )
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                AlarmIconBadge(iconKey = alarm.iconKey)
+                Text(
+                    modifier = Modifier.padding(start = 12.dp),
+                    text = alarm.name,
+                    style = MaterialTheme.typography.titleLarge,
+                )
+            }
 
             Button(
                 onClick = {

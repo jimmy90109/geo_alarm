@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<journey name="助理啟用鬧鐘測試">
+    <description></description>
+    <actions xml:space="preserve">
+        <action>在主畫面等待「所有鬧鐘」區塊可見。</action>
+        <action>在「所有鬧鐘」清單中找到名稱為「公司」的鬧鐘。</action>
+        <action>輕觸「公司」那一列右側的「開啟」開關。</action>
+        <action>確認畫面上有顯示「取消鬧鐘」的按鈕即可。</action>
+    </actions>
+</journey>

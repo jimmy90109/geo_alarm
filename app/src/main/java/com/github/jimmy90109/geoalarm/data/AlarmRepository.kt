@@ -1,58 +1,74 @@
 package com.github.jimmy90109.geoalarm.data
 
 import kotlinx.coroutines.flow.Flow
+import javax.inject.Inject
 
-class AlarmRepository(
+class AlarmRepository @Inject constructor(
     private val alarmDao: AlarmDao,
     private val scheduleDao: ScheduleDao
-) {
-    val allAlarms: Flow<List<Alarm>> = alarmDao.getAllAlarms()
-    val allSchedules: Flow<List<AlarmSchedule>> = scheduleDao.getAllSchedules()
-    val allSchedulesWithAlarm: Flow<List<ScheduleWithAlarm>> = scheduleDao.getAllSchedulesWithAlarm()
+) : AlarmDataRepository {
+    override val allAlarms: Flow<List<Alarm>> = alarmDao.getAllAlarms()
+    override val allSchedules: Flow<List<AlarmSchedule>> = scheduleDao.getAllSchedules()
+    override val allSchedulesWithAlarm: Flow<List<ScheduleWithAlarm>> = scheduleDao.getAllSchedulesWithAlarm()
 
     // Alarm Operations
-    suspend fun getAlarm(id: String): Alarm? {
+    override suspend fun getAlarm(id: String): Alarm? {
         return alarmDao.getAlarmById(id)
     }
 
-    suspend fun getAllAlarmsOneShot(): List<Alarm> {
+    override suspend fun getAllAlarmsOneShot(): List<Alarm> {
         return alarmDao.getAllAlarmsOneShot()
     }
 
-    suspend fun insert(alarm: Alarm) {
+    override suspend fun findAlarmsByName(name: String): List<Alarm> {
+        return alarmDao.findAlarmsByName(name)
+    }
+
+    override suspend fun insert(alarm: Alarm) {
         alarmDao.insertAlarm(alarm)
     }
 
-    suspend fun delete(alarm: Alarm) {
+    override suspend fun delete(alarm: Alarm) {
         alarmDao.deleteAlarm(alarm)
     }
 
-    suspend fun update(alarm: Alarm) {
+    override suspend fun update(alarm: Alarm) {
         alarmDao.updateAlarm(alarm)
     }
 
     // Schedule Operations
-    fun getSchedulesForAlarm(alarmId: String): Flow<List<AlarmSchedule>> {
+    override fun getSchedulesForAlarm(alarmId: String): Flow<List<AlarmSchedule>> {
         return scheduleDao.getSchedulesForAlarm(alarmId)
     }
 
-    suspend fun getSchedule(id: String): AlarmSchedule? {
+    override suspend fun getSchedule(id: String): AlarmSchedule? {
         return scheduleDao.getScheduleById(id)
     }
 
-    suspend fun insertSchedule(schedule: AlarmSchedule) {
+    override suspend fun insertSchedule(schedule: AlarmSchedule) {
         scheduleDao.insertSchedule(schedule)
     }
 
-    suspend fun deleteSchedule(schedule: AlarmSchedule) {
+    override suspend fun deleteSchedule(schedule: AlarmSchedule) {
         scheduleDao.deleteSchedule(schedule)
     }
 
-    suspend fun updateSchedule(schedule: AlarmSchedule) {
+    override suspend fun updateSchedule(schedule: AlarmSchedule) {
         scheduleDao.updateSchedule(schedule)
     }
 
-    suspend fun isAlarmUsedInSchedule(alarmId: String): Boolean {
+    override suspend fun existsDuplicateSchedule(
+        alarmId: String,
+        days: Set<Int>,
+        hour: Int,
+        minute: Int
+    ): Boolean {
+        return scheduleDao.getSchedulesForAlarmOneShot(alarmId).any { schedule ->
+            schedule.daysOfWeek == days && schedule.hour == hour && schedule.minute == minute
+        }
+    }
+
+    override suspend fun isAlarmUsedInSchedule(alarmId: String): Boolean {
         return scheduleDao.isAlarmUsedInSchedule(alarmId)
     }
 }

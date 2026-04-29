@@ -14,29 +14,29 @@ import androidx.compose.animation.slideOutVertically
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.WindowInsets
-import androidx.compose.foundation.layout.displayCutout
-import androidx.compose.foundation.layout.windowInsetsPadding
+import androidx.compose.foundation.layout.WindowInsetsSides
 import androidx.compose.foundation.layout.asPaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.navigationBars
+import androidx.compose.foundation.layout.only
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.safeDrawing
+import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.BiasAlignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalConfiguration
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavDestination.Companion.hasRoute
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
-import com.github.jimmy90109.geoalarm.GeoAlarmApplication
 import com.github.jimmy90109.geoalarm.navigation.MainRoutes
 import com.github.jimmy90109.geoalarm.ui.components.AppNavigationRail
 import com.github.jimmy90109.geoalarm.ui.components.BottomNavBar
@@ -44,7 +44,6 @@ import com.github.jimmy90109.geoalarm.ui.components.NavTab
 import com.github.jimmy90109.geoalarm.data.UpdateStatus
 import com.github.jimmy90109.geoalarm.ui.viewmodel.HomeViewModel
 import com.github.jimmy90109.geoalarm.ui.viewmodel.SettingsViewModel
-import com.github.jimmy90109.geoalarm.ui.viewmodel.ViewModelFactory
 
 @Composable
 fun MainScreen(
@@ -66,19 +65,7 @@ fun MainScreen(
     // Determine if we are on a top-level tab
     val isSettings = navBackStackEntry?.destination?.hasRoute<MainRoutes.Settings>() == true
 
-    // Create the factory with dependencies
-    val context = LocalContext.current
-    val app = context.applicationContext as GeoAlarmApplication
-    val factory = ViewModelFactory(
-        app,
-        app.repository,
-        app.settingsRepository,
-        app.onboardingRepository,
-        app.sharedPreferenceManager,
-    )
-
-    // Get the SettingsViewModel
-    val settingsViewModel: SettingsViewModel = viewModel(factory = factory)
+    val settingsViewModel: SettingsViewModel = hiltViewModel()
     val updateStatus by settingsViewModel.updateStatus.collectAsStateWithLifecycle()
     val showSettingsUpdateDot = updateStatus is UpdateStatus.Available
 
@@ -129,7 +116,7 @@ fun MainScreen(
         Row(
             modifier = Modifier
                 .fillMaxSize()
-                .windowInsetsPadding(WindowInsets.displayCutout),
+                .windowInsetsPadding(WindowInsets.safeDrawing.only(WindowInsetsSides.Horizontal)),
             verticalAlignment = Alignment.CenterVertically
         ) {
             AppNavigationRail(

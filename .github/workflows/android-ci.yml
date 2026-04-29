@@ -22,7 +22,7 @@ jobs:
         with:
           fetch-depth: 0
 
-      - name: Set up JDK 11
+      - name: Set up JDK 17
         uses: actions/setup-java@v4
         with:
           distribution: temurin
@@ -41,14 +41,14 @@ jobs:
       - name: Grant execute permission for gradlew
         run: chmod +x ./gradlew
 
-      - name: Build (assemble & run unit tests)
-        run: ./gradlew build --no-daemon --stacktrace
+      - name: Run checks (lint & unit tests)
+        run: ./gradlew lintDebug testDebugUnitTest --no-daemon --stacktrace
 
-      - name: Upload build artifacts (optional)
+      - name: Upload reports (optional)
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: build-logs
+          name: ci-reports
           path: |
             app/build/reports
-            app/build/outputs || true
+            app/build/test-results

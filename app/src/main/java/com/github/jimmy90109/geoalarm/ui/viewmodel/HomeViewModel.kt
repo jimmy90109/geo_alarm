@@ -2,23 +2,28 @@ package com.github.jimmy90109.geoalarm.ui.viewmodel
 
 import android.Manifest.permission.ACCESS_COARSE_LOCATION
 import android.Manifest.permission.ACCESS_FINE_LOCATION
+import android.Manifest.permission.POST_NOTIFICATIONS
 import android.app.Application
 import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
 import android.content.IntentFilter
 import android.content.pm.PackageManager
-import android.database.sqlite.SQLiteConstraintException
 import android.location.Location
 import android.util.Log
 import androidx.core.content.ContextCompat
+import androidx.glance.appwidget.updateAll
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
+import com.github.jimmy90109.geoalarm.analytics.TelemetryTracker
 import com.github.jimmy90109.geoalarm.data.Alarm
-import com.github.jimmy90109.geoalarm.data.AlarmRepository
+import com.github.jimmy90109.geoalarm.data.AlarmDataRepository
 import com.github.jimmy90109.geoalarm.data.AlarmSchedule
 import com.github.jimmy90109.geoalarm.service.GeoAlarmService
+import com.github.jimmy90109.geoalarm.widget.GeoAlarmGlanceWidget
 import com.google.android.gms.location.LocationServices
+import dagger.hilt.android.lifecycle.HiltViewModel
+import javax.inject.Inject
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
@@ -48,9 +53,11 @@ data class HomeUiState(
  * ViewModel for the Home Screen.
  * Manages alarm list state, dialog visibility states, and core alarm operations (enable/disable/delete).
  */
-class HomeViewModel(
+@HiltViewModel
+class HomeViewModel @Inject constructor(
     application: Application,
-    private val repository: AlarmRepository,
+    private val repository: AlarmDataRepository,
+    private val telemetryTracker: TelemetryTracker,
 ) : AndroidViewModel(application) {
 
     private val fusedLocationClient = LocationServices.getFusedLocationProviderClient(application)
@@ -196,6 +203,18 @@ class HomeViewModel(
             return
         }
 
+        // Check notification permission (Android 13+) for non-UI entry points (widget/schedule).
+        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.TIRAMISU) {
+            val hasNotificationPermission = ContextCompat.checkSelfPermission(
+                context,
+                POST_NOTIFICATIONS
+            ) == PackageManager.PERMISSION_GRANTED
+            if (!hasNotificationPermission) {
+                showNotificationPermissionDialog()
+                return
+            }
+        }
+
         // Check location to see if already at destination
         if (ContextCompat.checkSelfPermission(
                 context, ACCESS_FINE_LOCATION
@@ -203,7 +222,9 @@ class HomeViewModel(
                 context, ACCESS_COARSE_LOCATION
             ) != PackageManager.PERMISSION_GRANTED
         ) {
-            proceedEnableAlarm(alarm, context, null)
+            // Do not start location foreground service without runtime location permission.
+            // This path can be reached from non-UI triggers (e.g. widget/schedule intent).
+            showBackgroundPermissionDialog()
             return
         }
 
@@ -269,16 +290,19 @@ class HomeViewModel(
      * @param alarm The alarm to disable.
      * @param context Context used to stop the service.
      */
-    fun disableAlarm(alarm: Alarm, context: Context) {
+    fun disableAlarm(alarm: Alarm, context: Context, trackArrivedTurnOff: Boolean = false) {
         viewModelScope.launch {
+            if (trackArrivedTurnOff) {
+                telemetryTracker.trackArrivedTurnOff()
+            }
             repository.update(alarm.copy(isEnabled = false))
+            // Stop Service after DB state is persisted to avoid widget refresh races.
+            val serviceIntent = Intent(context, GeoAlarmService::class.java).apply {
+                action = GeoAlarmService.ACTION_STOP
+            }
+            context.startService(serviceIntent)
+            GeoAlarmGlanceWidget().updateAll(context)
         }
-
-        // Stop Service
-        val serviceIntent = Intent(context, GeoAlarmService::class.java).apply {
-            action = GeoAlarmService.ACTION_STOP
-        }
-        context.startService(serviceIntent)
     }
 
     fun handleScheduleIntent(alarmId: String) {
@@ -367,4 +391,3 @@ class HomeViewModel(
         }
     }
 }
-

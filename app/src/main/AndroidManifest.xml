@@ -31,6 +31,9 @@
         android:localeConfig="@xml/locales_config"
         tools:targetApi="31">
         <meta-data
+            android:name="android.app.shortcuts"
+            android:resource="@xml/shortcuts" />
+        <meta-data
             android:name="com.google.android.geo.API_KEY"
             android:value="${GOOGLE_MAPS_API_KEY}" />
         <service
@@ -50,12 +53,62 @@
                 <action android:name="com.github.jimmy90109.geoalarm.ACTION_SCHEDULE_TRIGGER"/>
             </intent-filter>
         </receiver>
+
+        <receiver
+            android:name=".widget.GeoAlarmGlanceWidgetReceiver"
+            android:exported="true"
+            android:permission="android.permission.BIND_APPWIDGET">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+            </intent-filter>
+            <meta-data
+                android:name="android.appwidget.provider"
+                android:resource="@xml/geo_alarm_widget_info" />
+        </receiver>
+
+        <activity
+            android:name=".widget.GeoAlarmWidgetConfigActivity"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_CONFIGURE" />
+            </intent-filter>
+        </activity>
             
         <activity
             android:name=".MainActivity"
             android:exported="true"
             android:launchMode="singleTop"
             android:theme="@style/Theme.GeoAlarm">
+            <intent-filter>
+                <action android:name="com.github.jimmy90109.geoalarm.action.CREATE_GEO_ALARM" />
+                <category android:name="android.intent.category.DEFAULT" />
+            </intent-filter>
+            <intent-filter>
+                <action android:name="com.github.jimmy90109.geoalarm.action.CREATE_SCHEDULE" />
+                <category android:name="android.intent.category.DEFAULT" />
+            </intent-filter>
+            <intent-filter>
+                <action android:name="com.github.jimmy90109.geoalarm.action.START_ALARM" />
+                <category android:name="android.intent.category.DEFAULT" />
+            </intent-filter>
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data
+                    android:host="shortcut"
+                    android:pathPrefix="/add-alarm"
+                    android:scheme="geoalarm" />
+            </intent-filter>
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data
+                    android:host="shortcut"
+                    android:pathPrefix="/add-schedule"
+                    android:scheme="geoalarm" />
+            </intent-filter>
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />

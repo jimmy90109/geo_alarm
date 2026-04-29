@@ -1,0 +1,41 @@
+<?xml version="1.0" encoding="utf-8"?>
+<shortcuts xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto">
+
+    <shortcut
+        android:shortcutId="shortcut_add_alarm"
+        android:enabled="true"
+        android:icon="@mipmap/ic_launcher"
+        android:shortcutShortLabel="@string/shortcut_add_alarm_short"
+        android:shortcutLongLabel="@string/shortcut_add_alarm_long">
+        <intent
+            android:action="android.intent.action.VIEW"
+            android:data="geoalarm://shortcut/add-alarm"
+            android:targetClass="com.github.jimmy90109.geoalarm.MainActivity" />
+    </shortcut>
+
+    <shortcut
+        android:shortcutId="shortcut_add_schedule"
+        android:enabled="true"
+        android:icon="@mipmap/ic_launcher"
+        android:shortcutShortLabel="@string/shortcut_add_schedule_short"
+        android:shortcutLongLabel="@string/shortcut_add_schedule_long">
+        <intent
+            android:action="android.intent.action.VIEW"
+            android:data="geoalarm://shortcut/add-schedule"
+            android:targetClass="com.github.jimmy90109.geoalarm.MainActivity" />
+    </shortcut>
+
+    <capability android:name="actions.intent.OPEN_APP_FEATURE">
+        <intent
+            android:action="com.github.jimmy90109.geoalarm.action.START_ALARM"
+            android:targetClass="com.github.jimmy90109.geoalarm.MainActivity"
+            android:targetPackage="com.github.jimmy90109.geoalarm">
+            <parameter
+                android:key="alarm_name"
+                android:name="feature"
+                android:required="true" />
+        </intent>
+    </capability>
+
+</shortcuts>

@@ -6,12 +6,16 @@ import androidx.datastore.preferences.core.Preferences
 import androidx.datastore.preferences.core.booleanPreferencesKey
 import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.stringPreferencesKey
+import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
+import javax.inject.Inject
 
 val Context.dataStore: DataStore<Preferences> by androidx.datastore.preferences.preferencesDataStore(name = "settings")
 
-class SettingsRepository(private val context: Context) {
+class SettingsRepository @Inject constructor(
+    @param:ApplicationContext private val context: Context
+) {
     companion object {
         private val RINGTONE_ENABLED_KEY = booleanPreferencesKey("ringtone_enabled")
         private val RINGTONE_URI_KEY = stringPreferencesKey("ringtone_uri")

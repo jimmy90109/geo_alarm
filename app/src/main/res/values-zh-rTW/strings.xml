@@ -27,6 +27,7 @@
     <string name="onboarding_later">稍後</string>
     <string name="onboarding_set_later">稍後設定</string>
     <string name="onboarding_next_step">下一步</string>
+    <string name="onboarding_toggle_language">切換語言</string>
     <string name="onboarding_start_using">開始使用</string>
     <string name="onboarding_completed_title">完成設定</string>
     <string name="onboarding_completed_body">權限與提醒流程已準備就緒，現在就開始使用定位鬧鐘。</string>
@@ -36,6 +37,9 @@
     <string name="edit_alarm">編輯鬧鐘</string>
     <string name="alarm_name">鬧鐘名稱</string>
     <string name="enter_alarm_name">輸入鬧鐘名稱</string>
+    <string name="select_alarm_icon">選擇鬧鐘圖示</string>
+    <string name="next_step">下一步</string>
+    <string name="back_to_map_step">返回地圖</string>
     <string name="radius_label">半徑: %d 公尺</string>
     <string name="save">儲存</string>
     <string name="cancel">取消</string>
@@ -61,7 +65,9 @@
     <string name="undo">復原</string>
     <string name="only_one_alarm_error">同時只能啟用一個鬧鐘</string>
     <string name="single_alarm_title">啟用限制</string>
-    <string name="edit_disabled_error">請先關閉鬧鐘才能編輯</string>\n    <string name="already_at_destination_title">已在目的地</string>\n    <string name="already_at_destination_message">您已在鬧鐘範圍內，啟用後會立即觸發。</string>
+    <string name="edit_disabled_error">請先關閉鬧鐘才能編輯</string>
+    <string name="already_at_destination_title">已在目的地</string>
+    <string name="already_at_destination_message">您已在鬧鐘範圍內，啟用後會立即觸發。</string>
     <string name="background_location_title">需要背景定位權限</string>
     <string name="background_location_message">此應用程式需要「一律允許」的定位權限才能在背景追蹤您的位置。請前往設定並將定位權限設為「一律允許」。</string>
     <string name="go_to_settings">前往設定</string>
@@ -101,11 +107,16 @@
     <string name="tab_alarms">鬧鐘</string>
     <string name="settings_section_general">一般</string>
     <string name="settings_section_alarm">鬧鐘</string>
+    <string name="settings_section_privacy_improvement">隱私與改善</string>
     <string name="settings_ringtone">鈴聲</string>
     <string name="ringtone_mode_none">關閉</string>
     <string name="ringtone_default">預設鈴聲</string>
     <string name="ringtone_select">選擇鈴聲…</string>
     <string name="ringtone_feature_description">到站時從耳機播放鈴聲</string>
+    <string name="analytics_help_improve_title">幫助改善應用程式</string>
+    <string name="analytics_help_improve_description">匿名傳送應用程式使用狀況。我們不會收集您的定位資訊、任何鬧鐘詳細資訊。這僅用來幫助開發者了解產品是否穩定運作。</string>
+    <string name="analytics_enabled">開啟</string>
+    <string name="analytics_disabled">關閉</string>
 
     <!-- Updates -->
     <string name="section_about">關於</string>
@@ -160,4 +171,18 @@
     <string name="schedule_onboarding_message">設定的時間到達時，系統會發送確認通知。\n您需要點擊通知，該鬧鐘才會真正啟用。</string>
     <string name="schedule_onboarding_button">我瞭解了</string>
     <string name="schedule_guide_message">新增排程以自動化鬧鐘</string>
+    <string name="shortcut_add_alarm_short">新增鬧鐘</string>
+    <string name="shortcut_add_alarm_long">建立新的定位鬧鐘</string>
+    <string name="shortcut_add_schedule_short">新增排程</string>
+    <string name="shortcut_add_schedule_long">建立新的鬧鐘排程</string>
+    <string name="widget_description">在桌面快速啟用你選定的鬧鐘</string>
+    <string name="widget_select_title">定位鬧鐘小工具</string>
+    <string name="widget_select_subtitle">可設定最多 2 個鬧鐘快捷啟用</string>
+    <string name="widget_empty_message">尚未選擇鬧鐘，點擊小工具到 App 設定。</string>
+    <string name="widget_active_title">目前啟用：%s</string>
+    <string name="widget_config_title">設定小工具鬧鐘</string>
+    <string name="widget_config_subtitle">為這個小工具選擇最多兩個鬧鐘。</string>
+    <string name="widget_selection_limit">最多只能選擇 2 個鬧鐘。</string>
+    <string name="open_widget_picker">新增小工具</string>
+    <string name="widget_pin_not_supported">目前的桌面啟動器不支援由 App 直接新增小工具。</string>
 </resources>

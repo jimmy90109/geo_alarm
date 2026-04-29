@@ -21,7 +21,16 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Translate
 import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonGroup
+import androidx.compose.material3.ButtonGroupDefaults
+import androidx.compose.material3.DropdownMenuItem
+import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
+import androidx.compose.material3.FilledIconButton
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButtonDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -45,12 +54,14 @@ private const val INTRO_TEXT_MAX_WIDTH_DP = 560
 
 internal data class IntroPage(val title: String, val bullets: List<String>)
 
-@OptIn(ExperimentalFoundationApi::class)
+@OptIn(ExperimentalFoundationApi::class, ExperimentalMaterial3ExpressiveApi::class)
 @Composable
 internal fun IntroStartStage(
     pages: List<IntroPage>,
     pagerState: androidx.compose.foundation.pager.PagerState,
     motionConfig: OnboardingMotionConfig,
+    currentLanguage: String,
+    onToggleLanguage: () -> Unit,
     onStart: () -> Unit
 ) {
     val pageCount = pages.size
@@ -116,85 +127,166 @@ internal fun IntroStartStage(
             }
         }
         Column(
-            modifier = Modifier.padding(start = 24.dp, end = 24.dp, bottom = 14.dp),
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(start = 24.dp, end = 24.dp, bottom = 14.dp),
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.spacedBy(14.dp)
         ) {
-            Row(
-                horizontalArrangement = Arrangement.spacedBy(8.dp),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                repeat(pageCount) { index ->
-                    val selected = activePageIndex == index
-
-                    val animatedWidth by animateDpAsState(
-                        targetValue = if (selected) 24.dp else 6.dp,
-                        animationSpec = tween(
-                            durationMillis = 300,
-                            easing = FastOutSlowInEasing
-                        ),
-                        label = "indicatorWidth"
-                    )
-
-                    val animatedColor by animateColorAsState(
-                        targetValue = if (selected)
-                            MaterialTheme.colorScheme.primary
-                        else
-                            MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.35f),
-                        animationSpec = tween(300),
-                        label = "indicatorColor"
-                    )
-
-                    Box(
-                        modifier = Modifier
-                            .height(6.dp)
-                            .width(animatedWidth)
-                            .clip(RoundedCornerShape(50))
-                            .background(animatedColor)
-                    )
-                }
-            }
             Box(
                 modifier = Modifier.fillMaxWidth(),
                 contentAlignment = Alignment.Center
             ) {
-                Box(
+                Row(
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    repeat(pageCount) { index ->
+                        val selected = activePageIndex == index
+
+                        val animatedWidth by animateDpAsState(
+                            targetValue = if (selected) 24.dp else 6.dp,
+                            animationSpec = tween(
+                                durationMillis = 300,
+                                easing = FastOutSlowInEasing
+                            ),
+                            label = "indicatorWidth"
+                        )
+
+                        val animatedColor by animateColorAsState(
+                            targetValue = if (selected)
+                                MaterialTheme.colorScheme.primary
+                            else
+                                MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.35f),
+                            animationSpec = tween(300),
+                            label = "indicatorColor"
+                        )
+
+                        Box(
+                            modifier = Modifier
+                                .height(6.dp)
+                                .width(animatedWidth)
+                                .clip(RoundedCornerShape(50))
+                                .background(animatedColor)
+                        )
+                    }
+                }
+            }
+            val languageLabel = stringResource(
+                if (currentLanguage == "zh") R.string.locale_zh else R.string.locale_en
+            )
+            val nextLabel = if (isLastPage) {
+                stringResource(R.string.onboarding_start_using)
+            } else {
+                stringResource(R.string.onboarding_next_step)
+            }
+
+            Box(
+                modifier = Modifier.fillMaxWidth(),
+                contentAlignment = Alignment.Center
+            ) {
+                ButtonGroup(
+                    overflowIndicator = { menuState ->
+                        ButtonGroupDefaults.OverflowIndicator(menuState = menuState)
+                    },
                     modifier = Modifier
                         .widthIn(max = 360.dp)
                         .fillMaxWidth()
                 ) {
-                    Button(
-                        onClick = {
-                            if (isLastPage) {
-                                haptic.performHapticFeedback(HapticFeedbackType.LongPress)
-                                onStart()
-                            } else {
-                                haptic.performHapticFeedback(HapticFeedbackType.ContextClick)
-                                coroutineScope.launch {
-                                    pagerState.animateScrollToPage(
-                                        page = activePageIndex + 1,
-                                        animationSpec = tween(
-                                            durationMillis = motionConfig.introPageSwitchDurationMs,
-                                            easing = EaseOutCubic
-                                        )
-                                    )
-                                }
+                    val buttonGroupScope = this
+                    customItem(
+                        buttonGroupContent = {
+                            FilledIconButton(
+                                onClick = {
+                                    haptic.performHapticFeedback(HapticFeedbackType.ContextClick)
+                                    onToggleLanguage()
+                                },
+                                colors = IconButtonDefaults.filledIconButtonColors(
+                                    containerColor = MaterialTheme.colorScheme.surfaceVariant,
+                                    contentColor = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.Translate,
+                                    contentDescription = stringResource(R.string.onboarding_toggle_language)
+                                )
                             }
                         },
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .height(48.dp)
-                    ) {
-                        Text(
-                            text = if (isLastPage) {
-                                stringResource(R.string.onboarding_start_using)
-                            } else {
-                                stringResource(R.string.onboarding_next_step)
+                        menuContent = { menuState ->
+                            DropdownMenuItem(
+                                text = { Text(stringResource(R.string.onboarding_toggle_language)) },
+                                onClick = {
+                                    onToggleLanguage()
+                                    menuState.dismiss()
+                                },
+                                leadingIcon = {
+                                    Icon(
+                                        imageVector = Icons.Default.Translate,
+                                        contentDescription = null
+                                    )
+                                },
+                                trailingIcon = { Text(text = languageLabel) }
+                            )
+                        }
+                    )
+
+                    customItem(
+                        buttonGroupContent = {
+                        Button(
+                            onClick = {
+                                if (isLastPage) {
+                                    haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                                    onStart()
+                                } else {
+                                    haptic.performHapticFeedback(HapticFeedbackType.ContextClick)
+                                    coroutineScope.launch {
+                                        pagerState.animateScrollToPage(
+                                            page = activePageIndex + 1,
+                                            animationSpec = tween(
+                                                durationMillis = motionConfig.introPageSwitchDurationMs,
+                                                easing = EaseOutCubic
+                                            )
+                                        )
+                                    }
+                                }
                             },
-                            style = MaterialTheme.typography.bodyLarge,
-                            color = MaterialTheme.colorScheme.onPrimary
-                        )
-                    }
+                            modifier = with(buttonGroupScope) {
+                                Modifier.weight(1f)
+                            }.then(
+                                Modifier
+                                .fillMaxWidth()
+                                .height(48.dp)
+                            )
+                        ) {
+                            Text(
+                                text = nextLabel,
+                                style = MaterialTheme.typography.bodyLarge,
+                                color = MaterialTheme.colorScheme.onPrimary
+                            )
+                        }
+                        },
+                        menuContent = { menuState ->
+                            DropdownMenuItem(
+                                text = { Text(nextLabel) },
+                                onClick = {
+                                    if (isLastPage) {
+                                        onStart()
+                                    } else {
+                                        coroutineScope.launch {
+                                            pagerState.animateScrollToPage(
+                                                page = activePageIndex + 1,
+                                                animationSpec = tween(
+                                                    durationMillis = motionConfig.introPageSwitchDurationMs,
+                                                    easing = EaseOutCubic
+                                                )
+                                            )
+                                        }
+                                    }
+                                    menuState.dismiss()
+                                }
+                            )
+                        }
+                    )
                 }
             }
         }

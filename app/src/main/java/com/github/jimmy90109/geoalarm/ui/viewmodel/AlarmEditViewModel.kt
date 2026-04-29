@@ -3,21 +3,31 @@ package com.github.jimmy90109.geoalarm.ui.viewmodel
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.github.jimmy90109.geoalarm.data.Alarm
-import com.github.jimmy90109.geoalarm.data.AlarmRepository
+import com.github.jimmy90109.geoalarm.data.AlarmDataRepository
+import com.github.jimmy90109.geoalarm.data.DEFAULT_ALARM_ICON_KEY
+import com.github.jimmy90109.geoalarm.widget.WidgetUpdater
 import com.google.android.gms.maps.model.LatLng
+import dagger.hilt.android.lifecycle.HiltViewModel
+import javax.inject.Inject
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 import java.util.UUID
 
+enum class AlarmEditStep {
+    MapSelection,
+    DetailsForm
+}
+
 data class AlarmEditUiState(
     val selectedPosition: LatLng? = null,
     val radius: Float = 1000f,
     val name: String = "",
     val searchText: String = "",
+    val selectedIconKey: String = DEFAULT_ALARM_ICON_KEY,
+    val step: AlarmEditStep = AlarmEditStep.MapSelection,
     val isLoading: Boolean = true,
-    val showNameDialog: Boolean = false,
     val existingAlarm: Alarm? = null,
     val isSaved: Boolean = false,
     val savedAlarmId: String? = null, // ID of the alarm that was just saved (for highlight animation)
@@ -25,8 +35,10 @@ data class AlarmEditUiState(
     val showDeleteConfirmDialog: Boolean = false
 )
 
-class AlarmEditViewModel(
-    private val repository: AlarmRepository
+@HiltViewModel
+class AlarmEditViewModel @Inject constructor(
+    private val repository: AlarmDataRepository,
+    private val widgetUpdater: WidgetUpdater
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(AlarmEditUiState())
@@ -42,6 +54,8 @@ class AlarmEditViewModel(
                         selectedPosition = LatLng(alarm.latitude, alarm.longitude),
                         radius = alarm.radius.toFloat(),
                         name = alarm.name,
+                        selectedIconKey = alarm.iconKey,
+                        step = AlarmEditStep.MapSelection,
                         isLoading = false
                     )
                     return@launch
@@ -73,12 +87,22 @@ class AlarmEditViewModel(
         _uiState.value = _uiState.value.copy(radius = radius)
     }
 
-    fun showNameDialog() {
-        _uiState.value = _uiState.value.copy(showNameDialog = true)
+    fun updateName(name: String) {
+        _uiState.value = _uiState.value.copy(name = name)
     }
 
-    fun dismissNameDialog() {
-        _uiState.value = _uiState.value.copy(showNameDialog = false)
+    fun selectIcon(iconKey: String) {
+        _uiState.value = _uiState.value.copy(selectedIconKey = iconKey)
+    }
+
+    fun goToDetailsStep() {
+        if (_uiState.value.selectedPosition != null) {
+            _uiState.value = _uiState.value.copy(step = AlarmEditStep.DetailsForm)
+        }
+    }
+
+    fun goToMapStep() {
+        _uiState.value = _uiState.value.copy(step = AlarmEditStep.MapSelection)
     }
 
     fun dismissDeleteErrorDialog() {
@@ -89,9 +113,12 @@ class AlarmEditViewModel(
         _uiState.value = _uiState.value.copy(showDeleteConfirmDialog = false)
     }
 
-    fun saveAlarm(name: String) {
-        val position = _uiState.value.selectedPosition ?: return
-        val existing = _uiState.value.existingAlarm
+    fun saveAlarm() {
+        val state = _uiState.value
+        val position = state.selectedPosition ?: return
+        val name = state.name.trim()
+        if (name.isBlank()) return
+        val existing = state.existingAlarm
 
         viewModelScope.launch {
             val alarmId: String
@@ -102,7 +129,8 @@ class AlarmEditViewModel(
                     name = name,
                     latitude = position.latitude,
                     longitude = position.longitude,
-                    radius = _uiState.value.radius.toDouble()
+                    radius = state.radius.toDouble(),
+                    iconKey = state.selectedIconKey
                 )
                 repository.update(updatedAlarm)
             } else {
@@ -113,15 +141,16 @@ class AlarmEditViewModel(
                     name = name,
                     latitude = position.latitude,
                     longitude = position.longitude,
-                    radius = _uiState.value.radius.toDouble(),
-                    isEnabled = false
+                    radius = state.radius.toDouble(),
+                    isEnabled = false,
+                    iconKey = state.selectedIconKey
                 )
                 repository.insert(newAlarm)
             }
+            widgetUpdater.refreshAll()
             _uiState.value = _uiState.value.copy(
                 isSaved = true,
                 savedAlarmId = alarmId,
-                showNameDialog = false
             )
         }
     }
@@ -149,6 +178,7 @@ class AlarmEditViewModel(
         val existing = _uiState.value.existingAlarm ?: return
         viewModelScope.launch {
             repository.delete(existing)
+            widgetUpdater.refreshAll()
             _uiState.value = _uiState.value.copy(
                 isSaved = true,
                 showDeleteConfirmDialog = false

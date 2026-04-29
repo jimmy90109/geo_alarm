@@ -27,6 +27,7 @@
     <string name="onboarding_later">Later</string>
     <string name="onboarding_set_later">Set later</string>
     <string name="onboarding_next_step">Next</string>
+    <string name="onboarding_toggle_language">Switch language</string>
     <string name="onboarding_start_using">Get Started</string>
     <string name="onboarding_completed_title">Setup Complete</string>
     <string name="onboarding_completed_body">Permissions and reminders are ready. Start using Geo Alarm now.</string>
@@ -36,6 +37,9 @@
     <string name="edit_alarm">Edit Alarm</string>
     <string name="alarm_name">Alarm Name</string>
     <string name="enter_alarm_name">Enter Alarm Name</string>
+    <string name="select_alarm_icon">Select Alarm Icon</string>
+    <string name="next_step">Next</string>
+    <string name="back_to_map_step">Back to map</string>
     <string name="radius_label">Radius: %d m</string>
     <string name="save">Save</string>
     <string name="cancel">Cancel</string>
@@ -103,11 +107,16 @@
     <string name="tab_alarms">Alarms</string>
     <string name="settings_section_general">General</string>
     <string name="settings_section_alarm">Alarm</string>
+    <string name="settings_section_privacy_improvement">Privacy &amp; Improvements</string>
     <string name="settings_ringtone">Ringtone</string>
     <string name="ringtone_mode_none">Off</string>
     <string name="ringtone_default">Default ringtone</string>
     <string name="ringtone_select">Select ringtone…</string>
     <string name="ringtone_feature_description">Plays ringtone via headphones on arrival</string>
+    <string name="analytics_help_improve_title">Help Improve GeoAlarm</string>
+    <string name="analytics_help_improve_description">Send anonymous app usage data. We do not collect your location data or any alarm details. This is only used to help developers understand whether the product is operating stably.</string>
+    <string name="analytics_enabled">On</string>
+    <string name="analytics_disabled">Off</string>
 
     <!-- Updates -->
     <string name="section_about">About</string>
@@ -162,4 +171,18 @@
     <string name="schedule_onboarding_message">When the set time is reached, the system will send a confirmation notification.\nYou need to click the notification for the alarm to actually enable.</string>
     <string name="schedule_onboarding_button">I Understand</string>
     <string name="schedule_guide_message">Add a schedule to automate alarms</string>
+    <string name="shortcut_add_alarm_short">New alarm</string>
+    <string name="shortcut_add_alarm_long">Create a new geo alarm</string>
+    <string name="shortcut_add_schedule_short">New schedule</string>
+    <string name="shortcut_add_schedule_long">Create a new alarm schedule</string>
+    <string name="widget_description">Quickly start one of your selected alarms from the home screen</string>
+    <string name="widget_select_title">Geo Alarm Widget</string>
+    <string name="widget_select_subtitle">Select up to 2 alarms for quick start</string>
+    <string name="widget_empty_message">No alarms selected. Tap widget to configure in app.</string>
+    <string name="widget_active_title">Active alarm: %s</string>
+    <string name="widget_config_title">Configure Widget Alarms</string>
+    <string name="widget_config_subtitle">Pick up to two alarms for this widget instance.</string>
+    <string name="widget_selection_limit">You can select at most 2 alarms.</string>
+    <string name="open_widget_picker">Add widget</string>
+    <string name="widget_pin_not_supported">Your launcher does not support adding widgets from apps.</string>
 </resources>

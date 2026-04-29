@@ -2,33 +2,29 @@ package com.github.jimmy90109.geoalarm.ui.components
 
 import androidx.annotation.StringRes
 import androidx.compose.animation.animateContentSize
-import androidx.compose.foundation.clickable
-import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Alarm
 import androidx.compose.material.icons.filled.Settings
-import androidx.compose.material3.ButtonGroup
-import androidx.compose.material3.ButtonGroupDefaults
+import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
+import androidx.compose.material3.HorizontalFloatingToolbar
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButtonDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
-import androidx.compose.material3.ToggleButton
+import androidx.compose.material3.TextButton
+import androidx.compose.material3.VerticalFloatingToolbar
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
@@ -56,169 +52,150 @@ fun BottomNavBar(
     onSettingsClick: () -> Unit,
     showSettingsUpdateDot: Boolean = false,
 ) {
-    Surface(
-        color = MaterialTheme.colorScheme.surfaceContainerHigh,
-        tonalElevation = 3.dp,
-        shadowElevation = 4.dp,
-        shape = CircleShape,
+    HorizontalFloatingToolbar(
+        expanded = true,
         modifier = modifier,
     ) {
-        ButtonGroup(
-            horizontalArrangement = Arrangement.spacedBy(4.dp),
-            modifier = Modifier.padding(vertical = 8.dp, horizontal = 8.dp),
-        ) {
-            val tabs = NavTab.entries.toTypedArray()
-            val haptic = LocalHapticFeedback.current
-            tabs.forEachIndexed { index, tab ->
-                val selected = currentTab == tab
-                val onClick = when (tab) {
-                    NavTab.HOME -> onHomeClick
-                    NavTab.SETTINGS -> onSettingsClick
-                }
+        val tabs = NavTab.entries.toTypedArray()
+        val haptic = LocalHapticFeedback.current
+        tabs.forEach { tab ->
+            val selected = currentTab == tab
+            val onClick = when (tab) {
+                NavTab.HOME -> onHomeClick
+                NavTab.SETTINGS -> onSettingsClick
+            }
 
-                val shape = when (index) {
-                    0 -> ButtonGroupDefaults.connectedLeadingButtonShapes()
-                    tabs.lastIndex -> ButtonGroupDefaults.connectedTrailingButtonShapes()
-                    else -> ButtonGroupDefaults.connectedMiddleButtonShapes()
-                }
-
-                Box {
-                    ToggleButton(
-                        checked = selected, onCheckedChange = {
+            Box {
+                if (selected) {
+                    Button(
+                        onClick = {
                             haptic.performHapticFeedback(HapticFeedbackType.LongPress)
                             onClick()
-                        }, shapes = shape
+                        },
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = MaterialTheme.colorScheme.primaryContainer,
+                            contentColor = MaterialTheme.colorScheme.onPrimaryContainer
+                        ),
+                        contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
                     ) {
-                        Box(
-                            modifier = Modifier
-                                .padding(vertical = 4.dp, horizontal = 8.dp)
-                                .animateContentSize()
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            modifier = Modifier.animateContentSize()
                         ) {
-                            Row(verticalAlignment = Alignment.CenterVertically) {
-                                Box(modifier = Modifier.size(24.dp)) {
-                                    Icon(
-                                        tab.iconVec,
-                                        contentDescription = stringResource(tab.labelRes),
-                                        modifier = Modifier.fillMaxSize(),
-                                    )
-                                }
-                                if (selected) {
-                                    Text(
-                                        stringResource(tab.labelRes),
-                                        modifier = Modifier.padding(start = 8.dp),
-                                        style = MaterialTheme.typography.titleMedium,
-                                    )
-                                }
-                            }
+                            Icon(
+                                tab.iconVec,
+                                contentDescription = stringResource(tab.labelRes),
+                                modifier = Modifier.size(24.dp)
+                            )
+                            Text(
+                                text = stringResource(tab.labelRes),
+                                modifier = Modifier.padding(start = 8.dp),
+                                style = MaterialTheme.typography.titleMedium
+                            )
                         }
                     }
-                    if (tab == NavTab.SETTINGS && showSettingsUpdateDot) {
-                        Surface(
-                            color = MaterialTheme.colorScheme.error,
-                            shape = CircleShape,
-                            modifier = Modifier
-                                .align(Alignment.TopEnd)
-                                .padding(8.dp)
-                                .size(8.dp)
-                        ) {}
+                } else {
+                    TextButton(
+                        onClick = {
+                            haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                            onClick()
+                        },
+                    ) {
+                        Text(
+                            text = stringResource(tab.labelRes),
+                            style = MaterialTheme.typography.titleMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
                     }
+                }
+                if (tab == NavTab.SETTINGS && showSettingsUpdateDot) {
+                    Surface(
+                        color = MaterialTheme.colorScheme.error,
+                        shape = CircleShape,
+                        modifier = Modifier
+                            .align(Alignment.TopEnd)
+                            .padding(4.dp)
+                            .size(8.dp)
+                    ) {}
                 }
             }
         }
     }
 }
 
+@OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
 fun AppNavigationRail(
+    modifier: Modifier = Modifier,
     currentTab: NavTab,
     onHomeClick: () -> Unit,
     onSettingsClick: () -> Unit,
     showSettingsUpdateDot: Boolean = false,
-    modifier: Modifier = Modifier
 ) {
-    Surface(
-        color = MaterialTheme.colorScheme.surfaceContainerHigh,
-        tonalElevation = 3.dp,
-        shadowElevation = 4.dp,
-        shape = CircleShape,
+    VerticalFloatingToolbar(
+        expanded = true,
         modifier = modifier.padding(16.dp),
     ) {
-        Column(
-            modifier = Modifier.padding(8.dp),
-            verticalArrangement = Arrangement.spacedBy(8.dp),
-            horizontalAlignment = Alignment.CenterHorizontally
-        ) {
-            RailItem(
-                selected = currentTab == NavTab.HOME,
-                onClick = onHomeClick,
-                icon = NavTab.HOME.iconVec,
-                label = stringResource(NavTab.HOME.labelRes)
-            )
+        val haptic = LocalHapticFeedback.current
+        val tabs = NavTab.entries.toTypedArray()
 
-            RailItem(
-                selected = currentTab == NavTab.SETTINGS,
-                onClick = onSettingsClick,
-                icon = NavTab.SETTINGS.iconVec,
-                label = stringResource(NavTab.SETTINGS.labelRes),
-                showUpdateDot = showSettingsUpdateDot
-            )
-        }
-    }
-}
-
-@Composable
-private fun RailItem(
-    selected: Boolean,
-    onClick: () -> Unit,
-    icon: ImageVector,
-    label: String,
-    showUpdateDot: Boolean = false,
-) {
-    val colors = IconButtonDefaults.iconButtonColors(
-        containerColor = if (selected) MaterialTheme.colorScheme.primaryContainer else Color.Transparent,
-        contentColor = if (selected) MaterialTheme.colorScheme.onPrimaryContainer else MaterialTheme.colorScheme.onSurfaceVariant
-    )
-    val haptic = LocalHapticFeedback.current
-
-    Surface(
-        color = colors.containerColor,
-        shape = CircleShape,
-        modifier = Modifier
-            .clip(CircleShape)
-            .clickable(onClick = {
-                haptic.performHapticFeedback(HapticFeedbackType.LongPress)
-                onClick()
-            })
-    ) {
-        Box {
-            Column(
-                horizontalAlignment = Alignment.CenterHorizontally,
-                modifier = Modifier.padding(horizontal = 16.dp, vertical = 20.dp)
-            ) {
-                Box(modifier = Modifier.size(24.dp)) {
-                    Icon(
-                        imageVector = icon,
-                        contentDescription = label,
-                        tint = colors.contentColor,
-                        modifier = Modifier.fillMaxSize()
-                    )
-                }
-                Spacer(Modifier.height(4.dp))
-                Text(
-                    text = label,
-                    style = MaterialTheme.typography.labelMedium,
-                    color = colors.contentColor
-                )
+        tabs.forEach { tab ->
+            val selected = currentTab == tab
+            val onClick = when (tab) {
+                NavTab.HOME -> onHomeClick
+                NavTab.SETTINGS -> onSettingsClick
             }
-            if (showUpdateDot) {
-                Surface(
-                    color = MaterialTheme.colorScheme.error,
-                    shape = CircleShape,
-                    modifier = Modifier
-                        .align(Alignment.TopEnd)
-                        .padding(12.dp)
-                        .size(8.dp)
-                ) {}
+
+            Box {
+                if (selected) {
+                    Button(
+                        onClick = {
+                            haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                            onClick()
+                        },
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = MaterialTheme.colorScheme.primaryContainer,
+                            contentColor = MaterialTheme.colorScheme.onPrimaryContainer
+                        ),
+                        contentPadding = PaddingValues(horizontal = 16.dp, vertical = 16.dp),
+                    ) {
+                        Icon(
+                            tab.iconVec,
+                            contentDescription = stringResource(tab.labelRes),
+                            modifier = Modifier.size(24.dp)
+                        )
+                    }
+                } else {
+                    Button(
+                        onClick = {
+                            haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                            onClick()
+                        },
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = Color.Transparent,
+                            contentColor = MaterialTheme.colorScheme.onPrimaryContainer
+                        ),
+                        contentPadding = PaddingValues(
+                            horizontal = 16.dp, vertical = 16.dp
+                        ),
+                    ) {
+                        Icon(
+                            tab.iconVec,
+                            contentDescription = stringResource(tab.labelRes),
+                            modifier = Modifier.size(24.dp)
+                        )
+                    }
+                }
+                if (tab == NavTab.SETTINGS && showSettingsUpdateDot) {
+                    Surface(
+                        color = MaterialTheme.colorScheme.error,
+                        shape = CircleShape,
+                        modifier = Modifier
+                            .align(Alignment.TopEnd)
+                            .padding(4.dp)
+                            .size(8.dp)
+                    ) {}
+                }
             }
         }
     }

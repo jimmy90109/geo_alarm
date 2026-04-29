@@ -10,11 +10,14 @@ import androidx.core.os.LocaleListCompat
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.github.jimmy90109.geoalarm.BuildConfig
-import com.github.jimmy90109.geoalarm.data.AlarmRepository
+import com.github.jimmy90109.geoalarm.data.AlarmDataRepository
+import com.github.jimmy90109.geoalarm.data.AnalyticsPreferencesStore
 import com.github.jimmy90109.geoalarm.data.RingtoneSettings
 import com.github.jimmy90109.geoalarm.data.SettingsRepository
 import com.github.jimmy90109.geoalarm.data.UpdateManager
 import com.github.jimmy90109.geoalarm.utils.AudioUtils
+import dagger.hilt.android.lifecycle.HiltViewModel
+import javax.inject.Inject
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
@@ -25,16 +28,19 @@ import kotlinx.coroutines.launch
 data class SettingsUiState(
     val showLanguageSheet: Boolean = false,
     val showRingtoneSheet: Boolean = false,
+    val showAnalyticsSheet: Boolean = false,
     val anyAlarmEnabled: Boolean = false,
     val isPreviewPlaying: Boolean = false,
     val previewingUri: String? = null, // null = default ringtone, or custom URI
     val isPreviewingDefault: Boolean = false, // true if previewing default ringtone
 )
 
-class SettingsViewModel(
+@HiltViewModel
+class SettingsViewModel @Inject constructor(
     application: Application,
     private val settingsRepository: SettingsRepository,
-    private val alarmRepository: AlarmRepository
+    private val analyticsPreferencesStore: AnalyticsPreferencesStore,
+    private val alarmRepository: AlarmDataRepository
 ) : AndroidViewModel(application) {
 
     private val _uiState = MutableStateFlow(SettingsUiState())
@@ -52,6 +58,13 @@ class SettingsViewModel(
             scope = viewModelScope,
             started = SharingStarted.WhileSubscribed(5000),
             initialValue = RingtoneSettings()
+        )
+
+    val analyticsEnabled: StateFlow<Boolean> = analyticsPreferencesStore.analyticsEnabledFlow
+        .stateIn(
+            scope = viewModelScope,
+            started = SharingStarted.WhileSubscribed(5000),
+            initialValue = true
         )
 
     // Preview player
@@ -157,6 +170,14 @@ class SettingsViewModel(
         _uiState.value = _uiState.value.copy(showRingtoneSheet = false)
     }
 
+    fun showAnalyticsSheet() {
+        _uiState.value = _uiState.value.copy(showAnalyticsSheet = true)
+    }
+
+    fun dismissAnalyticsSheet() {
+        _uiState.value = _uiState.value.copy(showAnalyticsSheet = false)
+    }
+
     fun setRingtoneEnabled(enabled: Boolean) {
         viewModelScope.launch {
             settingsRepository.setRingtoneEnabled(enabled)
@@ -166,6 +187,12 @@ class SettingsViewModel(
     fun setRingtone(uri: String?, name: String?) {
         viewModelScope.launch {
             settingsRepository.setRingtone(uri, name)
+        }
+    }
+
+    fun setAnalyticsEnabled(enabled: Boolean) {
+        viewModelScope.launch {
+            analyticsPreferencesStore.setAnalyticsEnabled(enabled)
         }
     }
 

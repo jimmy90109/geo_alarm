@@ -78,6 +78,7 @@ fun SettingsScreen(
     val scrollBehavior = TopAppBarDefaults.exitUntilCollapsedScrollBehavior()
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val ringtoneSettings by viewModel.ringtoneSettings.collectAsStateWithLifecycle()
+    val analyticsEnabled by viewModel.analyticsEnabled.collectAsStateWithLifecycle()
     val currentLanguage = viewModel.currentLanguage
     val context = LocalContext.current
     val lifecycleOwner = LocalLifecycleOwner.current
@@ -220,6 +221,11 @@ fun SettingsScreen(
                             .verticalScroll(androidx.compose.foundation.rememberScrollState())
                             .padding(bottom = 16.dp)
                     ) {
+                        SettingsPrivacySection(
+                            analyticsEnabled = analyticsEnabled,
+                            onPrivacyClick = { viewModel.showAnalyticsSheet() }
+                        )
+                        Spacer(modifier = Modifier.height(16.dp))
                         SettingsAboutSection(
                             updateStatus = updateStatus,
                             currentVersion = viewModel.currentVersion,
@@ -255,6 +261,11 @@ fun SettingsScreen(
                     SettingsAlarmSection(
                         ringtoneSettings = ringtoneSettings,
                         onRingtoneClick = { viewModel.showRingtoneSheet() },
+                    )
+                    Spacer(modifier = Modifier.height(16.dp))
+                    SettingsPrivacySection(
+                        analyticsEnabled = analyticsEnabled,
+                        onPrivacyClick = { viewModel.showAnalyticsSheet() }
                     )
                     Spacer(modifier = Modifier.height(24.dp))
                     SettingsAboutSection(
@@ -395,6 +406,40 @@ fun SettingsScreen(
             }
         }
     }
+
+    // Analytics Settings Bottom Sheet
+    if (uiState.showAnalyticsSheet) {
+        ModalBottomSheet(
+            onDismissRequest = { viewModel.dismissAnalyticsSheet() },
+            sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true),
+        ) {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(start = 24.dp, end = 24.dp, bottom = 16.dp),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(
+                    modifier = Modifier.weight(1f),
+                    text = stringResource(R.string.analytics_help_improve_title),
+                    style = MaterialTheme.typography.titleLarge,
+                )
+
+                Switch(
+                    checked = analyticsEnabled,
+                    onCheckedChange = viewModel::setAnalyticsEnabled
+                )
+            }
+
+            Text(
+                modifier = Modifier.padding(start = 24.dp, end = 24.dp, bottom = 16.dp),
+                text = stringResource(R.string.analytics_help_improve_description),
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+        }
+    }
 }
 
 @Composable
@@ -425,6 +470,23 @@ private fun SettingsAlarmSection(
             stringResource(R.string.ringtone_mode_none)
         },
         onClick = onRingtoneClick,
+    )
+}
+
+@Composable
+private fun SettingsPrivacySection(
+    analyticsEnabled: Boolean,
+    onPrivacyClick: () -> Unit
+) {
+    SettingsSectionHeader(title = stringResource(R.string.settings_section_privacy_improvement))
+    SettingsCard(
+        title = stringResource(R.string.analytics_help_improve_title),
+        value = if (analyticsEnabled) {
+            stringResource(R.string.analytics_enabled)
+        } else {
+            stringResource(R.string.analytics_disabled)
+        },
+        onClick = onPrivacyClick
     )
 }
 

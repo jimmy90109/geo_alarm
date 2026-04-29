@@ -24,6 +24,7 @@ An intelligent alarm clock app built with **Kotlin** and **Jetpack Compose** tha
 * **Toggle On/Off**: Easily activate or deactivate any saved alarm with a single switch.
 * **🎵 Ringtone Customization**: Choose your preferred ringtone or search for new ones.
 * **🎧 Intelligent Audio Output**: Plays arrival sound through headphones if connected to avoid public disturbance; otherwise vibrates.
+* **🫥 Optional Anonymous Usage Analytics**: Privacy-first telemetry for product stability insights, with an in-app opt-out switch.
 * **🌐 Multi-language**: Supports English and Traditional Chinese (繁體中文).
 
 ## 🛠️ Tech Stack & Architecture
@@ -100,6 +101,12 @@ Follow these instructions to get the project up and running on your local machin
 
 3.  **Build and Run:**
     Open the project in Android Studio and run on an emulator or physical device.
+
+4.  **(Optional) Configure TelemetryDeck analytics:**
+    ```properties
+    telemetrydeck.appId=YOUR_TELEMETRYDECK_APP_ID
+    ```
+    Setup and removal guide: `docs/analytics.md`
 
 ## ⚠️ Key Challenges & Considerations
 
