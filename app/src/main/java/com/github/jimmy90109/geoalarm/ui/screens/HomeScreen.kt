@@ -338,6 +338,20 @@ fun HomeScreen(
                                     viewModel.toggleSchedule(schedule, isEnabled)
                                 },
                                 onAddSchedule = onAddSchedule,
+                                onOpenWidgetPicker = {
+                                    val appWidgetManager = AppWidgetManager.getInstance(context)
+                                    val provider = ComponentName(context, GeoAlarmGlanceWidgetReceiver::class.java)
+                                    val supported = appWidgetManager.isRequestPinAppWidgetSupported
+                                    if (supported) {
+                                        appWidgetManager.requestPinAppWidget(provider, null, null)
+                                    } else {
+                                        android.widget.Toast.makeText(
+                                            context,
+                                            R.string.widget_pin_not_supported,
+                                            android.widget.Toast.LENGTH_SHORT
+                                        ).show()
+                                    }
+                                },
                                 highlightedAlarmId = uiState.highlightedAlarmId,
                                 highlightedScheduleId = uiState.highlightedScheduleId,
                                 onHighlightFinished = { viewModel.clearHighlight() },
