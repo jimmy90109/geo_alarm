@@ -23,13 +23,17 @@ import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.widthIn
+import androidx.compose.foundation.selection.selectable
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.CheckCircle
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
+import androidx.compose.material3.Checkbox
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -45,6 +49,7 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.LocalHapticFeedback
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import com.github.jimmy90109.geoalarm.R
@@ -185,13 +190,18 @@ private fun PermissionActionButtons(
 }
 
 @Composable
-internal fun FinalSetupCard(onStartNow: () -> Unit) {
+internal fun FinalSetupCard(
+    analyticsEnabled: Boolean,
+    onAnalyticsEnabledChange: (Boolean) -> Unit,
+    onStartNow: () -> Unit
+) {
     val primary = MaterialTheme.colorScheme.primary
     val haptic = LocalHapticFeedback.current
     var showIcon by remember { mutableStateOf(false) }
     var showTitle by remember { mutableStateOf(false) }
     var showDesc by remember { mutableStateOf(false) }
     var showButton by remember { mutableStateOf(false) }
+    var showAnalyticsDialog by remember { mutableStateOf(false) }
 
     LaunchedEffect(Unit) {
         showIcon = false
@@ -275,7 +285,7 @@ internal fun FinalSetupCard(onStartNow: () -> Unit) {
                 .align(Alignment.Center)
                 .fillMaxWidth()
                 .widthIn(max = 520.dp)
-                .padding(horizontal = 8.dp),
+                .padding(bottom = 32.dp),
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.spacedBy(14.dp)
         ) {
@@ -335,6 +345,7 @@ internal fun FinalSetupCard(onStartNow: () -> Unit) {
         Box(
             modifier = Modifier
                 .align(Alignment.BottomCenter)
+                .widthIn(max = 360.dp)
                 .fillMaxWidth()
                 .graphicsLayer {
                     alpha = buttonAlpha
@@ -342,48 +353,84 @@ internal fun FinalSetupCard(onStartNow: () -> Unit) {
                 },
             contentAlignment = Alignment.Center
         ) {
-            Canvas(modifier = Modifier.size(240.dp, 88.dp)) {
-                val c = Offset(size.width / 2f, size.height / 2f)
-                val r1 = 36f + (buttonPulse * 38f)
-                val r2 = 22f + (buttonPulse * 30f)
-                drawCircle(
-                    color = primary.copy(alpha = 0.16f * (1f - buttonPulse)),
-                    radius = r1,
-                    center = c
-                )
-                drawCircle(
-                    color = primary.copy(alpha = 0.1f * (1f - buttonPulse)),
-                    radius = r2,
-                    center = c
-                )
-            }
-            Box(
-                modifier = Modifier
-                    .widthIn(max = 360.dp)
-                    .fillMaxWidth()
+            Column(
+                modifier = Modifier.fillMaxWidth(),
+                verticalArrangement = Arrangement.spacedBy(12.dp)
             ) {
-                Button(
-                    onClick = {
-                        haptic.performHapticFeedback(HapticFeedbackType.LongPress)
-                        onStartNow()
-                    },
-                    enabled = showButton,
+                Row(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .height(48.dp)
-                        .graphicsLayer {
-                            scaleX = buttonScale
-                            scaleY = buttonScale
-                        }
+                        .clip(RoundedCornerShape(14.dp))
+                        .background(MaterialTheme.colorScheme.surfaceContainer.copy(alpha = 0.9f))
+                        .padding(horizontal = 8.dp, vertical = 6.dp),
+                    verticalAlignment = Alignment.CenterVertically
                 ) {
-                    Text(
-                        text = androidx.compose.ui.res.stringResource(R.string.onboarding_start_now),
-                        style = MaterialTheme.typography.bodyLarge,
-                        color = MaterialTheme.colorScheme.onPrimary
+                    Checkbox(
+                        checked = analyticsEnabled,
+                        onCheckedChange = onAnalyticsEnabledChange
                     )
+                    Text(
+                        text = stringResource(R.string.analytics_help_improve_title),
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurface,
+                        modifier = Modifier
+                            .weight(1f)
+                            .selectable(
+                                selected = false,
+                                onClick = { showAnalyticsDialog = true }
+                            )
+                            .padding(horizontal = 8.dp, vertical = 10.dp)
+                    )
+                }
+                Box(
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Button(
+                        onClick = {
+                            haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                            onStartNow()
+                        },
+                        enabled = showButton,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(48.dp)
+                            .graphicsLayer {
+                                scaleX = buttonScale
+                                scaleY = buttonScale
+                            }
+                    ) {
+                        Text(
+                            text = androidx.compose.ui.res.stringResource(R.string.onboarding_start_now),
+                            style = MaterialTheme.typography.bodyLarge,
+                            color = MaterialTheme.colorScheme.onPrimary
+                        )
+                    }
                 }
             }
         }
+    }
+
+    if (showAnalyticsDialog) {
+        AlertDialog(
+            onDismissRequest = { showAnalyticsDialog = false },
+            title = {
+                Text(
+                    text = stringResource(R.string.analytics_help_improve_title),
+                    color = MaterialTheme.colorScheme.onSurface
+                )
+            },
+            text = {
+                Text(
+                    text = stringResource(R.string.analytics_help_improve_description),
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            },
+            confirmButton = {
+                TextButton(onClick = { showAnalyticsDialog = false }) {
+                    Text(text = stringResource(R.string.ok))
+                }
+            }
+        )
     }
 }
 

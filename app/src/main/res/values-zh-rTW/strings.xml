@@ -27,6 +27,7 @@
     <string name="onboarding_later">稍後</string>
     <string name="onboarding_set_later">稍後設定</string>
     <string name="onboarding_next_step">下一步</string>
+    <string name="onboarding_toggle_language">切換語言</string>
     <string name="onboarding_start_using">開始使用</string>
     <string name="onboarding_completed_title">完成設定</string>
     <string name="onboarding_completed_body">權限與提醒流程已準備就緒，現在就開始使用定位鬧鐘。</string>
@@ -106,11 +107,16 @@
     <string name="tab_alarms">鬧鐘</string>
     <string name="settings_section_general">一般</string>
     <string name="settings_section_alarm">鬧鐘</string>
+    <string name="settings_section_privacy_improvement">隱私與改善</string>
     <string name="settings_ringtone">鈴聲</string>
     <string name="ringtone_mode_none">關閉</string>
     <string name="ringtone_default">預設鈴聲</string>
     <string name="ringtone_select">選擇鈴聲…</string>
     <string name="ringtone_feature_description">到站時從耳機播放鈴聲</string>
+    <string name="analytics_help_improve_title">幫助改善應用程式</string>
+    <string name="analytics_help_improve_description">匿名傳送應用程式使用狀況。我們不會收集您的定位資訊、任何鬧鐘詳細資訊。這僅用來幫助開發者了解產品是否穩定運作。</string>
+    <string name="analytics_enabled">開啟</string>
+    <string name="analytics_disabled">關閉</string>
 
     <!-- Updates -->
     <string name="section_about">關於</string>
@@ -177,4 +183,6 @@
     <string name="widget_config_title">設定小工具鬧鐘</string>
     <string name="widget_config_subtitle">為這個小工具選擇最多兩個鬧鐘。</string>
     <string name="widget_selection_limit">最多只能選擇 2 個鬧鐘。</string>
+    <string name="open_widget_picker">新增小工具</string>
+    <string name="widget_pin_not_supported">目前的桌面啟動器不支援由 App 直接新增小工具。</string>
 </resources>

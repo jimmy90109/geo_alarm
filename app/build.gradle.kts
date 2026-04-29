@@ -29,6 +29,7 @@ android {
         manifestPlaceholders["GOOGLE_MAPS_API_KEY"] = localProperties.getProperty("maps.apiKey") ?: ""
         manifestPlaceholders["appName"] = "@string/app_name"
         buildConfigField("String", "GOOGLE_MAPS_API_KEY", "\"${localProperties.getProperty("maps.apiKey") ?: ""}\"")
+        buildConfigField("String", "TELEMETRYDECK_APP_ID", "\"${localProperties.getProperty("telemetrydeck.appId") ?: ""}\"")
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
@@ -110,6 +111,7 @@ dependencies {
     implementation(libs.androidx.datastore.preferences)
     implementation(libs.androidx.appfunctions)
     implementation(libs.androidx.appfunctions.service)
+    implementation(libs.telemetrydeck.kotlin.sdk)
 
     // Compose
     implementation(libs.androidx.compose.foundation.layout)

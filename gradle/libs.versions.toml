@@ -52,6 +52,7 @@ appfunctions = "1.0.0-alpha08"
 junitPlatformLauncher = "1.13.4"
 junitPlatformEngine = "1.13.4"
 journeysJunitEngine = "0.2.1"
+telemetryDeckKotlinSdk = "6.3.0"
 
 [libraries]
 androidx-core-ktx = { group = "androidx.core", name = "core-ktx", version.ref = "coreKtx" }
@@ -96,6 +97,7 @@ androidx-appfunctions-compiler = { group = "androidx.appfunctions", name = "appf
 junit-platform-launcher = { group = "org.junit.platform", name = "junit-platform-launcher", version.ref = "junitPlatformLauncher" }
 junit-platform-engine = { group = "org.junit.platform", name = "junit-platform-engine", version.ref = "junitPlatformEngine" }
 journeys-junit-engine = { group = "com.android.tools.journeys", name = "journeys-junit-engine", version.ref = "journeysJunitEngine" }
+telemetrydeck-kotlin-sdk = { group = "com.telemetrydeck", name = "kotlin-sdk", version.ref = "telemetryDeckKotlinSdk" }
 
 [plugins]
 android-application = { id = "com.android.application", version.ref = "agp" }

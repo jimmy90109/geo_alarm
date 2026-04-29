@@ -11,6 +11,7 @@ import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.github.jimmy90109.geoalarm.BuildConfig
 import com.github.jimmy90109.geoalarm.data.AlarmDataRepository
+import com.github.jimmy90109.geoalarm.data.AnalyticsPreferencesStore
 import com.github.jimmy90109.geoalarm.data.RingtoneSettings
 import com.github.jimmy90109.geoalarm.data.SettingsRepository
 import com.github.jimmy90109.geoalarm.data.UpdateManager
@@ -27,6 +28,7 @@ import kotlinx.coroutines.launch
 data class SettingsUiState(
     val showLanguageSheet: Boolean = false,
     val showRingtoneSheet: Boolean = false,
+    val showAnalyticsSheet: Boolean = false,
     val anyAlarmEnabled: Boolean = false,
     val isPreviewPlaying: Boolean = false,
     val previewingUri: String? = null, // null = default ringtone, or custom URI
@@ -37,6 +39,7 @@ data class SettingsUiState(
 class SettingsViewModel @Inject constructor(
     application: Application,
     private val settingsRepository: SettingsRepository,
+    private val analyticsPreferencesStore: AnalyticsPreferencesStore,
     private val alarmRepository: AlarmDataRepository
 ) : AndroidViewModel(application) {
 
@@ -55,6 +58,13 @@ class SettingsViewModel @Inject constructor(
             scope = viewModelScope,
             started = SharingStarted.WhileSubscribed(5000),
             initialValue = RingtoneSettings()
+        )
+
+    val analyticsEnabled: StateFlow<Boolean> = analyticsPreferencesStore.analyticsEnabledFlow
+        .stateIn(
+            scope = viewModelScope,
+            started = SharingStarted.WhileSubscribed(5000),
+            initialValue = true
         )
 
     // Preview player
@@ -160,6 +170,14 @@ class SettingsViewModel @Inject constructor(
         _uiState.value = _uiState.value.copy(showRingtoneSheet = false)
     }
 
+    fun showAnalyticsSheet() {
+        _uiState.value = _uiState.value.copy(showAnalyticsSheet = true)
+    }
+
+    fun dismissAnalyticsSheet() {
+        _uiState.value = _uiState.value.copy(showAnalyticsSheet = false)
+    }
+
     fun setRingtoneEnabled(enabled: Boolean) {
         viewModelScope.launch {
             settingsRepository.setRingtoneEnabled(enabled)
@@ -169,6 +187,12 @@ class SettingsViewModel @Inject constructor(
     fun setRingtone(uri: String?, name: String?) {
         viewModelScope.launch {
             settingsRepository.setRingtone(uri, name)
+        }
+    }
+
+    fun setAnalyticsEnabled(enabled: Boolean) {
+        viewModelScope.launch {
+            analyticsPreferencesStore.setAnalyticsEnabled(enabled)
         }
     }
 

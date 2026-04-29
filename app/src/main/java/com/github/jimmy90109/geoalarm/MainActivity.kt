@@ -9,6 +9,7 @@ import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.viewModels
 import androidx.appcompat.app.AppCompatActivity
+import com.github.jimmy90109.geoalarm.analytics.TelemetryTracker
 import com.github.jimmy90109.geoalarm.appactions.AppActionContract
 import com.github.jimmy90109.geoalarm.appactions.AppActionParsers
 import com.github.jimmy90109.geoalarm.appactions.AppActionResult
@@ -54,6 +55,9 @@ class MainActivity : AppCompatActivity() {
     @Inject
     lateinit var startAlarmUseCase: StartAlarmUseCase
 
+    @Inject
+    lateinit var telemetryTracker: TelemetryTracker
+
     private val homeViewModel: HomeViewModel by viewModels()
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -62,6 +66,9 @@ class MainActivity : AppCompatActivity() {
 
         val hasSeenOnboarding = runBlocking {
             onboardingRepository.hasSeenLocationOnboarding()
+        }
+        runBlocking {
+            telemetryTracker.trackAppFirstOpenIfNeeded(isNewOnboardingUser = !hasSeenOnboarding)
         }
         val startDestination = resolveStartDestination(intent, hasSeenOnboarding)
 
@@ -94,11 +101,16 @@ class MainActivity : AppCompatActivity() {
     private fun handleIntent(intent: Intent) {
         if (intent.action == GeoAlarmService.ACTION_CANCEL_ALARM) {
             val alarmId = intent.getStringExtra(GeoAlarmService.EXTRA_ALARM_ID)
+            val isArrivedTurnOff = intent.getStringExtra(GeoAlarmService.EXTRA_CANCEL_SOURCE) ==
+                GeoAlarmService.CANCEL_SOURCE_ARRIVAL_TURN_OFF
             if (!alarmId.isNullOrEmpty()) {
                 // Find and disable the alarm
                 CoroutineScope(kotlinx.coroutines.Dispatchers.IO).launch {
                     val alarm = alarmRepository.getAlarm(alarmId)
                     if (alarm != null) {
+                        if (isArrivedTurnOff) {
+                            telemetryTracker.trackArrivedTurnOff()
+                        }
                         alarmRepository.update(alarm.copy(isEnabled = false))
                         // Also stop the service explicitly just in case
                         val stopIntent = Intent(

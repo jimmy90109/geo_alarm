@@ -15,6 +15,7 @@ import androidx.core.content.ContextCompat
 import androidx.glance.appwidget.updateAll
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
+import com.github.jimmy90109.geoalarm.analytics.TelemetryTracker
 import com.github.jimmy90109.geoalarm.data.Alarm
 import com.github.jimmy90109.geoalarm.data.AlarmDataRepository
 import com.github.jimmy90109.geoalarm.data.AlarmSchedule
@@ -56,6 +57,7 @@ data class HomeUiState(
 class HomeViewModel @Inject constructor(
     application: Application,
     private val repository: AlarmDataRepository,
+    private val telemetryTracker: TelemetryTracker,
 ) : AndroidViewModel(application) {
 
     private val fusedLocationClient = LocationServices.getFusedLocationProviderClient(application)
@@ -288,8 +290,11 @@ class HomeViewModel @Inject constructor(
      * @param alarm The alarm to disable.
      * @param context Context used to stop the service.
      */
-    fun disableAlarm(alarm: Alarm, context: Context) {
+    fun disableAlarm(alarm: Alarm, context: Context, trackArrivedTurnOff: Boolean = false) {
         viewModelScope.launch {
+            if (trackArrivedTurnOff) {
+                telemetryTracker.trackArrivedTurnOff()
+            }
             repository.update(alarm.copy(isEnabled = false))
             // Stop Service after DB state is persisted to avoid widget refresh races.
             val serviceIntent = Intent(context, GeoAlarmService::class.java).apply {

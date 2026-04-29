@@ -2,6 +2,8 @@ package com.github.jimmy90109.geoalarm.ui.screens
 
 import android.Manifest
 import android.app.Activity
+import android.appwidget.AppWidgetManager
+import android.content.ComponentName
 import android.content.Context
 import android.content.ContextWrapper
 import android.os.PowerManager
@@ -64,6 +66,7 @@ import com.github.jimmy90109.geoalarm.ui.components.ScheduleConflictDialog
 import com.github.jimmy90109.geoalarm.ui.components.SingleAlarmDialog
 import com.github.jimmy90109.geoalarm.ui.viewmodel.HomeUiState
 import com.github.jimmy90109.geoalarm.ui.viewmodel.HomeViewModel
+import com.github.jimmy90109.geoalarm.widget.GeoAlarmGlanceWidgetReceiver
 import com.google.accompanist.permissions.ExperimentalPermissionsApi
 import com.google.accompanist.permissions.isGranted
 import com.google.accompanist.permissions.rememberMultiplePermissionsState
@@ -290,9 +293,13 @@ fun HomeScreen(
                         alarm = targetAlarm,
                         progress = uiState.monitoringProgress,
                         distanceMeters = uiState.monitoringDistance,
-                        onStopAlarm = {
+                        onStopAlarm = { isArrived ->
                             haptic.performHapticFeedback(HapticFeedbackType.Confirm)
-                            viewModel.disableAlarm(targetAlarm, context)
+                            viewModel.disableAlarm(
+                                alarm = targetAlarm,
+                                context = context,
+                                trackArrivedTurnOff = isArrived
+                            )
                         },
                     )
                 } else {

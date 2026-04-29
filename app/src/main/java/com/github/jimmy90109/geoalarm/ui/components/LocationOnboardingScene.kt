@@ -196,6 +196,10 @@ private sealed class AnimationState {
 fun LocationOnboardingScene(
     modifier: Modifier = Modifier,
     isDarkMode: Boolean,
+    currentLanguage: String,
+    onToggleLanguage: () -> Unit,
+    analyticsEnabled: Boolean,
+    onAnalyticsEnabledChange: (Boolean) -> Unit,
     motionConfig: OnboardingMotionConfig = OnboardingMotionConfig(),
     onAnimationFinished: () -> Unit = {}
 ) {
@@ -619,6 +623,8 @@ fun LocationOnboardingScene(
                 pages = introPages,
                 pagerState = introPagerState,
                 motionConfig = motionConfig,
+                currentLanguage = currentLanguage,
+                onToggleLanguage = onToggleLanguage,
                 onStart = { animationState = AnimationState.CameraTransitioning }
             )
         }
@@ -724,7 +730,11 @@ fun LocationOnboardingScene(
                 .padding(horizontal = 24.dp, vertical = 24.dp),
             enter = fadeIn(animationSpec = tween(durationMillis = 280, delayMillis = 320))
         ) {
-            FinalSetupCard(onStartNow = onAnimationFinished)
+            FinalSetupCard(
+                analyticsEnabled = analyticsEnabled,
+                onAnalyticsEnabledChange = onAnalyticsEnabledChange,
+                onStartNow = onAnimationFinished
+            )
         }
 
         if (showNotificationRetryDialog) {
@@ -863,7 +873,11 @@ private fun LocationOnboardingSceneLightPreview() {
     GeoAlarmTheme(darkTheme = false, dynamicColor = false) {
         LocationOnboardingScene(
             modifier = Modifier.fillMaxSize(),
-            isDarkMode = false
+            isDarkMode = false,
+            currentLanguage = "en",
+            onToggleLanguage = {},
+            analyticsEnabled = true,
+            onAnalyticsEnabledChange = {}
         )
     }
 }
@@ -874,7 +888,11 @@ private fun LocationOnboardingSceneDarkPreview() {
     GeoAlarmTheme(darkTheme = true, dynamicColor = false) {
         LocationOnboardingScene(
             modifier = Modifier.fillMaxSize(),
-            isDarkMode = true
+            isDarkMode = true,
+            currentLanguage = "en",
+            onToggleLanguage = {},
+            analyticsEnabled = true,
+            onAnalyticsEnabledChange = {}
         )
     }
 }

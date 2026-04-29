@@ -47,7 +47,7 @@ fun ActiveAlarmScreen(
     alarm: Alarm,
     progress: Int,
     distanceMeters: Int?,
-    onStopAlarm: () -> Unit,
+    onStopAlarm: (Boolean) -> Unit,
 ) {
     // Colors
     // Use a low saturation, elegant primary color.
@@ -199,7 +199,7 @@ fun ActiveAlarmScreen(
                     contentAlignment = Alignment.Center
                 ) {
                     Button(
-                        onClick = onStopAlarm,
+                        onClick = { onStopAlarm(isArrived) },
                     ) {
                         Text(
                             modifier = Modifier.padding(16.dp),
@@ -260,7 +260,7 @@ fun ActiveAlarmScreen(
 
                 // Stop Button
                 Button(
-                    onClick = onStopAlarm,
+                    onClick = { onStopAlarm(isArrived) },
                 ) {
                     Text(
                         modifier = Modifier.padding(16.dp),

@@ -69,6 +69,8 @@ class GeoAlarmService : Service() {
         const val ACTION_PROGRESS_UPDATE = "com.github.jimmy90109.geoalarm.ACTION_PROGRESS_UPDATE"
         const val EXTRA_PROGRESS = "EXTRA_PROGRESS"
         const val EXTRA_REMAINING_DISTANCE = "EXTRA_REMAINING_DISTANCE"
+        const val EXTRA_CANCEL_SOURCE = "EXTRA_CANCEL_SOURCE"
+        const val CANCEL_SOURCE_ARRIVAL_TURN_OFF = "CANCEL_SOURCE_ARRIVAL_TURN_OFF"
 
         private const val NOTIFICATION_ID = 1
         private const val CHANNEL_ID = "geo_alarm_channel"
@@ -629,6 +631,7 @@ class GeoAlarmService : Service() {
             flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_SINGLE_TOP
             action = ACTION_CANCEL_ALARM
             putExtra(EXTRA_ALARM_ID, alarmId)
+            putExtra(EXTRA_CANCEL_SOURCE, CANCEL_SOURCE_ARRIVAL_TURN_OFF)
         }
         val turnOffPendingIntent = PendingIntent.getActivity(
             this,
