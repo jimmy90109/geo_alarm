@@ -231,7 +231,7 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun resolveStartDestination(intent: Intent, hasSeenOnboarding: Boolean): AppRoutes {
-        if (!hasSeenOnboarding) return AppRoutes.Onboarding
+        if (!hasSeenOnboarding) return AppRoutes.Onboarding()
         return resolveShortcutRoute(intent) ?: AppRoutes.Main
     }
 

@@ -11,6 +11,7 @@ import com.github.jimmy90109.geoalarm.ui.viewmodel.OnboardingViewModel
 @Composable
 fun OnboardingScreen(
     viewModel: OnboardingViewModel,
+    showAnalyticsOptIn: Boolean,
     onFinished: () -> Unit,
 ) {
     val analyticsEnabled = viewModel.analyticsEnabled.collectAsStateWithLifecycle()
@@ -21,10 +22,14 @@ fun OnboardingScreen(
         isDarkMode = isSystemInDarkTheme(),
         currentLanguage = currentLanguage,
         onToggleLanguage = viewModel::toggleLanguage,
+        showAnalyticsOptIn = showAnalyticsOptIn,
         analyticsEnabled = analyticsEnabled.value,
         onAnalyticsEnabledChange = viewModel::setAnalyticsEnabled,
         onAnimationFinished = {
-            viewModel.completeOnboarding(onFinished)
+            viewModel.completeOnboarding(
+                trackAnalyticsOptIn = showAnalyticsOptIn,
+                onCompleted = onFinished
+            )
         },
     )
 }

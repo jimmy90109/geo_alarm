@@ -163,22 +163,26 @@ fun AppNavHost(
                     onNavigateToBatteryOptimization = {
                         navController.navigate(AppRoutes.BatteryOptimization)
                     },
-                    onOpenOnboarding = { navController.navigate(AppRoutes.Onboarding) }
+                    onOpenOnboarding = {
+                        navController.navigate(AppRoutes.Onboarding(showAnalyticsOptIn = false))
+                    }
                 )
             }
         }
 
-        composable<AppRoutes.Onboarding> {
+        composable<AppRoutes.Onboarding> { backStackEntry ->
+            val route = backStackEntry.toRoute<AppRoutes.Onboarding>()
             val onboardingViewModel: OnboardingViewModel = hiltViewModel()
             AnimatedNavScreen {
                 OnboardingScreen(
                     viewModel = onboardingViewModel,
+                    showAnalyticsOptIn = route.showAnalyticsOptIn,
                     onFinished = {
                         if (navController.previousBackStackEntry != null) {
                             navController.popBackStack()
                         } else {
                             navController.navigate(AppRoutes.Main) {
-                                popUpTo(AppRoutes.Onboarding) { inclusive = true }
+                                popUpTo(AppRoutes.Onboarding()) { inclusive = true }
                                 launchSingleTop = true
                             }
                         }

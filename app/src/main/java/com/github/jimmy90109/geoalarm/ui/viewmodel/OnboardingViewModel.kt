@@ -49,9 +49,14 @@ class OnboardingViewModel @Inject constructor(
         AppCompatDelegate.setApplicationLocales(LocaleListCompat.forLanguageTags(nextLanguageTag))
     }
 
-    fun completeOnboarding(onCompleted: () -> Unit) {
+    fun completeOnboarding(
+        trackAnalyticsOptIn: Boolean,
+        onCompleted: () -> Unit
+    ) {
         viewModelScope.launch {
-            telemetryTracker.trackAnalyticsOptInIfNeeded()
+            if (trackAnalyticsOptIn) {
+                telemetryTracker.trackAnalyticsOptInIfNeeded()
+            }
             onboardingRepository.setSeenLocationOnboarding(true)
             onCompleted()
         }

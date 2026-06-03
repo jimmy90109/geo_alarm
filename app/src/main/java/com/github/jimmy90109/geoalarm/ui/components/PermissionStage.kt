@@ -193,6 +193,7 @@ private fun PermissionActionButtons(
 
 @Composable
 internal fun FinalSetupCard(
+    showAnalyticsOptIn: Boolean,
     analyticsEnabled: Boolean,
     onAnalyticsEnabledChange: (Boolean) -> Unit,
     onStartNow: () -> Unit
@@ -359,30 +360,32 @@ internal fun FinalSetupCard(
                 modifier = Modifier.fillMaxWidth(),
                 verticalArrangement = Arrangement.spacedBy(12.dp)
             ) {
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .clip(RoundedCornerShape(14.dp))
-                        .background(MaterialTheme.colorScheme.surfaceContainer.copy(alpha = 0.9f))
-                        .padding(horizontal = 8.dp, vertical = 6.dp),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Checkbox(
-                        checked = analyticsEnabled,
-                        onCheckedChange = onAnalyticsEnabledChange
-                    )
-                    Text(
-                        text = stringResource(R.string.analytics_help_improve_title),
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.onSurface,
+                if (showAnalyticsOptIn) {
+                    Row(
                         modifier = Modifier
-                            .weight(1f)
-                            .selectable(
-                                selected = false,
-                                onClick = { showAnalyticsDialog = true }
-                            )
-                            .padding(horizontal = 8.dp, vertical = 10.dp)
-                    )
+                            .fillMaxWidth()
+                            .clip(RoundedCornerShape(14.dp))
+                            .background(MaterialTheme.colorScheme.surfaceContainer.copy(alpha = 0.9f))
+                            .padding(horizontal = 8.dp, vertical = 6.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Checkbox(
+                            checked = analyticsEnabled,
+                            onCheckedChange = onAnalyticsEnabledChange
+                        )
+                        Text(
+                            text = stringResource(R.string.analytics_help_improve_title),
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onSurface,
+                            modifier = Modifier
+                                .weight(1f)
+                                .selectable(
+                                    selected = false,
+                                    onClick = { showAnalyticsDialog = true }
+                                )
+                                .padding(horizontal = 8.dp, vertical = 10.dp)
+                        )
+                    }
                 }
                 Box(
                     modifier = Modifier.fillMaxWidth()
@@ -412,7 +415,7 @@ internal fun FinalSetupCard(
         }
     }
 
-    if (showAnalyticsDialog) {
+    if (showAnalyticsOptIn && showAnalyticsDialog) {
         AlertDialog(
             onDismissRequest = { showAnalyticsDialog = false },
             title = {
