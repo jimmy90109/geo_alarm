@@ -9,10 +9,29 @@ import com.github.jimmy90109.geoalarm.data.AnalyticsPreferencesStore
 import com.github.jimmy90109.geoalarm.data.OnboardingRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
 import javax.inject.Inject
+import kotlinx.coroutines.flow.MutableSharedFlow
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asSharedFlow
+import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
+
+data class OnboardingUiState(
+    val currentLanguage: String = "en",
+)
+
+sealed interface OnboardingAction {
+    data class AnalyticsEnabledChanged(val enabled: Boolean) : OnboardingAction
+    data object LanguageToggled : OnboardingAction
+    data class Completed(val trackAnalyticsOptIn: Boolean) : OnboardingAction
+}
+
+sealed interface OnboardingEffect {
+    data object Completed : OnboardingEffect
+}
 
 @HiltViewModel
 class OnboardingViewModel @Inject constructor(
@@ -21,6 +40,12 @@ class OnboardingViewModel @Inject constructor(
     private val telemetryTracker: TelemetryTracker
 ) : ViewModel() {
 
+    private val _uiState = MutableStateFlow(OnboardingUiState(currentLanguage = resolveCurrentLanguage()))
+    val uiState: StateFlow<OnboardingUiState> = _uiState.asStateFlow()
+
+    private val _effects = MutableSharedFlow<OnboardingEffect>()
+    val effects: SharedFlow<OnboardingEffect> = _effects.asSharedFlow()
+
     val analyticsEnabled: StateFlow<Boolean> = analyticsPreferencesStore.analyticsEnabledFlow
         .stateIn(
             scope = viewModelScope,
@@ -28,37 +53,42 @@ class OnboardingViewModel @Inject constructor(
             initialValue = true
         )
 
-    fun setAnalyticsEnabled(enabled: Boolean) {
+    fun onAction(action: OnboardingAction) {
+        when (action) {
+            is OnboardingAction.AnalyticsEnabledChanged -> setAnalyticsEnabled(action.enabled)
+            OnboardingAction.LanguageToggled -> toggleLanguage()
+            is OnboardingAction.Completed -> completeOnboarding(action.trackAnalyticsOptIn)
+        }
+    }
+
+    private fun setAnalyticsEnabled(enabled: Boolean) {
         viewModelScope.launch {
             analyticsPreferencesStore.setAnalyticsEnabled(enabled)
         }
     }
 
-    val currentLanguage: String
-        get() {
-            val currentLocales = AppCompatDelegate.getApplicationLocales()
-            return if (!currentLocales.isEmpty) {
-                currentLocales.toLanguageTags().split("-")[0]
-            } else {
-                "en"
-            }
+    private fun resolveCurrentLanguage(): String {
+        val currentLocales = AppCompatDelegate.getApplicationLocales()
+        return if (!currentLocales.isEmpty) {
+            currentLocales.toLanguageTags().split("-")[0]
+        } else {
+            "en"
         }
-
-    fun toggleLanguage() {
-        val nextLanguageTag = if (currentLanguage == "zh") "en" else "zh-TW"
-        AppCompatDelegate.setApplicationLocales(LocaleListCompat.forLanguageTags(nextLanguageTag))
     }
 
-    fun completeOnboarding(
-        trackAnalyticsOptIn: Boolean,
-        onCompleted: () -> Unit
-    ) {
+    private fun toggleLanguage() {
+        val nextLanguageTag = if (_uiState.value.currentLanguage == "zh") "en" else "zh-TW"
+        AppCompatDelegate.setApplicationLocales(LocaleListCompat.forLanguageTags(nextLanguageTag))
+        _uiState.value = _uiState.value.copy(currentLanguage = resolveCurrentLanguage())
+    }
+
+    private fun completeOnboarding(trackAnalyticsOptIn: Boolean) {
         viewModelScope.launch {
             if (trackAnalyticsOptIn) {
                 telemetryTracker.trackAnalyticsOptInIfNeeded()
             }
             onboardingRepository.setSeenLocationOnboarding(true)
-            onCompleted()
+            _effects.emit(OnboardingEffect.Completed)
         }
     }
 }

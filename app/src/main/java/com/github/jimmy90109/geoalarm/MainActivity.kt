@@ -23,6 +23,7 @@ import com.github.jimmy90109.geoalarm.data.OnboardingRepository
 import com.github.jimmy90109.geoalarm.navigation.AppNavHost
 import com.github.jimmy90109.geoalarm.service.GeoAlarmService
 import com.github.jimmy90109.geoalarm.ui.theme.GeoAlarmTheme
+import com.github.jimmy90109.geoalarm.ui.viewmodel.HomeAction
 import com.github.jimmy90109.geoalarm.ui.viewmodel.HomeViewModel
 import com.github.jimmy90109.geoalarm.widget.GeoAlarmGlanceWidget
 import androidx.glance.appwidget.updateAll
@@ -132,12 +133,12 @@ class MainActivity : AppCompatActivity() {
         } else if (intent.action == "ENABLE_ALARM_FROM_SCHEDULE") {
             val alarmId = intent.getStringExtra("ALARM_ID")
             if (!alarmId.isNullOrEmpty()) {
-                homeViewModel.handleScheduleIntent(alarmId)
+                homeViewModel.onAction(HomeAction.ScheduleIntentHandled(alarmId))
             }
         } else if (intent.action == ACTION_ENABLE_ALARM_FROM_WIDGET) {
             val alarmId = intent.getStringExtra(EXTRA_WIDGET_ALARM_ID)
             if (!alarmId.isNullOrEmpty()) {
-                homeViewModel.handleScheduleIntent(alarmId)
+                homeViewModel.onAction(HomeAction.ScheduleIntentHandled(alarmId))
                 CoroutineScope(kotlinx.coroutines.Dispatchers.IO).launch { GeoAlarmGlanceWidget().updateAll(this@MainActivity) }
             }
         }

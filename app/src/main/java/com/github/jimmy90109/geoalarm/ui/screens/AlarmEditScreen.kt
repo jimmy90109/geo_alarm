@@ -101,6 +101,8 @@ import com.github.jimmy90109.geoalarm.ui.components.AlarmIconBadge
 import com.github.jimmy90109.geoalarm.ui.components.AlarmIconOptions
 import com.github.jimmy90109.geoalarm.ui.components.DeleteAlarmDialog
 import com.github.jimmy90109.geoalarm.ui.components.DeleteErrorDialog
+import com.github.jimmy90109.geoalarm.ui.viewmodel.AlarmEditAction
+import com.github.jimmy90109.geoalarm.ui.viewmodel.AlarmEditEffect
 import com.github.jimmy90109.geoalarm.ui.viewmodel.AlarmEditStep
 import com.github.jimmy90109.geoalarm.ui.viewmodel.AlarmEditUiState
 import com.github.jimmy90109.geoalarm.ui.viewmodel.AlarmEditViewModel
@@ -148,9 +150,11 @@ fun AlarmEditScreen(
         if (result.resultCode == Activity.RESULT_OK && result.data != null) {
             val place = Autocomplete.getPlaceFromIntent(result.data!!)
             place.location?.let { latLng ->
-                viewModel.updatePositionFromSearch(
-                    latLng,
-                    place.displayName ?: place.formattedAddress ?: ""
+                viewModel.onAction(
+                    AlarmEditAction.SearchPositionSelected(
+                        latLng,
+                        place.displayName ?: place.formattedAddress ?: ""
+                    )
                 )
                 scope.launch {
                     cameraPositionState.animate(CameraUpdateFactory.newLatLngZoom(latLng, 15f))
@@ -172,9 +176,9 @@ fun AlarmEditScreen(
     }
 
     LaunchedEffect(alarmId) {
-        viewModel.loadAlarm(alarmId)
+        viewModel.onAction(AlarmEditAction.LoadAlarm(alarmId))
         delay(1000)
-        viewModel.setMapLoaded()
+        viewModel.onAction(AlarmEditAction.MapLoaded)
     }
 
     LaunchedEffect(uiState.selectedPosition) {
@@ -183,14 +187,16 @@ fun AlarmEditScreen(
         }
     }
 
-    LaunchedEffect(uiState.isSaved) {
-        if (uiState.isSaved) {
-            onNavigateBack()
+    LaunchedEffect(viewModel) {
+        viewModel.effects.collect { effect ->
+            when (effect) {
+                is AlarmEditEffect.NavigateBack -> onNavigateBack()
+            }
         }
     }
 
     BackHandler(enabled = isDetailsStep) {
-        viewModel.goToMapStep()
+        viewModel.onAction(AlarmEditAction.BackToMapClicked)
     }
 
     Box(modifier = Modifier.fillMaxSize()) {
@@ -201,14 +207,14 @@ fun AlarmEditScreen(
                 isDetailsStep = isDetailsStep,
                 onBack = onNavigateBack,
                 onSearch = ::launchAutocomplete,
-                onMapClick = viewModel::updatePosition,
-                onRadiusChange = viewModel::updateRadius,
-                onNext = viewModel::goToDetailsStep,
-                onDelete = viewModel::requestDeleteAlarm,
-                onNameChange = viewModel::updateName,
-                onIconSelected = viewModel::selectIcon,
-                onBackToMap = viewModel::goToMapStep,
-                onSave = viewModel::saveAlarm
+                onMapClick = { viewModel.onAction(AlarmEditAction.PositionSelected(it)) },
+                onRadiusChange = { viewModel.onAction(AlarmEditAction.RadiusChanged(it)) },
+                onNext = { viewModel.onAction(AlarmEditAction.NextClicked) },
+                onDelete = { viewModel.onAction(AlarmEditAction.DeleteRequested) },
+                onNameChange = { viewModel.onAction(AlarmEditAction.NameChanged(it)) },
+                onIconSelected = { viewModel.onAction(AlarmEditAction.IconSelected(it)) },
+                onBackToMap = { viewModel.onAction(AlarmEditAction.BackToMapClicked) },
+                onSave = { viewModel.onAction(AlarmEditAction.SaveClicked) }
             )
         } else {
             AlarmEditPortraitLayout(
@@ -217,14 +223,14 @@ fun AlarmEditScreen(
                 isDetailsStep = isDetailsStep,
                 onBack = onNavigateBack,
                 onSearch = ::launchAutocomplete,
-                onMapClick = viewModel::updatePosition,
-                onRadiusChange = viewModel::updateRadius,
-                onNext = viewModel::goToDetailsStep,
-                onDelete = viewModel::requestDeleteAlarm,
-                onNameChange = viewModel::updateName,
-                onIconSelected = viewModel::selectIcon,
-                onBackToMap = viewModel::goToMapStep,
-                onSave = viewModel::saveAlarm
+                onMapClick = { viewModel.onAction(AlarmEditAction.PositionSelected(it)) },
+                onRadiusChange = { viewModel.onAction(AlarmEditAction.RadiusChanged(it)) },
+                onNext = { viewModel.onAction(AlarmEditAction.NextClicked) },
+                onDelete = { viewModel.onAction(AlarmEditAction.DeleteRequested) },
+                onNameChange = { viewModel.onAction(AlarmEditAction.NameChanged(it)) },
+                onIconSelected = { viewModel.onAction(AlarmEditAction.IconSelected(it)) },
+                onBackToMap = { viewModel.onAction(AlarmEditAction.BackToMapClicked) },
+                onSave = { viewModel.onAction(AlarmEditAction.SaveClicked) }
             )
         }
     }
@@ -246,13 +252,13 @@ fun AlarmEditScreen(
 
     if (uiState.showDeleteConfirmDialog) {
         DeleteAlarmDialog(
-            onConfirm = { viewModel.confirmDeleteAlarm() },
-            onDismiss = { viewModel.dismissDeleteConfirmDialog() }
+            onConfirm = { viewModel.onAction(AlarmEditAction.DeleteConfirmed) },
+            onDismiss = { viewModel.onAction(AlarmEditAction.DeleteDialogDismissed) }
         )
     }
 
     if (uiState.showDeleteErrorDialog) {
-        DeleteErrorDialog(onDismiss = { viewModel.dismissDeleteErrorDialog() })
+        DeleteErrorDialog(onDismiss = { viewModel.onAction(AlarmEditAction.DeleteErrorDismissed) })
     }
 }
 

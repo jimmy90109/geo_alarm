@@ -9,9 +9,12 @@ import com.github.jimmy90109.geoalarm.data.AlarmSchedule
 import com.github.jimmy90109.geoalarm.service.ScheduleManager
 import com.github.jimmy90109.geoalarm.utils.SharedPreferenceManager
 import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
@@ -30,6 +33,22 @@ data class ScheduleEditUiState(
     val showOnboarding: Boolean = false,
 )
 
+sealed interface ScheduleEditAction {
+    data object OnboardingDismissed : ScheduleEditAction
+    data class LoadSchedule(val scheduleId: String?) : ScheduleEditAction
+    data class TimeChanged(val hour: Int, val minute: Int) : ScheduleEditAction
+    data class DayToggled(val day: Int) : ScheduleEditAction
+    data class AlarmSelected(val alarmId: String) : ScheduleEditAction
+    data object SaveClicked : ScheduleEditAction
+    data object DeleteRequested : ScheduleEditAction
+    data object DeleteDialogDismissed : ScheduleEditAction
+    data object DeleteConfirmed : ScheduleEditAction
+}
+
+sealed interface ScheduleEditEffect {
+    data class NavigateBack(val savedScheduleId: String?) : ScheduleEditEffect
+}
+
 @HiltViewModel
 class ScheduleEditViewModel @Inject constructor(
     application: Application,
@@ -40,14 +59,31 @@ class ScheduleEditViewModel @Inject constructor(
     private val _uiState = MutableStateFlow(ScheduleEditUiState())
     val uiState: StateFlow<ScheduleEditUiState> = _uiState.asStateFlow()
 
+    private val _effects = MutableSharedFlow<ScheduleEditEffect>()
+    val effects: SharedFlow<ScheduleEditEffect> = _effects.asSharedFlow()
+
     init {
         // Check if user has seen onboarding
         if (!sharedPreferenceManager.hasSeenScheduleOnboarding) {
             _uiState.value = _uiState.value.copy(showOnboarding = true)
         }
     }
-    
-    fun dismissOnboarding() {
+
+    fun onAction(action: ScheduleEditAction) {
+        when (action) {
+            ScheduleEditAction.OnboardingDismissed -> dismissOnboarding()
+            is ScheduleEditAction.LoadSchedule -> loadSchedule(action.scheduleId)
+            is ScheduleEditAction.TimeChanged -> setTime(action.hour, action.minute)
+            is ScheduleEditAction.DayToggled -> toggleDay(action.day)
+            is ScheduleEditAction.AlarmSelected -> selectAlarm(action.alarmId)
+            ScheduleEditAction.SaveClicked -> saveSchedule()
+            ScheduleEditAction.DeleteRequested -> requestDeleteSchedule()
+            ScheduleEditAction.DeleteDialogDismissed -> dismissDeleteConfirmDialog()
+            ScheduleEditAction.DeleteConfirmed -> confirmDeleteSchedule()
+        }
+    }
+
+    private fun dismissOnboarding() {
         sharedPreferenceManager.hasSeenScheduleOnboarding = true
         _uiState.value = _uiState.value.copy(showOnboarding = false)
     }
@@ -58,7 +94,7 @@ class ScheduleEditViewModel @Inject constructor(
     val alarms: StateFlow<List<Alarm>> = repository.allAlarms
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
-    fun loadSchedule(scheduleId: String?) {
+    private fun loadSchedule(scheduleId: String?) {
         if (scheduleId == null) {
             // New Schedule default - preserve onboarding state
             val currentShowOnboarding = _uiState.value.showOnboarding
@@ -80,11 +116,11 @@ class ScheduleEditViewModel @Inject constructor(
         }
     }
 
-    fun setTime(hour: Int, minute: Int) {
+    private fun setTime(hour: Int, minute: Int) {
         _uiState.value = _uiState.value.copy(hour = hour, minute = minute)
     }
 
-    fun toggleDay(day: Int) {
+    private fun toggleDay(day: Int) {
         val current = _uiState.value.daysOfWeek.toMutableSet()
         if (current.contains(day)) {
             current.remove(day)
@@ -94,11 +130,11 @@ class ScheduleEditViewModel @Inject constructor(
         _uiState.value = _uiState.value.copy(daysOfWeek = current)
     }
 
-    fun selectAlarm(alarmId: String) {
+    private fun selectAlarm(alarmId: String) {
         _uiState.value = _uiState.value.copy(selectedAlarmId = alarmId)
     }
 
-    fun saveSchedule(onSuccess: (savedScheduleId: String) -> Unit) {
+    private fun saveSchedule() {
         val state = _uiState.value
         if (state.selectedAlarmId == null || state.daysOfWeek.isEmpty()) return
 
@@ -123,26 +159,26 @@ class ScheduleEditViewModel @Inject constructor(
             scheduleManager.setSchedule(schedule)
             
             _uiState.value = _uiState.value.copy(savedScheduleId = scheduleId)
-            onSuccess(scheduleId)
+            _effects.emit(ScheduleEditEffect.NavigateBack(scheduleId))
         }
     }
     
     /**
      * Request to delete the schedule. Shows confirmation dialog.
      */
-    fun requestDeleteSchedule() {
+    private fun requestDeleteSchedule() {
         if (_uiState.value.scheduleId == null) return
         _uiState.value = _uiState.value.copy(showDeleteConfirmDialog = true)
     }
 
-    fun dismissDeleteConfirmDialog() {
+    private fun dismissDeleteConfirmDialog() {
         _uiState.value = _uiState.value.copy(showDeleteConfirmDialog = false)
     }
 
     /**
      * Confirm and execute the deletion.
      */
-    fun confirmDeleteSchedule(onSuccess: () -> Unit) {
+    private fun confirmDeleteSchedule() {
         val state = _uiState.value
         if (state.scheduleId == null) return
         
@@ -153,7 +189,7 @@ class ScheduleEditViewModel @Inject constructor(
                  // Cancel in AlarmManager
                  scheduleManager.cancelSchedule(schedule)
                  _uiState.value = _uiState.value.copy(showDeleteConfirmDialog = false)
-                 onSuccess()
+                 _effects.emit(ScheduleEditEffect.NavigateBack(null))
             }
         }
     }

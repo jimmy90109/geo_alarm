@@ -64,6 +64,7 @@ import com.github.jimmy90109.geoalarm.ui.components.NotificationPermissionDialog
 import com.github.jimmy90109.geoalarm.ui.components.NotificationRationaleDialog
 import com.github.jimmy90109.geoalarm.ui.components.ScheduleConflictDialog
 import com.github.jimmy90109.geoalarm.ui.components.SingleAlarmDialog
+import com.github.jimmy90109.geoalarm.ui.viewmodel.HomeAction
 import com.github.jimmy90109.geoalarm.ui.viewmodel.HomeUiState
 import com.github.jimmy90109.geoalarm.ui.viewmodel.HomeViewModel
 import com.github.jimmy90109.geoalarm.widget.GeoAlarmGlanceWidgetReceiver
@@ -125,12 +126,12 @@ fun HomeScreen(
                 backgroundLocationPermissionState.status.isGranted
             } else {
                 locationPermissionState.allPermissionsGranted
-            }
+        }
 
         if (hasLocationPermission) {
-            viewModel.enableAlarm(alarm, alarms, context)
+            viewModel.onAction(HomeAction.AlarmEnableRequested(alarm, alarms, context))
         } else {
-            viewModel.showBackgroundPermissionDialog()
+            viewModel.onAction(HomeAction.BackgroundPermissionDialogRequested)
         }
     }
 
@@ -148,9 +149,9 @@ fun HomeScreen(
             val showRationale =
                 activity.shouldShowRequestPermissionRationale(Manifest.permission.POST_NOTIFICATIONS)
             if (showRationale) {
-                viewModel.showNotificationRationaleDialog()
+                viewModel.onAction(HomeAction.NotificationRationaleDialogRequested)
             } else {
-                viewModel.showNotificationPermissionDialog()
+                viewModel.onAction(HomeAction.NotificationPermissionDialogRequested)
             }
             pendingAlarm = null
         }
@@ -183,7 +184,7 @@ fun HomeScreen(
                 checkLocationAndEnableAlarm(alarm)
             }
         } else {
-            viewModel.disableAlarm(alarm, context)
+            viewModel.onAction(HomeAction.AlarmDisableRequested(alarm, context))
         }
     }
 
@@ -206,7 +207,7 @@ fun HomeScreen(
 //                    androidx.compose.material3.TextButton(
 //                        onClick = {
 //                            haptic.performHapticFeedback(HapticFeedbackType.ContextClick)
-//                            viewModel.startTestAlarm(context)
+//                            viewModel.onAction(HomeAction.TestAlarmStarted(context))
 //                        }
 //                    ) {
 //                        Text("🧪 Test Alarm (10s)")
@@ -251,7 +252,7 @@ fun HomeScreen(
                         if (hasLocationPermission) {
                             onAddAlarm()
                         } else {
-                            viewModel.showBackgroundPermissionDialog()
+                            viewModel.onAction(HomeAction.BackgroundPermissionDialogRequested)
                         }
                     })
             }
@@ -295,10 +296,12 @@ fun HomeScreen(
                         distanceMeters = uiState.monitoringDistance,
                         onStopAlarm = { isArrived ->
                             haptic.performHapticFeedback(HapticFeedbackType.Confirm)
-                            viewModel.disableAlarm(
-                                alarm = targetAlarm,
-                                context = context,
-                                trackArrivedTurnOff = isArrived
+                            viewModel.onAction(
+                                HomeAction.AlarmDisableRequested(
+                                    alarm = targetAlarm,
+                                    context = context,
+                                    trackArrivedTurnOff = isArrived
+                                )
                             )
                         },
                     )
@@ -327,7 +330,7 @@ fun HomeScreen(
                                 ),
                                 onAlarmClick = { alarm ->
                                     if (alarm.isEnabled) {
-                                        viewModel.showEditDisabledDialog()
+                                        viewModel.onAction(HomeAction.EditDisabledDialogRequested)
                                     } else {
                                         onAlarmClick(alarm)
                                     }
@@ -335,7 +338,7 @@ fun HomeScreen(
                                 onToggleAlarm = handleAlarmToggle,
                                 onScheduleClick = { schedule -> onScheduleClick(schedule) },
                                 onToggleSchedule = { schedule, isEnabled ->
-                                    viewModel.toggleSchedule(schedule, isEnabled)
+                                    viewModel.onAction(HomeAction.ScheduleToggled(schedule, isEnabled))
                                 },
                                 onAddSchedule = onAddSchedule,
                                 onOpenWidgetPicker = {
@@ -354,7 +357,7 @@ fun HomeScreen(
                                 },
                                 highlightedAlarmId = uiState.highlightedAlarmId,
                                 highlightedScheduleId = uiState.highlightedScheduleId,
-                                onHighlightFinished = { viewModel.clearHighlight() },
+                                onHighlightFinished = { viewModel.onAction(HomeAction.HighlightCleared) },
                             )
                         }
                     }
@@ -416,43 +419,43 @@ private fun HomeDialogsContainer(
     val context = LocalContext.current
 
     if (uiState.showEditDisabledDialog) {
-        EditDisabledDialog(onDismiss = { viewModel.dismissEditDisabledDialog() })
+        EditDisabledDialog(onDismiss = { viewModel.onAction(HomeAction.EditDisabledDialogDismissed) })
     }
 
     if (uiState.showSingleAlarmDialog) {
-        SingleAlarmDialog(onDismiss = { viewModel.dismissSingleAlarmDialog() })
+        SingleAlarmDialog(onDismiss = { viewModel.onAction(HomeAction.SingleAlarmDialogDismissed) })
     }
 
     if (uiState.showBackgroundPermissionDialog) {
         BackgroundLocationPermissionDialog(
-            context = context, onDismiss = { viewModel.dismissBackgroundPermissionDialog() })
+            context = context, onDismiss = { viewModel.onAction(HomeAction.BackgroundPermissionDialogDismissed) })
     }
 
     if (uiState.showNotificationPermissionDialog) {
         NotificationPermissionDialog(
-            context = context, onDismiss = { viewModel.dismissNotificationPermissionDialog() })
+            context = context, onDismiss = { viewModel.onAction(HomeAction.NotificationPermissionDialogDismissed) })
     }
 
     if (uiState.showNotificationRationaleDialog) {
         NotificationRationaleDialog(
-            onDismiss = { viewModel.dismissNotificationRationaleDialog() },
+            onDismiss = { viewModel.onAction(HomeAction.NotificationRationaleDialogDismissed) },
             onRetry = onRetryNotificationPermission
         )
     }
 
     if (uiState.showAlreadyAtDestinationDialog) {
-        AlreadyAtDestinationDialog(onDismiss = { viewModel.dismissAlreadyAtDestinationDialog() })
+        AlreadyAtDestinationDialog(onDismiss = { viewModel.onAction(HomeAction.AlreadyAtDestinationDialogDismissed) })
     }
 
     // Delete Error Dialog
     if (uiState.showDeleteErrorDialog) {
-        DeleteErrorDialog(onDismiss = { viewModel.dismissDeleteErrorDialog() })
+        DeleteErrorDialog(onDismiss = { viewModel.onAction(HomeAction.DeleteErrorDialogDismissed) })
     }
 
     // Schedule Conflict Dialog
     if (uiState.showScheduleConflictDialog) {
         ScheduleConflictDialog(
-            onConfirm = { viewModel.confirmScheduleConflict() },
-            onDismiss = { viewModel.dismissScheduleConflictDialog() })
+            onConfirm = { viewModel.onAction(HomeAction.ScheduleConflictConfirmed) },
+            onDismiss = { viewModel.onAction(HomeAction.ScheduleConflictDialogDismissed) })
     }
 }

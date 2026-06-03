@@ -74,6 +74,8 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.github.jimmy90109.geoalarm.R
 import com.github.jimmy90109.geoalarm.ui.components.DeleteScheduleDialog
 import com.github.jimmy90109.geoalarm.ui.components.ScheduleOnboardingSheet
+import com.github.jimmy90109.geoalarm.ui.viewmodel.ScheduleEditAction
+import com.github.jimmy90109.geoalarm.ui.viewmodel.ScheduleEditEffect
 import com.github.jimmy90109.geoalarm.ui.viewmodel.ScheduleEditViewModel
 import kotlinx.coroutines.flow.drop
 import kotlinx.coroutines.launch
@@ -88,7 +90,7 @@ fun ScheduleEditScreen(
     val alarms by viewModel.alarms.collectAsStateWithLifecycle()
 
     LaunchedEffect(scheduleId) {
-        viewModel.loadSchedule(scheduleId)
+        viewModel.onAction(ScheduleEditAction.LoadSchedule(scheduleId))
     }
 
     // Use scheduleId as key to recreate the picker when schedule data is loaded
@@ -105,6 +107,24 @@ fun ScheduleEditScreen(
 
     val view = LocalView.current
     val haptic = LocalHapticFeedback.current
+
+    fun saveCurrentSchedule() {
+        viewModel.onAction(
+            ScheduleEditAction.TimeChanged(
+                timePickerState.hour,
+                timePickerState.minute,
+            )
+        )
+        viewModel.onAction(ScheduleEditAction.SaveClicked)
+    }
+
+    LaunchedEffect(viewModel) {
+        viewModel.effects.collect { effect ->
+            when (effect) {
+                is ScheduleEditEffect.NavigateBack -> onBack()
+            }
+        }
+    }
 
     LaunchedEffect(timePickerState) {
         snapshotFlow { timePickerState.hour to timePickerState.minute }.drop(1).collect {
@@ -151,7 +171,7 @@ fun ScheduleEditScreen(
                         selectedDays = uiState.daysOfWeek,
                         onDayToggle = {
                             haptic.performHapticFeedback(HapticFeedbackType.ToggleOn)
-                            viewModel.toggleDay(it)
+                            viewModel.onAction(ScheduleEditAction.DayToggled(it))
                         },
                     )
                 }
@@ -226,7 +246,7 @@ fun ScheduleEditScreen(
                                     selectedAlarmId = uiState.selectedAlarmId,
                                     onAlarmSelected = {
                                         haptic.performHapticFeedback(HapticFeedbackType.ToggleOn)
-                                        viewModel.selectAlarm(it)
+                                        viewModel.onAction(ScheduleEditAction.AlarmSelected(it))
                                     },
                                 )
                                 Spacer(modifier = Modifier.height(8.dp))
@@ -246,7 +266,7 @@ fun ScheduleEditScreen(
                                                 FilledIconButton(
                                                     onClick = {
                                                         haptic.performHapticFeedback(HapticFeedbackType.Reject)
-                                                        viewModel.requestDeleteSchedule()
+                                                        viewModel.onAction(ScheduleEditAction.DeleteRequested)
                                                     },
                                                     colors = IconButtonDefaults.filledIconButtonColors(
                                                         containerColor = MaterialTheme.colorScheme.errorContainer,
@@ -264,7 +284,7 @@ fun ScheduleEditScreen(
                                                     text = { Text(deleteLabel) },
                                                     onClick = {
                                                         haptic.performHapticFeedback(HapticFeedbackType.Reject)
-                                                        viewModel.requestDeleteSchedule()
+                                                        viewModel.onAction(ScheduleEditAction.DeleteRequested)
                                                         menuState.dismiss()
                                                     },
                                                     leadingIcon = {
@@ -281,11 +301,7 @@ fun ScheduleEditScreen(
                                                 Button(
                                                     onClick = {
                                                         haptic.performHapticFeedback(HapticFeedbackType.Confirm)
-                                                        viewModel.setTime(
-                                                            timePickerState.hour,
-                                                            timePickerState.minute,
-                                                        )
-                                                        viewModel.saveSchedule { _ -> onBack() }
+                                                        saveCurrentSchedule()
                                                     },
                                                     modifier = with(buttonGroupScope) {
                                                         Modifier.weight(1f)
@@ -301,11 +317,7 @@ fun ScheduleEditScreen(
                                                     onClick = {
                                                         if (saveEnabled) {
                                                             haptic.performHapticFeedback(HapticFeedbackType.Confirm)
-                                                            viewModel.setTime(
-                                                                timePickerState.hour,
-                                                                timePickerState.minute,
-                                                            )
-                                                            viewModel.saveSchedule { _ -> onBack() }
+                                                            saveCurrentSchedule()
                                                         }
                                                         menuState.dismiss()
                                                     },
@@ -318,11 +330,7 @@ fun ScheduleEditScreen(
                                     Button(
                                         onClick = {
                                             haptic.performHapticFeedback(HapticFeedbackType.Confirm)
-                                            viewModel.setTime(
-                                                timePickerState.hour,
-                                                timePickerState.minute,
-                                            )
-                                            viewModel.saveSchedule { _ -> onBack() }
+                                            saveCurrentSchedule()
                                         },
                                         modifier = Modifier.fillMaxWidth(),
                                         enabled = uiState.selectedAlarmId != null && uiState.daysOfWeek.isNotEmpty(),
@@ -407,7 +415,7 @@ fun ScheduleEditScreen(
                         selectedDays = uiState.daysOfWeek,
                         onDayToggle = {
                             haptic.performHapticFeedback(HapticFeedbackType.ToggleOn)
-                            viewModel.toggleDay(it)
+                            viewModel.onAction(ScheduleEditAction.DayToggled(it))
                         },
                     )
                 }
@@ -430,7 +438,7 @@ fun ScheduleEditScreen(
                             selectedAlarmId = uiState.selectedAlarmId,
                             onAlarmSelected = {
                                 haptic.performHapticFeedback(HapticFeedbackType.ToggleOn)
-                                viewModel.selectAlarm(it)
+                                viewModel.onAction(ScheduleEditAction.AlarmSelected(it))
                             },
                         )
                         Spacer(modifier = Modifier.height(8.dp))
@@ -450,7 +458,7 @@ fun ScheduleEditScreen(
                                         FilledIconButton(
                                             onClick = {
                                                 haptic.performHapticFeedback(HapticFeedbackType.Reject)
-                                                viewModel.requestDeleteSchedule()
+                                                viewModel.onAction(ScheduleEditAction.DeleteRequested)
                                             },
                                             colors = IconButtonDefaults.filledIconButtonColors(
                                                 containerColor = MaterialTheme.colorScheme.errorContainer,
@@ -468,7 +476,7 @@ fun ScheduleEditScreen(
                                             text = { Text(deleteLabel) },
                                             onClick = {
                                                 haptic.performHapticFeedback(HapticFeedbackType.Reject)
-                                                viewModel.requestDeleteSchedule()
+                                                viewModel.onAction(ScheduleEditAction.DeleteRequested)
                                                 menuState.dismiss()
                                             },
                                             leadingIcon = {
@@ -485,11 +493,7 @@ fun ScheduleEditScreen(
                                         Button(
                                             onClick = {
                                                 haptic.performHapticFeedback(HapticFeedbackType.Confirm)
-                                                viewModel.setTime(
-                                                    timePickerState.hour,
-                                                    timePickerState.minute,
-                                                )
-                                                viewModel.saveSchedule { _ -> onBack() }
+                                                saveCurrentSchedule()
                                             },
                                             modifier = with(buttonGroupScope) {
                                                 Modifier.weight(1f)
@@ -505,11 +509,7 @@ fun ScheduleEditScreen(
                                             onClick = {
                                                 if (saveEnabled) {
                                                     haptic.performHapticFeedback(HapticFeedbackType.Confirm)
-                                                    viewModel.setTime(
-                                                        timePickerState.hour,
-                                                        timePickerState.minute,
-                                                    )
-                                                    viewModel.saveSchedule { _ -> onBack() }
+                                                    saveCurrentSchedule()
                                                 }
                                                 menuState.dismiss()
                                             },
@@ -522,11 +522,7 @@ fun ScheduleEditScreen(
                             Button(
                                 onClick = {
                                     haptic.performHapticFeedback(HapticFeedbackType.Confirm)
-                                    viewModel.setTime(
-                                        timePickerState.hour,
-                                        timePickerState.minute,
-                                    )
-                                    viewModel.saveSchedule { _ -> onBack() }
+                                    saveCurrentSchedule()
                                 },
                                 modifier = Modifier.fillMaxWidth(),
                                 enabled = uiState.selectedAlarmId != null && uiState.daysOfWeek.isNotEmpty(),
@@ -543,8 +539,8 @@ fun ScheduleEditScreen(
     // Delete Confirmation Dialog
     if (uiState.showDeleteConfirmDialog) {
         DeleteScheduleDialog(
-            onConfirm = { viewModel.confirmDeleteSchedule(onBack) },
-            onDismiss = { viewModel.dismissDeleteConfirmDialog() },
+            onConfirm = { viewModel.onAction(ScheduleEditAction.DeleteConfirmed) },
+            onDismiss = { viewModel.onAction(ScheduleEditAction.DeleteDialogDismissed) },
         )
     }
 
@@ -555,7 +551,7 @@ fun ScheduleEditScreen(
                 coroutineScope.launch {
                     onboardingSheetState.hide() // Animate slide down
                     showOnboardingSheet = false
-                    viewModel.dismissOnboarding()
+                    viewModel.onAction(ScheduleEditAction.OnboardingDismissed)
                 }
             },
             sheetState = onboardingSheetState,

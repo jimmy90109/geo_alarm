@@ -49,6 +49,40 @@ data class HomeUiState(
     val highlightedScheduleId: String? = null, // Schedule ID to highlight (flash animation)
 )
 
+sealed interface HomeAction {
+    data class ScheduleToggled(val schedule: AlarmSchedule, val isEnabled: Boolean) : HomeAction
+    data object EditDisabledDialogRequested : HomeAction
+    data object EditDisabledDialogDismissed : HomeAction
+    data object SingleAlarmDialogRequested : HomeAction
+    data object SingleAlarmDialogDismissed : HomeAction
+    data object BackgroundPermissionDialogRequested : HomeAction
+    data object BackgroundPermissionDialogDismissed : HomeAction
+    data object NotificationPermissionDialogRequested : HomeAction
+    data object NotificationPermissionDialogDismissed : HomeAction
+    data object NotificationRationaleDialogRequested : HomeAction
+    data object NotificationRationaleDialogDismissed : HomeAction
+    data object AlreadyAtDestinationDialogRequested : HomeAction
+    data object AlreadyAtDestinationDialogDismissed : HomeAction
+    data object DeleteErrorDialogDismissed : HomeAction
+    data class AlarmHighlighted(val alarmId: String) : HomeAction
+    data class ScheduleHighlighted(val scheduleId: String) : HomeAction
+    data object HighlightCleared : HomeAction
+    data class AlarmEnableRequested(
+        val alarm: Alarm,
+        val alarms: List<Alarm>,
+        val context: Context
+    ) : HomeAction
+    data class AlarmDisableRequested(
+        val alarm: Alarm,
+        val context: Context,
+        val trackArrivedTurnOff: Boolean = false
+    ) : HomeAction
+    data class ScheduleIntentHandled(val alarmId: String) : HomeAction
+    data object ScheduleConflictDialogDismissed : HomeAction
+    data object ScheduleConflictConfirmed : HomeAction
+    data class TestAlarmStarted(val context: Context) : HomeAction
+}
+
 /**
  * ViewModel for the Home Screen.
  * Manages alarm list state, dialog visibility states, and core alarm operations (enable/disable/delete).
@@ -105,80 +139,112 @@ class HomeViewModel @Inject constructor(
         emptyList()
     )
 
-    fun toggleSchedule(schedule: AlarmSchedule, isEnabled: Boolean) {
+    fun onAction(action: HomeAction) {
+        when (action) {
+            is HomeAction.ScheduleToggled -> toggleSchedule(action.schedule, action.isEnabled)
+            HomeAction.EditDisabledDialogRequested -> showEditDisabledDialog()
+            HomeAction.EditDisabledDialogDismissed -> dismissEditDisabledDialog()
+            HomeAction.SingleAlarmDialogRequested -> showSingleAlarmDialog()
+            HomeAction.SingleAlarmDialogDismissed -> dismissSingleAlarmDialog()
+            HomeAction.BackgroundPermissionDialogRequested -> showBackgroundPermissionDialog()
+            HomeAction.BackgroundPermissionDialogDismissed -> dismissBackgroundPermissionDialog()
+            HomeAction.NotificationPermissionDialogRequested -> showNotificationPermissionDialog()
+            HomeAction.NotificationPermissionDialogDismissed -> dismissNotificationPermissionDialog()
+            HomeAction.NotificationRationaleDialogRequested -> showNotificationRationaleDialog()
+            HomeAction.NotificationRationaleDialogDismissed -> dismissNotificationRationaleDialog()
+            HomeAction.AlreadyAtDestinationDialogRequested -> showAlreadyAtDestinationDialog()
+            HomeAction.AlreadyAtDestinationDialogDismissed -> dismissAlreadyAtDestinationDialog()
+            HomeAction.DeleteErrorDialogDismissed -> dismissDeleteErrorDialog()
+            is HomeAction.AlarmHighlighted -> setHighlightedAlarm(action.alarmId)
+            is HomeAction.ScheduleHighlighted -> setHighlightedSchedule(action.scheduleId)
+            HomeAction.HighlightCleared -> clearHighlight()
+            is HomeAction.AlarmEnableRequested -> enableAlarm(action.alarm, action.alarms, action.context)
+            is HomeAction.AlarmDisableRequested -> disableAlarm(
+                action.alarm,
+                action.context,
+                action.trackArrivedTurnOff
+            )
+            is HomeAction.ScheduleIntentHandled -> handleScheduleIntent(action.alarmId)
+            HomeAction.ScheduleConflictDialogDismissed -> dismissScheduleConflictDialog()
+            HomeAction.ScheduleConflictConfirmed -> confirmScheduleConflict()
+            is HomeAction.TestAlarmStarted -> startTestAlarm(action.context)
+        }
+    }
+
+    private fun toggleSchedule(schedule: AlarmSchedule, isEnabled: Boolean) {
         viewModelScope.launch {
             repository.updateSchedule(schedule.copy(isEnabled = isEnabled))
         }
     }
 
     // Dialog controls
-    fun showEditDisabledDialog() {
+    private fun showEditDisabledDialog() {
         _uiState.value = _uiState.value.copy(showEditDisabledDialog = true)
     }
 
-    fun dismissEditDisabledDialog() {
+    private fun dismissEditDisabledDialog() {
         _uiState.value = _uiState.value.copy(showEditDisabledDialog = false)
     }
 
-    fun showSingleAlarmDialog() {
+    private fun showSingleAlarmDialog() {
         _uiState.value = _uiState.value.copy(showSingleAlarmDialog = true)
     }
 
-    fun dismissSingleAlarmDialog() {
+    private fun dismissSingleAlarmDialog() {
         _uiState.value = _uiState.value.copy(showSingleAlarmDialog = false)
     }
 
-    fun showBackgroundPermissionDialog() {
+    private fun showBackgroundPermissionDialog() {
         _uiState.value = _uiState.value.copy(showBackgroundPermissionDialog = true)
     }
 
-    fun dismissBackgroundPermissionDialog() {
+    private fun dismissBackgroundPermissionDialog() {
         _uiState.value = _uiState.value.copy(showBackgroundPermissionDialog = false)
     }
 
-    fun showNotificationPermissionDialog() {
+    private fun showNotificationPermissionDialog() {
         _uiState.value = _uiState.value.copy(showNotificationPermissionDialog = true)
     }
 
-    fun dismissNotificationPermissionDialog() {
+    private fun dismissNotificationPermissionDialog() {
         _uiState.value = _uiState.value.copy(showNotificationPermissionDialog = false)
     }
 
-    fun showNotificationRationaleDialog() {
+    private fun showNotificationRationaleDialog() {
         _uiState.value = _uiState.value.copy(showNotificationRationaleDialog = true)
     }
 
-    fun dismissNotificationRationaleDialog() {
+    private fun dismissNotificationRationaleDialog() {
         _uiState.value = _uiState.value.copy(showNotificationRationaleDialog = false)
     }
 
-    fun showAlreadyAtDestinationDialog() {
+    private fun showAlreadyAtDestinationDialog() {
         _uiState.value = _uiState.value.copy(showAlreadyAtDestinationDialog = true)
     }
 
-    fun dismissAlreadyAtDestinationDialog() {
+    private fun dismissAlreadyAtDestinationDialog() {
         _uiState.value = _uiState.value.copy(showAlreadyAtDestinationDialog = false)
     }
 
-    fun dismissDeleteErrorDialog() {
+    private fun dismissDeleteErrorDialog() {
         _uiState.value = _uiState.value.copy(showDeleteErrorDialog = false)
     }
 
-    fun setHighlightedAlarm(alarmId: String) {
+    private fun setHighlightedAlarm(alarmId: String) {
         _uiState.value = _uiState.value.copy(
             highlightedAlarmId = alarmId,
             highlightedScheduleId = null
         )
     }
 
-    fun setHighlightedSchedule(scheduleId: String) {
+    private fun setHighlightedSchedule(scheduleId: String) {
         _uiState.value = _uiState.value.copy(
             highlightedScheduleId = scheduleId,
             highlightedAlarmId = null
         )
     }
 
-    fun clearHighlight() {
+    private fun clearHighlight() {
         _uiState.value = _uiState.value.copy(
             highlightedAlarmId = null,
             highlightedScheduleId = null
@@ -195,7 +261,7 @@ class HomeViewModel @Inject constructor(
      * @param alarms The list of all alarms (used for conflict checking).
      * @param context Context used to start the service.
      */
-    fun enableAlarm(alarm: Alarm, alarms: List<Alarm>, context: Context) {
+    private fun enableAlarm(alarm: Alarm, alarms: List<Alarm>, context: Context) {
         // Check if any other alarm is enabled
         val anyEnabled = alarms.any { it.isEnabled && it.id != alarm.id }
         if (anyEnabled) {
@@ -290,7 +356,7 @@ class HomeViewModel @Inject constructor(
      * @param alarm The alarm to disable.
      * @param context Context used to stop the service.
      */
-    fun disableAlarm(alarm: Alarm, context: Context, trackArrivedTurnOff: Boolean = false) {
+    private fun disableAlarm(alarm: Alarm, context: Context, trackArrivedTurnOff: Boolean = false) {
         viewModelScope.launch {
             if (trackArrivedTurnOff) {
                 telemetryTracker.trackArrivedTurnOff()
@@ -305,7 +371,7 @@ class HomeViewModel @Inject constructor(
         }
     }
 
-    fun handleScheduleIntent(alarmId: String) {
+    private fun handleScheduleIntent(alarmId: String) {
         viewModelScope.launch {
             val alarm = repository.getAlarm(alarmId) ?: return@launch
             
@@ -333,14 +399,14 @@ class HomeViewModel @Inject constructor(
         }
     }
 
-    fun dismissScheduleConflictDialog() {
+    private fun dismissScheduleConflictDialog() {
         _uiState.value = _uiState.value.copy(
             showScheduleConflictDialog = false,
             conflictingAlarmId = null
         )
     }
 
-    fun confirmScheduleConflict() {
+    private fun confirmScheduleConflict() {
         val newAlarmId = _uiState.value.conflictingAlarmId ?: return
         viewModelScope.launch {
             // 1. Get current state from DB
@@ -378,7 +444,7 @@ class HomeViewModel @Inject constructor(
      * Start a test alarm that simulates arrival after 10 seconds.
      * Useful for testing without actually moving.
      */
-    fun startTestAlarm(context: Context) {
+    private fun startTestAlarm(context: Context) {
         val serviceIntent = Intent(context, GeoAlarmService::class.java).apply {
             action = GeoAlarmService.ACTION_TEST
             putExtra(GeoAlarmService.EXTRA_ALARM_ID, "test")

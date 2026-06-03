@@ -36,6 +36,7 @@ import com.github.jimmy90109.geoalarm.ui.screens.MainScreen
 import com.github.jimmy90109.geoalarm.ui.screens.OnboardingScreen
 import com.github.jimmy90109.geoalarm.ui.screens.ScheduleEditScreen
 import com.github.jimmy90109.geoalarm.ui.viewmodel.AlarmEditViewModel
+import com.github.jimmy90109.geoalarm.ui.viewmodel.HomeAction
 import com.github.jimmy90109.geoalarm.ui.viewmodel.HomeViewModel
 import com.github.jimmy90109.geoalarm.ui.viewmodel.OnboardingViewModel
 import com.github.jimmy90109.geoalarm.ui.viewmodel.ScheduleEditViewModel
@@ -138,13 +139,13 @@ fun AppNavHost(
 
             LaunchedEffect(highlightedAlarmId) {
                 if (highlightedAlarmId != null) {
-                    viewModel.setHighlightedAlarm(highlightedAlarmId)
+                    viewModel.onAction(HomeAction.AlarmHighlighted(highlightedAlarmId))
                     savedStateHandle.remove<String>("highlight_alarm_id")
                 }
             }
             LaunchedEffect(highlightedScheduleId) {
                 if (highlightedScheduleId != null) {
-                    viewModel.setHighlightedSchedule(highlightedScheduleId)
+                    viewModel.onAction(HomeAction.ScheduleHighlighted(highlightedScheduleId))
                     savedStateHandle.remove<String>("highlight_schedule_id")
                 }
             }

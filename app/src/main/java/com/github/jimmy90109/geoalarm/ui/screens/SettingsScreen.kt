@@ -67,6 +67,8 @@ import androidx.lifecycle.compose.LocalLifecycleOwner
 import com.github.jimmy90109.geoalarm.R
 import com.github.jimmy90109.geoalarm.data.RingtoneSettings
 import com.github.jimmy90109.geoalarm.data.UpdateStatus
+import com.github.jimmy90109.geoalarm.ui.viewmodel.SettingsAction
+import com.github.jimmy90109.geoalarm.ui.viewmodel.SettingsEffect
 import com.github.jimmy90109.geoalarm.ui.viewmodel.SettingsViewModel
 import com.github.jimmy90109.geoalarm.utils.AudioUtils
 
@@ -84,10 +86,18 @@ fun SettingsScreen(
     val lifecycleOwner = LocalLifecycleOwner.current
     val ringtonePickerTitle = stringResource(R.string.ringtone_select)
 
+    LaunchedEffect(viewModel) {
+        viewModel.effects.collect { effect ->
+            when (effect) {
+                is SettingsEffect.OpenIntent -> context.startActivity(effect.intent)
+            }
+        }
+    }
+
     DisposableEffect(lifecycleOwner, context) {
         val observer = LifecycleEventObserver { _, event ->
             if (event == Lifecycle.Event.ON_RESUME) {
-                viewModel.retryPendingInstallIfPermitted(context)
+                viewModel.onAction(SettingsAction.PendingInstallRetryRequested(context))
             }
         }
         lifecycleOwner.lifecycle.addObserver(observer)
@@ -102,7 +112,7 @@ fun SettingsScreen(
             val uri = result.data?.getParcelableExtra<android.net.Uri>(RingtoneManager.EXTRA_RINGTONE_PICKED_URI)
             val uriString = uri?.toString()
             val name = if (uriString != null) AudioUtils.getRingtoneName(context, uriString) else null
-            viewModel.setRingtone(uriString, name)
+            viewModel.onAction(SettingsAction.RingtoneSelected(uriString, name))
         }
     }
 
@@ -144,7 +154,7 @@ fun SettingsScreen(
                         (updateStatus as UpdateStatus.Error).message,
                         android.widget.Toast.LENGTH_SHORT
                     ).show()
-                    viewModel.resetUpdateState()
+                    viewModel.onAction(SettingsAction.UpdateStateReset)
                 }
             }
 
@@ -154,7 +164,7 @@ fun SettingsScreen(
                     AlertDialog(
                         onDismissRequest = {
                             showUpdateDialog = false
-                            viewModel.resetUpdateState()
+                            viewModel.onAction(SettingsAction.UpdateStateReset)
                         },
                         title = { Text(stringResource(R.string.update_available_title)) },
                         text = {
@@ -168,7 +178,12 @@ fun SettingsScreen(
                         confirmButton = {
                             TextButton(
                                 onClick = {
-                                    viewModel.downloadUpdate(status.downloadUrl, status.sha256)
+                                    viewModel.onAction(
+                                        SettingsAction.UpdateDownloadRequested(
+                                            status.downloadUrl,
+                                            status.sha256
+                                        )
+                                    )
                                     showUpdateDialog = false
                                 },
                             ) {
@@ -179,7 +194,7 @@ fun SettingsScreen(
                             TextButton(
                                 onClick = {
                                     showUpdateDialog = false
-                                    viewModel.resetUpdateState()
+                                    viewModel.onAction(SettingsAction.UpdateStateReset)
                                 },
                             ) {
                                 Text(stringResource(R.string.cancel))
@@ -206,11 +221,11 @@ fun SettingsScreen(
                     ) {
                         SettingsGeneralSection(
                             currentLanguage = currentLanguage,
-                            onLanguageClick = { viewModel.showLanguageSheet() })
+                            onLanguageClick = { viewModel.onAction(SettingsAction.LanguageSheetRequested) })
                         Spacer(modifier = Modifier.height(16.dp))
                         SettingsAlarmSection(
                             ringtoneSettings = ringtoneSettings,
-                            onRingtoneClick = { viewModel.showRingtoneSheet() },
+                            onRingtoneClick = { viewModel.onAction(SettingsAction.RingtoneSheetRequested) },
                         )
                     }
 
@@ -223,7 +238,7 @@ fun SettingsScreen(
                     ) {
                         SettingsPrivacySection(
                             analyticsEnabled = analyticsEnabled,
-                            onPrivacyClick = { viewModel.showAnalyticsSheet() }
+                            onPrivacyClick = { viewModel.onAction(SettingsAction.AnalyticsSheetRequested) }
                         )
                         Spacer(modifier = Modifier.height(16.dp))
                         SettingsAboutSection(
@@ -231,9 +246,11 @@ fun SettingsScreen(
                             currentVersion = viewModel.currentVersion,
                             onUpdateClick = { status ->
                                 when (status) {
-                                    is UpdateStatus.Idle, is UpdateStatus.Error -> viewModel.checkForUpdates()
+                                    is UpdateStatus.Idle, is UpdateStatus.Error -> viewModel.onAction(SettingsAction.UpdateCheckRequested)
                                     is UpdateStatus.Available -> showUpdateDialog = true
-                                    is UpdateStatus.ReadyToInstall -> viewModel.installUpdate(status.apkUri, context)
+                                    is UpdateStatus.ReadyToInstall -> viewModel.onAction(
+                                        SettingsAction.UpdateInstallRequested(status.apkUri, context)
+                                    )
                                     is UpdateStatus.Downloading -> {
                                         android.widget.Toast.makeText(context, R.string.update_downloading, android.widget.Toast.LENGTH_SHORT).show()
                                     }
@@ -255,17 +272,17 @@ fun SettingsScreen(
                 ) {
                     SettingsGeneralSection(
                         currentLanguage = currentLanguage,
-                        onLanguageClick = { viewModel.showLanguageSheet() },
+                        onLanguageClick = { viewModel.onAction(SettingsAction.LanguageSheetRequested) },
                     )
                     Spacer(modifier = Modifier.height(16.dp))
                     SettingsAlarmSection(
                         ringtoneSettings = ringtoneSettings,
-                        onRingtoneClick = { viewModel.showRingtoneSheet() },
+                        onRingtoneClick = { viewModel.onAction(SettingsAction.RingtoneSheetRequested) },
                     )
                     Spacer(modifier = Modifier.height(16.dp))
                     SettingsPrivacySection(
                         analyticsEnabled = analyticsEnabled,
-                        onPrivacyClick = { viewModel.showAnalyticsSheet() }
+                        onPrivacyClick = { viewModel.onAction(SettingsAction.AnalyticsSheetRequested) }
                     )
                     Spacer(modifier = Modifier.height(24.dp))
                     SettingsAboutSection(
@@ -273,9 +290,11 @@ fun SettingsScreen(
                         currentVersion = viewModel.currentVersion,
                         onUpdateClick = { status ->
                             when (status) {
-                                is UpdateStatus.Idle, is UpdateStatus.Error -> viewModel.checkForUpdates()
+                                is UpdateStatus.Idle, is UpdateStatus.Error -> viewModel.onAction(SettingsAction.UpdateCheckRequested)
                                 is UpdateStatus.Available -> showUpdateDialog = true
-                                is UpdateStatus.ReadyToInstall -> viewModel.installUpdate(status.apkUri, context)
+                                is UpdateStatus.ReadyToInstall -> viewModel.onAction(
+                                    SettingsAction.UpdateInstallRequested(status.apkUri, context)
+                                )
                                 is UpdateStatus.Downloading -> {
                                     android.widget.Toast.makeText(context, R.string.update_downloading, android.widget.Toast.LENGTH_SHORT).show()
                                 }
@@ -291,7 +310,7 @@ fun SettingsScreen(
     // Language Bottom Sheet
     if (uiState.showLanguageSheet) {
         ModalBottomSheet(
-            onDismissRequest = { viewModel.dismissLanguageSheet() },
+            onDismissRequest = { viewModel.onAction(SettingsAction.LanguageSheetDismissed) },
             sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true),
         ) {
             Text(
@@ -309,14 +328,14 @@ fun SettingsScreen(
                     text = stringResource(R.string.locale_zh),
                     selected = currentLanguage == "zh",
                     enabled = true,
-                    onClick = { viewModel.setAppLocale("zh-TW") },
+                    onClick = { viewModel.onAction(SettingsAction.LocaleSelected("zh-TW")) },
                 )
                 HorizontalDivider(modifier = Modifier.padding(horizontal = 16.dp))
                 SettingsSelectionItem(
                     text = stringResource(R.string.locale_en),
                     selected = currentLanguage == "en",
                     enabled = true,
-                    onClick = { viewModel.setAppLocale("en") },
+                    onClick = { viewModel.onAction(SettingsAction.LocaleSelected("en")) },
                 )
             }
         }
@@ -325,7 +344,7 @@ fun SettingsScreen(
     // Ringtone Settings Bottom Sheet
     if (uiState.showRingtoneSheet) {
         ModalBottomSheet(
-            onDismissRequest = { viewModel.dismissRingtoneSheet() },
+            onDismissRequest = { viewModel.onAction(SettingsAction.RingtoneSheetDismissed) },
             sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true),
         ) {
             // Header with Switch
@@ -349,7 +368,7 @@ fun SettingsScreen(
                 }
                 Switch(
                     checked = ringtoneSettings.enabled,
-                    onCheckedChange = { viewModel.setRingtoneEnabled(it) }
+                    onCheckedChange = { viewModel.onAction(SettingsAction.RingtoneEnabledChanged(it)) }
                 )
             }
 
@@ -368,12 +387,18 @@ fun SettingsScreen(
                     isPlaying = uiState.isPreviewPlaying && uiState.isPreviewingDefault,
                     onPlayClick = {
                         if (uiState.isPreviewPlaying && uiState.isPreviewingDefault) {
-                            viewModel.stopPreview(context)
+                            viewModel.onAction(SettingsAction.PreviewStopRequested(context))
                         } else {
-                            viewModel.playPreview(context, null, isDefault = true)
+                            viewModel.onAction(
+                                SettingsAction.PreviewPlayRequested(
+                                    context,
+                                    null,
+                                    isDefault = true
+                                )
+                            )
                         }
                     },
-                    onClick = { viewModel.setRingtone(null, null) },
+                    onClick = { viewModel.onAction(SettingsAction.RingtoneSelected(null, null)) },
                 )
                 HorizontalDivider(modifier = Modifier.padding(horizontal = 16.dp))
                 // Custom ringtone option with play button
@@ -385,9 +410,15 @@ fun SettingsScreen(
                     onPlayClick = if (ringtoneSettings.ringtoneUri != null) {
                         {
                             if (uiState.isPreviewPlaying && !uiState.isPreviewingDefault) {
-                                viewModel.stopPreview(context)
+                                viewModel.onAction(SettingsAction.PreviewStopRequested(context))
                             } else {
-                                viewModel.playPreview(context, ringtoneSettings.ringtoneUri, isDefault = false)
+                                viewModel.onAction(
+                                    SettingsAction.PreviewPlayRequested(
+                                        context,
+                                        ringtoneSettings.ringtoneUri,
+                                        isDefault = false
+                                    )
+                                )
                             }
                         }
                     } else null,
@@ -410,7 +441,7 @@ fun SettingsScreen(
     // Analytics Settings Bottom Sheet
     if (uiState.showAnalyticsSheet) {
         ModalBottomSheet(
-            onDismissRequest = { viewModel.dismissAnalyticsSheet() },
+            onDismissRequest = { viewModel.onAction(SettingsAction.AnalyticsSheetDismissed) },
             sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true),
         ) {
             Row(
@@ -428,7 +459,7 @@ fun SettingsScreen(
 
                 Switch(
                     checked = analyticsEnabled,
-                    onCheckedChange = viewModel::setAnalyticsEnabled
+                    onCheckedChange = { viewModel.onAction(SettingsAction.AnalyticsEnabledChanged(it)) }
                 )
             }
 

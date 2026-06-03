@@ -43,6 +43,7 @@ import com.github.jimmy90109.geoalarm.ui.components.BottomNavBar
 import com.github.jimmy90109.geoalarm.ui.components.NavTab
 import com.github.jimmy90109.geoalarm.data.UpdateStatus
 import com.github.jimmy90109.geoalarm.ui.viewmodel.HomeViewModel
+import com.github.jimmy90109.geoalarm.ui.viewmodel.SettingsAction
 import com.github.jimmy90109.geoalarm.ui.viewmodel.SettingsViewModel
 
 @Composable
@@ -107,7 +108,7 @@ fun MainScreen(
 
     LaunchedEffect(isSettings) {
         if (!isSettings) {
-            settingsViewModel.checkForUpdatesOnHomeEntry()
+            settingsViewModel.onAction(SettingsAction.HomeEntryUpdateCheckRequested)
         }
     }
 
