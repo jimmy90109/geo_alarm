@@ -7,6 +7,7 @@ import com.github.jimmy90109.geoalarm.data.Alarm
 import com.github.jimmy90109.geoalarm.data.AlarmDataRepository
 import com.github.jimmy90109.geoalarm.data.AlarmSchedule
 import com.github.jimmy90109.geoalarm.service.ScheduleManager
+import com.github.jimmy90109.geoalarm.util.ExactAlarmPermissionHelper
 import com.github.jimmy90109.geoalarm.utils.SharedPreferenceManager
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableSharedFlow
@@ -31,6 +32,7 @@ data class ScheduleEditUiState(
     val savedScheduleId: String? = null, // ID of the schedule that was just saved (for highlight animation)
     val showDeleteConfirmDialog: Boolean = false,
     val showOnboarding: Boolean = false,
+    val showExactAlarmPermissionDialog: Boolean = false,
 )
 
 sealed interface ScheduleEditAction {
@@ -43,6 +45,9 @@ sealed interface ScheduleEditAction {
     data object DeleteRequested : ScheduleEditAction
     data object DeleteDialogDismissed : ScheduleEditAction
     data object DeleteConfirmed : ScheduleEditAction
+    data object ExactAlarmPermissionDialogDismissed : ScheduleEditAction
+    data object ExactAlarmPermissionSettingsRequested : ScheduleEditAction
+    data object ExactAlarmSettingsReturned : ScheduleEditAction
 }
 
 sealed interface ScheduleEditEffect {
@@ -80,6 +85,9 @@ class ScheduleEditViewModel @Inject constructor(
             ScheduleEditAction.DeleteRequested -> requestDeleteSchedule()
             ScheduleEditAction.DeleteDialogDismissed -> dismissDeleteConfirmDialog()
             ScheduleEditAction.DeleteConfirmed -> confirmDeleteSchedule()
+            ScheduleEditAction.ExactAlarmPermissionDialogDismissed -> dismissExactAlarmPermissionDialog()
+            ScheduleEditAction.ExactAlarmPermissionSettingsRequested -> hideExactAlarmPermissionDialog()
+            ScheduleEditAction.ExactAlarmSettingsReturned -> handleExactAlarmSettingsReturned()
         }
     }
 
@@ -90,6 +98,7 @@ class ScheduleEditViewModel @Inject constructor(
     
     // ScheduleManager instance
     private val scheduleManager = ScheduleManager(application)
+    private var pendingSaveAfterExactAlarmPermission = false
 
     val alarms: StateFlow<List<Alarm>> = repository.allAlarms
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
@@ -134,9 +143,15 @@ class ScheduleEditViewModel @Inject constructor(
         _uiState.value = _uiState.value.copy(selectedAlarmId = alarmId)
     }
 
-    private fun saveSchedule() {
+    private fun saveSchedule(checkExactAlarmPermission: Boolean = true) {
         val state = _uiState.value
         if (state.selectedAlarmId == null || state.daysOfWeek.isEmpty()) return
+
+        if (checkExactAlarmPermission && !ExactAlarmPermissionHelper.canScheduleExactAlarms(getApplication())) {
+            pendingSaveAfterExactAlarmPermission = true
+            _uiState.value = _uiState.value.copy(showExactAlarmPermissionDialog = true)
+            return
+        }
 
         val scheduleId = state.scheduleId ?: UUID.randomUUID().toString()
         val schedule = AlarmSchedule(
@@ -160,6 +175,25 @@ class ScheduleEditViewModel @Inject constructor(
             
             _uiState.value = _uiState.value.copy(savedScheduleId = scheduleId)
             _effects.emit(ScheduleEditEffect.NavigateBack(scheduleId))
+        }
+    }
+
+    private fun dismissExactAlarmPermissionDialog() {
+        pendingSaveAfterExactAlarmPermission = false
+        _uiState.value = _uiState.value.copy(showExactAlarmPermissionDialog = false)
+    }
+
+    private fun hideExactAlarmPermissionDialog() {
+        _uiState.value = _uiState.value.copy(showExactAlarmPermissionDialog = false)
+    }
+
+    private fun handleExactAlarmSettingsReturned() {
+        if (!pendingSaveAfterExactAlarmPermission) return
+
+        pendingSaveAfterExactAlarmPermission = false
+        _uiState.value = _uiState.value.copy(showExactAlarmPermissionDialog = false)
+        if (ExactAlarmPermissionHelper.canScheduleExactAlarms(getApplication())) {
+            saveSchedule(checkExactAlarmPermission = false)
         }
     }
     

@@ -71,6 +71,8 @@
     <string name="background_location_title">需要背景定位權限</string>
     <string name="background_location_message">此應用程式需要「一律允許」的定位權限才能在背景追蹤您的位置。請前往設定並將定位權限設為「一律允許」。</string>
     <string name="go_to_settings">前往設定</string>
+    <string name="exact_alarm_permission_title">需要精確鬧鐘權限</string>
+    <string name="exact_alarm_permission_message">排程需要「鬧鐘與提醒」權限，定位鬧鐘才能在您設定的時間準時提醒。請前往設定啟用此權限。</string>
     <string name="notification_permission_title">需要通知權限</string>
     <string name="notification_permission_message">此應用程式需要通知權限才能在您抵達目的地時提醒您。請前往設定並啟用通知。</string>
     <string name="notification_retry_title">需要通知權限</string>

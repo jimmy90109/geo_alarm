@@ -52,6 +52,7 @@ import androidx.compose.material3.TimePicker
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.material3.rememberTimePickerState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.key
@@ -65,14 +66,19 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.LocalConfiguration
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.lifecycle.compose.LocalLifecycleOwner
 import com.github.jimmy90109.geoalarm.R
 import com.github.jimmy90109.geoalarm.ui.components.DeleteScheduleDialog
+import com.github.jimmy90109.geoalarm.ui.components.ExactAlarmPermissionDialog
 import com.github.jimmy90109.geoalarm.ui.components.ScheduleOnboardingSheet
 import com.github.jimmy90109.geoalarm.ui.viewmodel.ScheduleEditAction
 import com.github.jimmy90109.geoalarm.ui.viewmodel.ScheduleEditEffect
@@ -88,9 +94,23 @@ fun ScheduleEditScreen(
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val alarms by viewModel.alarms.collectAsStateWithLifecycle()
+    val context = LocalContext.current
+    val lifecycleOwner = LocalLifecycleOwner.current
 
     LaunchedEffect(scheduleId) {
         viewModel.onAction(ScheduleEditAction.LoadSchedule(scheduleId))
+    }
+
+    DisposableEffect(lifecycleOwner) {
+        val observer = LifecycleEventObserver { _, event ->
+            if (event == Lifecycle.Event.ON_RESUME) {
+                viewModel.onAction(ScheduleEditAction.ExactAlarmSettingsReturned)
+            }
+        }
+        lifecycleOwner.lifecycle.addObserver(observer)
+        onDispose {
+            lifecycleOwner.lifecycle.removeObserver(observer)
+        }
     }
 
     // Use scheduleId as key to recreate the picker when schedule data is loaded
@@ -541,6 +561,14 @@ fun ScheduleEditScreen(
         DeleteScheduleDialog(
             onConfirm = { viewModel.onAction(ScheduleEditAction.DeleteConfirmed) },
             onDismiss = { viewModel.onAction(ScheduleEditAction.DeleteDialogDismissed) },
+        )
+    }
+
+    if (uiState.showExactAlarmPermissionDialog) {
+        ExactAlarmPermissionDialog(
+            context = context,
+            onDismiss = { viewModel.onAction(ScheduleEditAction.ExactAlarmPermissionDialogDismissed) },
+            onOpenSettings = { viewModel.onAction(ScheduleEditAction.ExactAlarmPermissionSettingsRequested) },
         )
     }
 

@@ -1,12 +1,16 @@
 package com.github.jimmy90109.geoalarm.appactions
 
+import android.content.Context
 import com.github.jimmy90109.geoalarm.data.AlarmDataRepository
 import com.github.jimmy90109.geoalarm.data.AlarmSchedule
+import com.github.jimmy90109.geoalarm.util.ExactAlarmPermissionHelper
+import dagger.hilt.android.qualifiers.ApplicationContext
 import java.time.LocalTime
 import java.util.UUID
 import javax.inject.Inject
 
 class CreateScheduleUseCase @Inject constructor(
+    @param:ApplicationContext private val context: Context,
     private val repository: AlarmDataRepository,
     private val scheduleGateway: ScheduleGateway
 ) {
@@ -54,6 +58,13 @@ class CreateScheduleUseCase @Inject constructor(
             return AppActionResult.Error(
                 code = "ERR_DUPLICATE_SCHEDULE",
                 message = "Schedule already exists"
+            )
+        }
+
+        if (!ExactAlarmPermissionHelper.canScheduleExactAlarms(context)) {
+            return AppActionResult.Error(
+                code = "ERR_EXACT_ALARM_PERMISSION_REQUIRED",
+                message = "Exact alarm permission is required to create schedules"
             )
         }
 

@@ -15,6 +15,7 @@ import com.github.jimmy90109.geoalarm.data.AlarmRepository
 import com.github.jimmy90109.geoalarm.data.AlarmSchedule
 import com.github.jimmy90109.geoalarm.receiver.ScheduleReceiver
 import com.github.jimmy90109.geoalarm.MainActivity
+import com.github.jimmy90109.geoalarm.util.ExactAlarmPermissionHelper
 import java.util.Calendar
 
 class ScheduleManager(private val context: Context) {
@@ -102,25 +103,16 @@ class ScheduleManager(private val context: Context) {
                 PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
             )
 
-            // Check for exact alarm permission on Android 12+
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
-                if (!alarmManager.canScheduleExactAlarms()) {
-                    Log.w("ScheduleManager", "Cannot schedule exact alarm: permission denied")
-                    // Fallback to inexact alarm or just return? 
-                    // For now, let's use setWindow as a fallback which doesn't require permission but is less precise
-                    // or just return to avoid crash. 
-                    // A better approach is to use setExact if possible, else setWindow.
-                    // But setWindow also requires permission for exact-like behavior in some contexts? 
-                    // Actually setWindow doesn't throw SecurityException.
-                     alarmManager.setWindow(
-                        AlarmManager.RTC_WAKEUP,
-                        nextTriggerTimeMillis,
-                        10 * 60 * 1000, // 10 minutes window
-                        pendingIntent
-                    )
-                    Log.d("ScheduleManager", "Scheduled inexact (window) ${schedule.id} for $nextTriggerTimeMillis")
-                    return
-                }
+            if (!ExactAlarmPermissionHelper.canScheduleExactAlarms(context)) {
+                Log.w("ScheduleManager", "Cannot schedule exact alarm: permission denied")
+                alarmManager.setWindow(
+                    AlarmManager.RTC_WAKEUP,
+                    nextTriggerTimeMillis,
+                    10 * 60 * 1000,
+                    pendingIntent
+                )
+                Log.d("ScheduleManager", "Scheduled inexact (window) ${schedule.id} for $nextTriggerTimeMillis")
+                return
             }
 
             // Use setExactAndAllowWhileIdle for reliable timing

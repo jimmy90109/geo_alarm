@@ -20,6 +20,8 @@ import com.github.jimmy90109.geoalarm.data.Alarm
 import com.github.jimmy90109.geoalarm.data.AlarmDataRepository
 import com.github.jimmy90109.geoalarm.data.AlarmSchedule
 import com.github.jimmy90109.geoalarm.service.GeoAlarmService
+import com.github.jimmy90109.geoalarm.service.ScheduleManager
+import com.github.jimmy90109.geoalarm.util.ExactAlarmPermissionHelper
 import com.github.jimmy90109.geoalarm.widget.GeoAlarmGlanceWidget
 import com.google.android.gms.location.LocationServices
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -37,6 +39,7 @@ data class HomeUiState(
     val showSingleAlarmDialog: Boolean = false,
     val showBackgroundPermissionDialog: Boolean = false,
     val showNotificationPermissionDialog: Boolean = false,
+    val showExactAlarmPermissionDialog: Boolean = false,
     val showNotificationRationaleDialog: Boolean = false,
     val showAlreadyAtDestinationDialog: Boolean = false,
     val showDeleteErrorDialog: Boolean = false,
@@ -59,6 +62,9 @@ sealed interface HomeAction {
     data object BackgroundPermissionDialogDismissed : HomeAction
     data object NotificationPermissionDialogRequested : HomeAction
     data object NotificationPermissionDialogDismissed : HomeAction
+    data object ExactAlarmPermissionDialogDismissed : HomeAction
+    data object ExactAlarmPermissionSettingsRequested : HomeAction
+    data object ExactAlarmSettingsReturned : HomeAction
     data object NotificationRationaleDialogRequested : HomeAction
     data object NotificationRationaleDialogDismissed : HomeAction
     data object AlreadyAtDestinationDialogRequested : HomeAction
@@ -95,6 +101,8 @@ class HomeViewModel @Inject constructor(
 ) : AndroidViewModel(application) {
 
     private val fusedLocationClient = LocationServices.getFusedLocationProviderClient(application)
+    private val scheduleManager = ScheduleManager(application)
+    private var pendingScheduleToEnable: AlarmSchedule? = null
 
     private val progressReceiver = object : BroadcastReceiver() {
         override fun onReceive(context: Context?, intent: Intent?) {
@@ -150,6 +158,9 @@ class HomeViewModel @Inject constructor(
             HomeAction.BackgroundPermissionDialogDismissed -> dismissBackgroundPermissionDialog()
             HomeAction.NotificationPermissionDialogRequested -> showNotificationPermissionDialog()
             HomeAction.NotificationPermissionDialogDismissed -> dismissNotificationPermissionDialog()
+            HomeAction.ExactAlarmPermissionDialogDismissed -> dismissExactAlarmPermissionDialog()
+            HomeAction.ExactAlarmPermissionSettingsRequested -> hideExactAlarmPermissionDialog()
+            HomeAction.ExactAlarmSettingsReturned -> handleExactAlarmSettingsReturned()
             HomeAction.NotificationRationaleDialogRequested -> showNotificationRationaleDialog()
             HomeAction.NotificationRationaleDialogDismissed -> dismissNotificationRationaleDialog()
             HomeAction.AlreadyAtDestinationDialogRequested -> showAlreadyAtDestinationDialog()
@@ -173,7 +184,19 @@ class HomeViewModel @Inject constructor(
 
     private fun toggleSchedule(schedule: AlarmSchedule, isEnabled: Boolean) {
         viewModelScope.launch {
-            repository.updateSchedule(schedule.copy(isEnabled = isEnabled))
+            if (isEnabled && !ExactAlarmPermissionHelper.canScheduleExactAlarms(getApplication())) {
+                pendingScheduleToEnable = schedule
+                _uiState.value = _uiState.value.copy(showExactAlarmPermissionDialog = true)
+                return@launch
+            }
+
+            val updatedSchedule = schedule.copy(isEnabled = isEnabled)
+            repository.updateSchedule(updatedSchedule)
+            if (isEnabled) {
+                scheduleManager.setSchedule(updatedSchedule)
+            } else {
+                scheduleManager.cancelSchedule(updatedSchedule)
+            }
         }
     }
 
@@ -208,6 +231,25 @@ class HomeViewModel @Inject constructor(
 
     private fun dismissNotificationPermissionDialog() {
         _uiState.value = _uiState.value.copy(showNotificationPermissionDialog = false)
+    }
+
+    private fun dismissExactAlarmPermissionDialog() {
+        pendingScheduleToEnable = null
+        _uiState.value = _uiState.value.copy(showExactAlarmPermissionDialog = false)
+    }
+
+    private fun hideExactAlarmPermissionDialog() {
+        _uiState.value = _uiState.value.copy(showExactAlarmPermissionDialog = false)
+    }
+
+    private fun handleExactAlarmSettingsReturned() {
+        val schedule = pendingScheduleToEnable ?: return
+        pendingScheduleToEnable = null
+        _uiState.value = _uiState.value.copy(showExactAlarmPermissionDialog = false)
+
+        if (ExactAlarmPermissionHelper.canScheduleExactAlarms(getApplication())) {
+            toggleSchedule(schedule, isEnabled = true)
+        }
     }
 
     private fun showNotificationRationaleDialog() {

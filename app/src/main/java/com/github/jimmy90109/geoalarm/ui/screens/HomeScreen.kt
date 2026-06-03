@@ -33,6 +33,7 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableLongStateOf
@@ -51,6 +52,8 @@ import androidx.compose.ui.zIndex
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Info
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleEventObserver
 import com.github.jimmy90109.geoalarm.R
 import com.github.jimmy90109.geoalarm.data.Alarm
 import com.github.jimmy90109.geoalarm.data.ScheduleWithAlarm
@@ -59,6 +62,7 @@ import com.github.jimmy90109.geoalarm.ui.components.AlreadyAtDestinationDialog
 import com.github.jimmy90109.geoalarm.ui.components.BackgroundLocationPermissionDialog
 import com.github.jimmy90109.geoalarm.ui.components.DeleteErrorDialog
 import com.github.jimmy90109.geoalarm.ui.components.EditDisabledDialog
+import com.github.jimmy90109.geoalarm.ui.components.ExactAlarmPermissionDialog
 import com.github.jimmy90109.geoalarm.ui.components.HomeFabMenu
 import com.github.jimmy90109.geoalarm.ui.components.NotificationPermissionDialog
 import com.github.jimmy90109.geoalarm.ui.components.NotificationRationaleDialog
@@ -68,6 +72,7 @@ import com.github.jimmy90109.geoalarm.ui.viewmodel.HomeAction
 import com.github.jimmy90109.geoalarm.ui.viewmodel.HomeUiState
 import com.github.jimmy90109.geoalarm.ui.viewmodel.HomeViewModel
 import com.github.jimmy90109.geoalarm.widget.GeoAlarmGlanceWidgetReceiver
+import androidx.lifecycle.compose.LocalLifecycleOwner
 import com.google.accompanist.permissions.ExperimentalPermissionsApi
 import com.google.accompanist.permissions.isGranted
 import com.google.accompanist.permissions.rememberMultiplePermissionsState
@@ -101,8 +106,21 @@ fun HomeScreen(
     val schedules by viewModel.schedules.collectAsStateWithLifecycle(initialValue = emptyList())
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val context = LocalContext.current
+    val lifecycleOwner = LocalLifecycleOwner.current
     val haptic = LocalHapticFeedback.current
     val scrollBehavior = TopAppBarDefaults.exitUntilCollapsedScrollBehavior()
+
+    DisposableEffect(lifecycleOwner) {
+        val observer = LifecycleEventObserver { _, event ->
+            if (event == Lifecycle.Event.ON_RESUME) {
+                viewModel.onAction(HomeAction.ExactAlarmSettingsReturned)
+            }
+        }
+        lifecycleOwner.lifecycle.addObserver(observer)
+        onDispose {
+            lifecycleOwner.lifecycle.removeObserver(observer)
+        }
+    }
 
     // Permissions
     val locationPermissionState = rememberMultiplePermissionsState(
@@ -434,6 +452,14 @@ private fun HomeDialogsContainer(
     if (uiState.showNotificationPermissionDialog) {
         NotificationPermissionDialog(
             context = context, onDismiss = { viewModel.onAction(HomeAction.NotificationPermissionDialogDismissed) })
+    }
+
+    if (uiState.showExactAlarmPermissionDialog) {
+        ExactAlarmPermissionDialog(
+            context = context,
+            onDismiss = { viewModel.onAction(HomeAction.ExactAlarmPermissionDialogDismissed) },
+            onOpenSettings = { viewModel.onAction(HomeAction.ExactAlarmPermissionSettingsRequested) },
+        )
     }
 
     if (uiState.showNotificationRationaleDialog) {
