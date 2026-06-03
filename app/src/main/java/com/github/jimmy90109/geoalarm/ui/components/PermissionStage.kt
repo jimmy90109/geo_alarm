@@ -33,7 +33,6 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.Checkbox
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -45,12 +44,12 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.github.jimmy90109.geoalarm.R
 import kotlinx.coroutines.delay
@@ -147,7 +146,7 @@ private fun PermissionActionButtons(
             enabled = !isGranted,
             modifier = Modifier
                 .fillMaxHeight()
-                .weight(leftWeight)
+                .then(if (isGranted) Modifier.weight(leftWeight) else Modifier.widthIn(min = 88.dp))
                 .graphicsLayer { alpha = leftAlpha }
         ) {
             Text(
@@ -181,6 +180,9 @@ private fun PermissionActionButtons(
             } else {
                 Text(
                     text = primaryActionLabel,
+                    maxLines = 1,
+                    softWrap = false,
+                    overflow = TextOverflow.Ellipsis,
                     style = MaterialTheme.typography.bodyLarge,
                     color = MaterialTheme.colorScheme.onPrimary
                 )
