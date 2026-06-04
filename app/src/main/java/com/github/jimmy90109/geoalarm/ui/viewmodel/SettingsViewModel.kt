@@ -13,6 +13,7 @@ import androidx.lifecycle.viewModelScope
 import com.github.jimmy90109.geoalarm.BuildConfig
 import com.github.jimmy90109.geoalarm.data.AlarmDataRepository
 import com.github.jimmy90109.geoalarm.data.AnalyticsPreferencesStore
+import com.github.jimmy90109.geoalarm.data.PaymentShortcut
 import com.github.jimmy90109.geoalarm.data.RingtoneSettings
 import com.github.jimmy90109.geoalarm.data.SettingsRepository
 import com.github.jimmy90109.geoalarm.data.UpdateManager
@@ -32,6 +33,7 @@ import kotlinx.coroutines.launch
 data class SettingsUiState(
     val showLanguageSheet: Boolean = false,
     val showRingtoneSheet: Boolean = false,
+    val showPaymentShortcutSheet: Boolean = false,
     val showAnalyticsSheet: Boolean = false,
     val anyAlarmEnabled: Boolean = false,
     val isPreviewPlaying: Boolean = false,
@@ -51,10 +53,13 @@ sealed interface SettingsAction {
     data object LanguageSheetDismissed : SettingsAction
     data object RingtoneSheetRequested : SettingsAction
     data object RingtoneSheetDismissed : SettingsAction
+    data object PaymentShortcutSheetRequested : SettingsAction
+    data object PaymentShortcutSheetDismissed : SettingsAction
     data object AnalyticsSheetRequested : SettingsAction
     data object AnalyticsSheetDismissed : SettingsAction
     data class RingtoneEnabledChanged(val enabled: Boolean) : SettingsAction
     data class RingtoneSelected(val uri: String?, val name: String?) : SettingsAction
+    data class PaymentShortcutSelected(val shortcut: PaymentShortcut?) : SettingsAction
     data class AnalyticsEnabledChanged(val enabled: Boolean) : SettingsAction
     data class PreviewPlayRequested(
         val context: Context,
@@ -94,6 +99,13 @@ class SettingsViewModel @Inject constructor(
             scope = viewModelScope,
             started = SharingStarted.WhileSubscribed(5000),
             initialValue = RingtoneSettings()
+        )
+
+    val paymentShortcut: StateFlow<PaymentShortcut?> = settingsRepository.paymentShortcutFlow
+        .stateIn(
+            scope = viewModelScope,
+            started = SharingStarted.WhileSubscribed(5000),
+            initialValue = null
         )
 
     val analyticsEnabled: StateFlow<Boolean> = analyticsPreferencesStore.analyticsEnabledFlow
@@ -137,10 +149,13 @@ class SettingsViewModel @Inject constructor(
             SettingsAction.LanguageSheetDismissed -> dismissLanguageSheet()
             SettingsAction.RingtoneSheetRequested -> showRingtoneSheet()
             SettingsAction.RingtoneSheetDismissed -> dismissRingtoneSheet()
+            SettingsAction.PaymentShortcutSheetRequested -> showPaymentShortcutSheet()
+            SettingsAction.PaymentShortcutSheetDismissed -> dismissPaymentShortcutSheet()
             SettingsAction.AnalyticsSheetRequested -> showAnalyticsSheet()
             SettingsAction.AnalyticsSheetDismissed -> dismissAnalyticsSheet()
             is SettingsAction.RingtoneEnabledChanged -> setRingtoneEnabled(action.enabled)
             is SettingsAction.RingtoneSelected -> setRingtone(action.uri, action.name)
+            is SettingsAction.PaymentShortcutSelected -> setPaymentShortcut(action.shortcut)
             is SettingsAction.AnalyticsEnabledChanged -> setAnalyticsEnabled(action.enabled)
             is SettingsAction.PreviewPlayRequested -> playPreview(
                 action.context,
@@ -239,6 +254,14 @@ class SettingsViewModel @Inject constructor(
         _uiState.value = _uiState.value.copy(showRingtoneSheet = false)
     }
 
+    private fun showPaymentShortcutSheet() {
+        _uiState.value = _uiState.value.copy(showPaymentShortcutSheet = true)
+    }
+
+    private fun dismissPaymentShortcutSheet() {
+        _uiState.value = _uiState.value.copy(showPaymentShortcutSheet = false)
+    }
+
     private fun showAnalyticsSheet() {
         _uiState.value = _uiState.value.copy(showAnalyticsSheet = true)
     }
@@ -256,6 +279,12 @@ class SettingsViewModel @Inject constructor(
     private fun setRingtone(uri: String?, name: String?) {
         viewModelScope.launch {
             settingsRepository.setRingtone(uri, name)
+        }
+    }
+
+    private fun setPaymentShortcut(shortcut: PaymentShortcut?) {
+        viewModelScope.launch {
+            settingsRepository.setPaymentShortcut(shortcut)
         }
     }
 

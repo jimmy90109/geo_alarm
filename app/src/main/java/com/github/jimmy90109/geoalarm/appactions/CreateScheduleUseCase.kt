@@ -9,11 +9,30 @@ import java.time.LocalTime
 import java.util.UUID
 import javax.inject.Inject
 
-class CreateScheduleUseCase @Inject constructor(
-    @param:ApplicationContext private val context: Context,
+class CreateScheduleUseCase private constructor(
     private val repository: AlarmDataRepository,
-    private val scheduleGateway: ScheduleGateway
+    private val scheduleGateway: ScheduleGateway,
+    private val canScheduleExactAlarms: () -> Boolean,
 ) {
+    @Inject
+    constructor(
+        @ApplicationContext context: Context,
+        repository: AlarmDataRepository,
+        scheduleGateway: ScheduleGateway,
+    ) : this(
+        repository = repository,
+        scheduleGateway = scheduleGateway,
+        canScheduleExactAlarms = { ExactAlarmPermissionHelper.canScheduleExactAlarms(context) },
+    )
+
+    internal constructor(
+        repository: AlarmDataRepository,
+        scheduleGateway: ScheduleGateway,
+    ) : this(
+        repository = repository,
+        scheduleGateway = scheduleGateway,
+        canScheduleExactAlarms = { true },
+    )
 
     data class Request(
         val alarmName: String,
@@ -61,7 +80,7 @@ class CreateScheduleUseCase @Inject constructor(
             )
         }
 
-        if (!ExactAlarmPermissionHelper.canScheduleExactAlarms(context)) {
+        if (!canScheduleExactAlarms()) {
             return AppActionResult.Error(
                 code = "ERR_EXACT_ALARM_PERMISSION_REQUIRED",
                 message = "Exact alarm permission is required to create schedules"

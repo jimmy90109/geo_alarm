@@ -15,13 +15,18 @@ import androidx.core.content.ContextCompat
 import androidx.glance.appwidget.updateAll
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
+import com.github.jimmy90109.geoalarm.BuildConfig
+import com.github.jimmy90109.geoalarm.R
 import com.github.jimmy90109.geoalarm.analytics.TelemetryTracker
 import com.github.jimmy90109.geoalarm.data.Alarm
 import com.github.jimmy90109.geoalarm.data.AlarmDataRepository
 import com.github.jimmy90109.geoalarm.data.AlarmSchedule
+import com.github.jimmy90109.geoalarm.data.PaymentShortcut
+import com.github.jimmy90109.geoalarm.data.SettingsRepository
 import com.github.jimmy90109.geoalarm.service.GeoAlarmService
 import com.github.jimmy90109.geoalarm.service.ScheduleManager
 import com.github.jimmy90109.geoalarm.util.ExactAlarmPermissionHelper
+import com.github.jimmy90109.geoalarm.utils.PaymentShortcutNotifier
 import com.github.jimmy90109.geoalarm.widget.GeoAlarmGlanceWidget
 import com.google.android.gms.location.LocationServices
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -30,6 +35,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 
@@ -47,6 +53,7 @@ data class HomeUiState(
     val conflictingAlarmId: String? = null, // Alarm ID that schedule tried to enable
     val monitoringProgress: Int = 0,
     val monitoringDistance: Int? = null,
+    val testActiveAlarm: Alarm? = null,
     val alarmToDelete: Alarm? = null, // Alarm pending deletion (shows confirmation dialog if not null)
     val highlightedAlarmId: String? = null, // Alarm ID to highlight (flash animation)
     val highlightedScheduleId: String? = null, // Schedule ID to highlight (flash animation)
@@ -83,6 +90,7 @@ sealed interface HomeAction {
         val context: Context,
         val trackArrivedTurnOff: Boolean = false
     ) : HomeAction
+    data class PaymentShortcutSelected(val shortcut: PaymentShortcut?) : HomeAction
     data class ScheduleIntentHandled(val alarmId: String) : HomeAction
     data object ScheduleConflictDialogDismissed : HomeAction
     data object ScheduleConflictConfirmed : HomeAction
@@ -98,7 +106,11 @@ class HomeViewModel @Inject constructor(
     application: Application,
     private val repository: AlarmDataRepository,
     private val telemetryTracker: TelemetryTracker,
+    private val settingsRepository: SettingsRepository,
 ) : AndroidViewModel(application) {
+    private companion object {
+        const val TEST_ALARM_ID = "debug_test_alarm"
+    }
 
     private val fusedLocationClient = LocationServices.getFusedLocationProviderClient(application)
     private val scheduleManager = ScheduleManager(application)
@@ -146,6 +158,11 @@ class HomeViewModel @Inject constructor(
         SharingStarted.WhileSubscribed(5000),
         emptyList()
     )
+    val paymentShortcut = settingsRepository.paymentShortcutFlow.stateIn(
+        viewModelScope,
+        SharingStarted.WhileSubscribed(5000),
+        null
+    )
 
     fun onAction(action: HomeAction) {
         when (action) {
@@ -175,6 +192,7 @@ class HomeViewModel @Inject constructor(
                 action.context,
                 action.trackArrivedTurnOff
             )
+            is HomeAction.PaymentShortcutSelected -> setPaymentShortcut(action.shortcut)
             is HomeAction.ScheduleIntentHandled -> handleScheduleIntent(action.alarmId)
             HomeAction.ScheduleConflictDialogDismissed -> dismissScheduleConflictDialog()
             HomeAction.ScheduleConflictConfirmed -> confirmScheduleConflict()
@@ -402,14 +420,29 @@ class HomeViewModel @Inject constructor(
         viewModelScope.launch {
             if (trackArrivedTurnOff) {
                 telemetryTracker.trackArrivedTurnOff()
+                settingsRepository.paymentShortcutFlow.first()
+                    ?.let { PaymentShortcutNotifier.show(context, it) }
+            }
+            if (alarm.id == TEST_ALARM_ID) {
+                _uiState.value = _uiState.value.copy(
+                    testActiveAlarm = null,
+                    monitoringProgress = 0,
+                    monitoringDistance = null,
+                )
+                stopMonitoringService(context)
+                GeoAlarmGlanceWidget().updateAll(context)
+                return@launch
             }
             repository.update(alarm.copy(isEnabled = false))
             // Stop Service after DB state is persisted to avoid widget refresh races.
-            val serviceIntent = Intent(context, GeoAlarmService::class.java).apply {
-                action = GeoAlarmService.ACTION_STOP
-            }
-            context.startService(serviceIntent)
+            stopMonitoringService(context)
             GeoAlarmGlanceWidget().updateAll(context)
+        }
+    }
+
+    private fun setPaymentShortcut(shortcut: PaymentShortcut?) {
+        viewModelScope.launch {
+            settingsRepository.setPaymentShortcut(shortcut)
         }
     }
 
@@ -487,15 +520,38 @@ class HomeViewModel @Inject constructor(
      * Useful for testing without actually moving.
      */
     private fun startTestAlarm(context: Context) {
+        if (!BuildConfig.DEBUG || alarms.value.any { it.isEnabled }) return
+
+        val testAlarm = Alarm(
+            id = TEST_ALARM_ID,
+            name = context.getString(R.string.test_alarm_name),
+            latitude = 0.0,
+            longitude = 0.0,
+            radius = 100.0,
+            isEnabled = true,
+        )
+        _uiState.value = _uiState.value.copy(
+            testActiveAlarm = testAlarm,
+            monitoringProgress = 0,
+            monitoringDistance = 1000,
+        )
+
         val serviceIntent = Intent(context, GeoAlarmService::class.java).apply {
             action = GeoAlarmService.ACTION_TEST
-            putExtra(GeoAlarmService.EXTRA_ALARM_ID, "test")
-            putExtra(GeoAlarmService.EXTRA_NAME, "Test Alarm")
+            putExtra(GeoAlarmService.EXTRA_ALARM_ID, TEST_ALARM_ID)
+            putExtra(GeoAlarmService.EXTRA_NAME, testAlarm.name)
         }
         if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.O) {
             context.startForegroundService(serviceIntent)
         } else {
             context.startService(serviceIntent)
         }
+    }
+
+    private fun stopMonitoringService(context: Context) {
+        val serviceIntent = Intent(context, GeoAlarmService::class.java).apply {
+            action = GeoAlarmService.ACTION_STOP
+        }
+        context.startService(serviceIntent)
     }
 }

@@ -6,9 +6,13 @@ import android.content.res.Configuration
 import android.media.RingtoneManager
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -16,15 +20,19 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.selection.selectable
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
+import androidx.core.graphics.drawable.toBitmap
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.AccountBalanceWallet
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.Stop
 import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -51,26 +59,33 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.ImageBitmap
+import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.input.nestedscroll.nestedScroll
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import com.github.jimmy90109.geoalarm.R
+import com.github.jimmy90109.geoalarm.data.PaymentShortcut
 import com.github.jimmy90109.geoalarm.data.RingtoneSettings
 import com.github.jimmy90109.geoalarm.data.UpdateStatus
 import com.github.jimmy90109.geoalarm.ui.viewmodel.SettingsAction
 import com.github.jimmy90109.geoalarm.ui.viewmodel.SettingsEffect
 import com.github.jimmy90109.geoalarm.ui.viewmodel.SettingsViewModel
 import com.github.jimmy90109.geoalarm.utils.AudioUtils
+import com.github.jimmy90109.geoalarm.utils.PaymentShortcutNotifier
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalMaterial3ExpressiveApi::class)
 @Composable
@@ -80,6 +95,7 @@ fun SettingsScreen(
     val scrollBehavior = TopAppBarDefaults.exitUntilCollapsedScrollBehavior()
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val ringtoneSettings by viewModel.ringtoneSettings.collectAsStateWithLifecycle()
+    val paymentShortcut by viewModel.paymentShortcut.collectAsStateWithLifecycle()
     val analyticsEnabled by viewModel.analyticsEnabled.collectAsStateWithLifecycle()
     val currentLanguage = viewModel.currentLanguage
     val context = LocalContext.current
@@ -225,7 +241,11 @@ fun SettingsScreen(
                         Spacer(modifier = Modifier.height(16.dp))
                         SettingsAlarmSection(
                             ringtoneSettings = ringtoneSettings,
+                            paymentShortcut = paymentShortcut,
                             onRingtoneClick = { viewModel.onAction(SettingsAction.RingtoneSheetRequested) },
+                            onPaymentShortcutClick = {
+                                viewModel.onAction(SettingsAction.PaymentShortcutSheetRequested)
+                            },
                         )
                     }
 
@@ -277,7 +297,11 @@ fun SettingsScreen(
                     Spacer(modifier = Modifier.height(16.dp))
                     SettingsAlarmSection(
                         ringtoneSettings = ringtoneSettings,
+                        paymentShortcut = paymentShortcut,
                         onRingtoneClick = { viewModel.onAction(SettingsAction.RingtoneSheetRequested) },
+                        onPaymentShortcutClick = {
+                            viewModel.onAction(SettingsAction.PaymentShortcutSheetRequested)
+                        },
                     )
                     Spacer(modifier = Modifier.height(16.dp))
                     SettingsPrivacySection(
@@ -438,6 +462,15 @@ fun SettingsScreen(
         }
     }
 
+    if (uiState.showPaymentShortcutSheet) {
+        PaymentShortcutBottomSheet(
+            selectedShortcut = paymentShortcut,
+            onSelected = { viewModel.onAction(SettingsAction.PaymentShortcutSelected(it)) },
+            onPreview = { PaymentShortcutNotifier.show(context, it) },
+            onDismiss = { viewModel.onAction(SettingsAction.PaymentShortcutSheetDismissed) },
+        )
+    }
+
     // Analytics Settings Bottom Sheet
     if (uiState.showAnalyticsSheet) {
         ModalBottomSheet(
@@ -488,7 +521,9 @@ private fun SettingsGeneralSection(
 @Composable
 private fun SettingsAlarmSection(
     ringtoneSettings: RingtoneSettings,
-    onRingtoneClick: () -> Unit
+    paymentShortcut: PaymentShortcut?,
+    onRingtoneClick: () -> Unit,
+    onPaymentShortcutClick: () -> Unit,
 ) {
     SettingsSectionHeader(title = stringResource(R.string.settings_section_alarm))
     
@@ -502,6 +537,244 @@ private fun SettingsAlarmSection(
         },
         onClick = onRingtoneClick,
     )
+    Spacer(modifier = Modifier.height(8.dp))
+    SettingsCard(
+        title = stringResource(R.string.settings_payment_shortcut),
+        value = paymentShortcut?.displayName ?: stringResource(R.string.payment_shortcut_off),
+        onClick = onPaymentShortcutClick,
+    )
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun PaymentShortcutBottomSheet(
+    selectedShortcut: PaymentShortcut?,
+    onSelected: (PaymentShortcut?) -> Unit,
+    onPreview: (PaymentShortcut) -> Unit,
+    onDismiss: () -> Unit,
+) {
+    ModalBottomSheet(
+        onDismissRequest = onDismiss,
+        sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true),
+    ) {
+        val context = LocalContext.current
+        val installedShortcuts = remember {
+            PaymentShortcut.entries.filter {
+                context.packageManager.getLaunchIntentForPackage(it.packageName) != null
+            }
+        }
+        val effectiveShortcut = selectedShortcut?.takeIf { it in installedShortcuts }
+        val enabled = effectiveShortcut != null
+
+        LaunchedEffect(selectedShortcut, installedShortcuts) {
+            if (selectedShortcut != null && selectedShortcut !in installedShortcuts) {
+                onSelected(null)
+            }
+        }
+
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(start = 24.dp, end = 16.dp, bottom = 8.dp),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Text(
+                text = stringResource(R.string.settings_payment_shortcut),
+                style = MaterialTheme.typography.titleLarge,
+                modifier = Modifier.weight(1f)
+            )
+            Switch(
+                checked = enabled,
+                enabled = installedShortcuts.isNotEmpty(),
+                onCheckedChange = { checked ->
+                    onSelected(if (checked) effectiveShortcut ?: installedShortcuts.first() else null)
+                },
+            )
+        }
+        Text(
+            text = stringResource(R.string.payment_shortcut_description),
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            modifier = Modifier.padding(start = 24.dp, end = 24.dp, bottom = 16.dp)
+        )
+        if (installedShortcuts.isEmpty()) {
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(148.dp)
+                    .padding(horizontal = 16.dp),
+                contentAlignment = Alignment.Center,
+            ) {
+                Text(
+                    text = stringResource(R.string.payment_shortcut_no_installed_apps),
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    textAlign = TextAlign.Center,
+                )
+            }
+        } else {
+            BoxWithConstraints(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 16.dp),
+            ) {
+                val columns = when {
+                    maxWidth >= 420.dp -> 5
+                    maxWidth >= 340.dp -> 3
+                    else -> 2
+                }
+                val rows = remember(installedShortcuts, columns) { installedShortcuts.chunked(columns) }
+
+                Column(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    verticalArrangement = Arrangement.spacedBy(10.dp),
+                ) {
+                    rows.forEach { rowShortcuts ->
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .height(66.dp),
+                            horizontalArrangement = Arrangement.spacedBy(10.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                        ) {
+                            rowShortcuts.forEach { shortcut ->
+                                Box(modifier = Modifier.weight(1f)) {
+                                    PaymentShortcutGridCard(
+                                        shortcut = shortcut,
+                                        selected = effectiveShortcut == shortcut,
+                                        enabled = true,
+                                        onClick = { onSelected(shortcut) },
+                                        loadIcon = {
+                                            runCatching {
+                                                context.packageManager
+                                                    .getApplicationIcon(shortcut.packageName)
+                                                    .toBitmap(width = 96, height = 96)
+                                                    .asImageBitmap()
+                                            }.getOrNull()
+                                        },
+                                    )
+                                }
+                            }
+                            repeat(columns - rowShortcuts.size) {
+                                Spacer(modifier = Modifier.weight(1f))
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        Button(
+            enabled = effectiveShortcut != null,
+            onClick = { effectiveShortcut?.let(onPreview) },
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(start = 16.dp, end = 16.dp, top = 20.dp, bottom = 16.dp)
+                .height(52.dp),
+            shape = RoundedCornerShape(percent = 50),
+        ) {
+            Text(stringResource(R.string.preview))
+        }
+    }
+}
+
+@Composable
+private fun PaymentShortcutGridCard(
+    shortcut: PaymentShortcut,
+    selected: Boolean,
+    enabled: Boolean,
+    onClick: () -> Unit,
+    loadIcon: () -> ImageBitmap?,
+) {
+    val haptic = LocalHapticFeedback.current
+    val icon = remember(shortcut.packageName) { loadIcon() }
+    val shape = RoundedCornerShape(16.dp)
+    Card(
+        modifier = Modifier
+            .fillMaxWidth()
+            .fillMaxSize()
+            .clip(shape)
+            .clickable(enabled = enabled) {
+                haptic.performHapticFeedback(HapticFeedbackType.ContextClick)
+                onClick()
+            },
+        colors = CardDefaults.cardColors(
+            containerColor = when {
+                !enabled -> MaterialTheme.colorScheme.surfaceContainer.copy(alpha = 0.58f)
+                selected -> MaterialTheme.colorScheme.primaryContainer
+                else -> MaterialTheme.colorScheme.surfaceContainer
+            }
+        ),
+        border = if (selected) {
+            BorderStroke(2.dp, MaterialTheme.colorScheme.primary)
+        } else {
+            null
+        },
+        shape = shape,
+    ) {
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(8.dp),
+        ) {
+            Row(
+                modifier = Modifier
+                    .align(Alignment.Center)
+                    .fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                if (icon != null) {
+                    Image(
+                        bitmap = icon,
+                        contentDescription = null,
+                        modifier = Modifier
+                            .size(34.dp)
+                            .clip(RoundedCornerShape(8.dp)),
+                        contentScale = ContentScale.Fit,
+                    )
+                } else {
+                    Box(
+                        modifier = Modifier
+                            .size(34.dp)
+                            .clip(RoundedCornerShape(8.dp))
+                            .background(MaterialTheme.colorScheme.secondaryContainer),
+                        contentAlignment = Alignment.Center,
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.AccountBalanceWallet,
+                            contentDescription = null,
+                            tint = MaterialTheme.colorScheme.onSecondaryContainer,
+                        )
+                    }
+                }
+                Text(
+                    text = shortcut.displayName,
+                    style = MaterialTheme.typography.bodySmall,
+                    modifier = Modifier.weight(1f),
+                    color = if (enabled) {
+                        MaterialTheme.colorScheme.onSurface
+                    } else {
+                        MaterialTheme.colorScheme.onSurface.copy(alpha = 0.38f)
+                    },
+                    textAlign = TextAlign.Center,
+                    maxLines = 2,
+                    overflow = TextOverflow.Ellipsis,
+                )
+            }
+            if (selected) {
+                Icon(
+                    imageVector = Icons.Default.Check,
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.primary,
+                    modifier = Modifier
+                        .align(Alignment.TopEnd)
+                        .size(18.dp),
+                )
+            }
+        }
+    }
 }
 
 @Composable

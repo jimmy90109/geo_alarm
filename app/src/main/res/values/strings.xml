@@ -78,6 +78,7 @@
     <string name="notification_retry_title">Notification Required</string>
     <string name="notification_retry_message">Notifications are essential for alerts. Please allow access.</string>
     <string name="retry">Retry</string>
+    <string name="preview">Preview</string>
     <string name="battery_warning_title">Allow Background Execution</string>
     <string name="battery_warning_message">To ensure the alarm works reliably, please turn off battery optimization for this app.</string>
     <string name="fix_now">Fix Now</string>
@@ -99,6 +100,14 @@
     <string name="notification_high_accuracy">Almost there!</string>
     <string name="notification_schedule_title">Heading to %s?</string>
     <string name="notification_schedule_message">Click to enable alarm</string>
+    <string name="payment_shortcut_channel_name">Payment shortcut</string>
+    <string name="payment_shortcut_channel_description">Shows your selected payment app after arrival</string>
+    <string name="payment_shortcut_notification_title">Payment app ready</string>
+    <string name="payment_shortcut_notification_text">Tap to open %s</string>
+    <string name="payment_shortcut_notification_big_text">Open %s to show your ride code.</string>
+    <string name="payment_shortcut_notification_action">Open %s</string>
+    <string name="test_alarm_name">Test alarm</string>
+    <string name="test_alarm_started">Test alarm started</string>
 
     <!-- Settings -->
     <string name="settings">Settings</string>
@@ -111,6 +120,12 @@
     <string name="settings_section_alarm">Alarm</string>
     <string name="settings_section_privacy_improvement">Privacy &amp; Improvements</string>
     <string name="settings_ringtone">Ringtone</string>
+    <string name="settings_payment_shortcut">Payment app shortcut</string>
+    <string name="payment_shortcut_off">Off</string>
+    <string name="payment_shortcut_description">After you turn off an arrival alarm, show a shortcut notification for your usual ride code app.</string>
+    <string name="payment_shortcut_no_installed_apps">No supported payment apps are installed on this device.</string>
+    <string name="payment_shortcut_active_prompt_off">Set payment shortcut after turning off</string>
+    <string name="payment_shortcut_active_prompt_on">Will show %s shortcut after turning off</string>
     <string name="ringtone_mode_none">Off</string>
     <string name="ringtone_default">Default ringtone</string>
     <string name="ringtone_select">Select ringtone…</string>

@@ -20,6 +20,7 @@ class SettingsRepository @Inject constructor(
         private val RINGTONE_ENABLED_KEY = booleanPreferencesKey("ringtone_enabled")
         private val RINGTONE_URI_KEY = stringPreferencesKey("ringtone_uri")
         private val RINGTONE_NAME_KEY = stringPreferencesKey("ringtone_name")
+        private val PAYMENT_SHORTCUT_KEY = stringPreferencesKey("payment_shortcut")
     }
 
     val ringtoneSettingsFlow: Flow<RingtoneSettings> = context.dataStore.data.map { preferences ->
@@ -28,6 +29,10 @@ class SettingsRepository @Inject constructor(
             ringtoneUri = preferences[RINGTONE_URI_KEY],
             ringtoneName = preferences[RINGTONE_NAME_KEY]
         )
+    }
+
+    val paymentShortcutFlow: Flow<PaymentShortcut?> = context.dataStore.data.map { preferences ->
+        PaymentShortcut.fromId(preferences[PAYMENT_SHORTCUT_KEY])
     }
 
     suspend fun setRingtoneEnabled(enabled: Boolean) {
@@ -47,6 +52,16 @@ class SettingsRepository @Inject constructor(
                 preferences[RINGTONE_NAME_KEY] = name
             } else {
                 preferences.remove(RINGTONE_NAME_KEY)
+            }
+        }
+    }
+
+    suspend fun setPaymentShortcut(shortcut: PaymentShortcut?) {
+        context.dataStore.edit { preferences ->
+            if (shortcut != null) {
+                preferences[PAYMENT_SHORTCUT_KEY] = shortcut.id
+            } else {
+                preferences.remove(PAYMENT_SHORTCUT_KEY)
             }
         }
     }

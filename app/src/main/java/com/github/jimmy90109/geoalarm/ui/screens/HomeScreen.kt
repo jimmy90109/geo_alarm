@@ -7,6 +7,7 @@ import android.content.ComponentName
 import android.content.Context
 import android.content.ContextWrapper
 import android.os.PowerManager
+import android.widget.Toast
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.AnimatedContent
@@ -15,7 +16,9 @@ import androidx.compose.animation.fadeOut
 import androidx.compose.animation.slideInHorizontally
 import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.animation.togetherWith
+import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.PaddingValues
@@ -23,10 +26,10 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.offset
+import androidx.compose.foundation.layout.size
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.LargeFlexibleTopAppBar
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
@@ -51,9 +54,10 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.zIndex
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.outlined.Info
+import androidx.compose.material.icons.automirrored.outlined.HelpOutline
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
+import com.github.jimmy90109.geoalarm.BuildConfig
 import com.github.jimmy90109.geoalarm.R
 import com.github.jimmy90109.geoalarm.data.Alarm
 import com.github.jimmy90109.geoalarm.data.ScheduleWithAlarm
@@ -71,6 +75,7 @@ import com.github.jimmy90109.geoalarm.ui.components.SingleAlarmDialog
 import com.github.jimmy90109.geoalarm.ui.viewmodel.HomeAction
 import com.github.jimmy90109.geoalarm.ui.viewmodel.HomeUiState
 import com.github.jimmy90109.geoalarm.ui.viewmodel.HomeViewModel
+import com.github.jimmy90109.geoalarm.utils.PaymentShortcutNotifier
 import com.github.jimmy90109.geoalarm.widget.GeoAlarmGlanceWidgetReceiver
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import com.google.accompanist.permissions.ExperimentalPermissionsApi
@@ -81,7 +86,8 @@ import com.google.accompanist.permissions.rememberPermissionState
 @OptIn(
     ExperimentalMaterial3Api::class,
     ExperimentalPermissionsApi::class,
-    ExperimentalMaterial3ExpressiveApi::class
+    ExperimentalMaterial3ExpressiveApi::class,
+    ExperimentalFoundationApi::class,
 )
 /**
  * The main screen of the application displaying the list of alarms.
@@ -105,6 +111,7 @@ fun HomeScreen(
     val alarms by viewModel.alarms.collectAsStateWithLifecycle(initialValue = emptyList())
     val schedules by viewModel.schedules.collectAsStateWithLifecycle(initialValue = emptyList())
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
+    val paymentShortcut by viewModel.paymentShortcut.collectAsStateWithLifecycle()
     val context = LocalContext.current
     val lifecycleOwner = LocalLifecycleOwner.current
     val haptic = LocalHapticFeedback.current
@@ -136,6 +143,7 @@ fun HomeScreen(
 
     // FAB Menu State
     var showFabMenu by remember { mutableStateOf(false) }
+    var showPaymentShortcutSheet by remember { mutableStateOf(false) }
 
     // Helper: Check location permission -> Enable Alarm
     val checkLocationAndEnableAlarm = { alarm: Alarm ->
@@ -207,7 +215,7 @@ fun HomeScreen(
     }
 
     // Check for active alarm
-    val activeAlarm = alarms.find { it.isEnabled }
+    val activeAlarm = uiState.testActiveAlarm ?: alarms.find { it.isEnabled }
 
     Scaffold(
         modifier = Modifier.nestedScroll(scrollBehavior.nestedScrollConnection),
@@ -221,23 +229,30 @@ fun HomeScreen(
                 },
                 scrollBehavior = scrollBehavior,
                 actions = {
-//                    // Debug test button
-//                    androidx.compose.material3.TextButton(
-//                        onClick = {
-//                            haptic.performHapticFeedback(HapticFeedbackType.ContextClick)
-//                            viewModel.onAction(HomeAction.TestAlarmStarted(context))
-//                        }
-//                    ) {
-//                        Text("🧪 Test Alarm (10s)")
-//                    },
-                    IconButton(
-                        onClick = {
-                            haptic.performHapticFeedback(HapticFeedbackType.ContextClick)
-                            onOpenOnboarding()
-                        }
+                    Box(
+                        modifier = Modifier
+                            .size(48.dp)
+                            .combinedClickable(
+                                onClick = {
+                                    haptic.performHapticFeedback(HapticFeedbackType.ContextClick)
+                                    onOpenOnboarding()
+                                },
+                                onLongClick = {
+                                    if (BuildConfig.DEBUG && activeAlarm == null) {
+                                        haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                                        viewModel.onAction(HomeAction.TestAlarmStarted(context))
+                                        Toast.makeText(
+                                            context,
+                                            R.string.test_alarm_started,
+                                            Toast.LENGTH_SHORT,
+                                        ).show()
+                                    }
+                                },
+                            ),
+                        contentAlignment = Alignment.Center,
                     ) {
                         Icon(
-                            imageVector = Icons.Outlined.Info,
+                            imageVector = Icons.AutoMirrored.Outlined.HelpOutline,
                             contentDescription = stringResource(R.string.open_onboarding)
                         )
                     }
@@ -312,6 +327,8 @@ fun HomeScreen(
                         alarm = targetAlarm,
                         progress = uiState.monitoringProgress,
                         distanceMeters = uiState.monitoringDistance,
+                        paymentShortcut = paymentShortcut,
+                        onPaymentShortcutClick = { showPaymentShortcutSheet = true },
                         onStopAlarm = { isArrived ->
                             haptic.performHapticFeedback(HapticFeedbackType.Confirm)
                             viewModel.onAction(
@@ -399,6 +416,17 @@ fun HomeScreen(
             }
         },
     )
+
+    if (showPaymentShortcutSheet) {
+        PaymentShortcutBottomSheet(
+            selectedShortcut = paymentShortcut,
+            onSelected = {
+                viewModel.onAction(HomeAction.PaymentShortcutSelected(it))
+            },
+            onPreview = { PaymentShortcutNotifier.show(context, it) },
+            onDismiss = { showPaymentShortcutSheet = false },
+        )
+    }
 
     // Battery Optimization Check
     LaunchedEffect(alarms) {

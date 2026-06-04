@@ -27,10 +27,10 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.automirrored.outlined.HelpOutline
 import androidx.compose.material.icons.filled.ArrowDropDown
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Delete
-import androidx.compose.material.icons.outlined.Info
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonGroup
 import androidx.compose.material3.ButtonGroupDefaults
@@ -242,7 +242,7 @@ fun ScheduleEditScreen(
                                     },
                                 ) {
                                     Icon(
-                                        Icons.Outlined.Info,
+                                        Icons.AutoMirrored.Outlined.HelpOutline,
                                         contentDescription = stringResource(R.string.schedule_onboarding_title)
                                     )
                                 }
@@ -404,7 +404,7 @@ fun ScheduleEditScreen(
                             },
                         ) {
                             Icon(
-                                Icons.Outlined.Info,
+                                Icons.AutoMirrored.Outlined.HelpOutline,
                                 contentDescription = stringResource(R.string.schedule_onboarding_title)
                             )
                         }

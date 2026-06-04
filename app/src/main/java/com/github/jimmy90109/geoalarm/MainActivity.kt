@@ -20,14 +20,17 @@ import com.github.jimmy90109.geoalarm.navigation.AppRoutes
 import androidx.navigation.compose.rememberNavController
 import com.github.jimmy90109.geoalarm.data.AlarmDataRepository
 import com.github.jimmy90109.geoalarm.data.OnboardingRepository
+import com.github.jimmy90109.geoalarm.data.SettingsRepository
 import com.github.jimmy90109.geoalarm.navigation.AppNavHost
 import com.github.jimmy90109.geoalarm.service.GeoAlarmService
 import com.github.jimmy90109.geoalarm.ui.theme.GeoAlarmTheme
 import com.github.jimmy90109.geoalarm.ui.viewmodel.HomeAction
 import com.github.jimmy90109.geoalarm.ui.viewmodel.HomeViewModel
+import com.github.jimmy90109.geoalarm.utils.PaymentShortcutNotifier
 import com.github.jimmy90109.geoalarm.widget.GeoAlarmGlanceWidget
 import androidx.glance.appwidget.updateAll
 import dagger.hilt.android.AndroidEntryPoint
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
@@ -46,6 +49,9 @@ class MainActivity : AppCompatActivity() {
 
     @Inject
     lateinit var onboardingRepository: OnboardingRepository
+
+    @Inject
+    lateinit var settingsRepository: SettingsRepository
 
     @Inject
     lateinit var createGeoAlarmUseCase: CreateGeoAlarmUseCase
@@ -111,6 +117,8 @@ class MainActivity : AppCompatActivity() {
                     if (alarm != null) {
                         if (isArrivedTurnOff) {
                             telemetryTracker.trackArrivedTurnOff()
+                            settingsRepository.paymentShortcutFlow.first()
+                                ?.let { PaymentShortcutNotifier.show(this@MainActivity, it) }
                         }
                         alarmRepository.update(alarm.copy(isEnabled = false))
                         // Also stop the service explicitly just in case
