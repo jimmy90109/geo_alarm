@@ -1,0 +1,140 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>GeoAlarm</title>
+  <meta name="description" content="GeoAlarm is a location-based alarm app for Android.">
+  <style>
+    :root {
+      color-scheme: light dark;
+      --bg: #f7f8fb;
+      --fg: #1f2933;
+      --muted: #5d6876;
+      --panel: #ffffff;
+      --border: #d8dee8;
+      --accent: #2563eb;
+    }
+
+    @media (prefers-color-scheme: dark) {
+      :root {
+        --bg: #111827;
+        --fg: #f3f4f6;
+        --muted: #c4c9d4;
+        --panel: #182131;
+        --border: #2c3748;
+        --accent: #7db1ff;
+      }
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      background: var(--bg);
+      color: var(--fg);
+      font: 16px/1.6 system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    }
+
+    main {
+      width: min(880px, calc(100% - 32px));
+      margin: 0 auto;
+      padding: 72px 0;
+    }
+
+    header {
+      margin-bottom: 40px;
+    }
+
+    h1 {
+      margin: 0 0 12px;
+      font-size: clamp(2.5rem, 7vw, 4.8rem);
+      line-height: 1;
+      letter-spacing: 0;
+    }
+
+    h2 {
+      margin: 0 0 12px;
+      font-size: 1.35rem;
+    }
+
+    p {
+      margin: 0 0 18px;
+      color: var(--muted);
+    }
+
+    a {
+      color: var(--accent);
+    }
+
+    .lead {
+      max-width: 680px;
+      font-size: 1.18rem;
+    }
+
+    .panel {
+      margin-top: 28px;
+      padding: 24px;
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+    }
+
+    .actions {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 12px;
+      margin-top: 28px;
+    }
+
+    .button {
+      display: inline-flex;
+      min-height: 44px;
+      align-items: center;
+      justify-content: center;
+      padding: 0 18px;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      color: var(--fg);
+      text-decoration: none;
+      background: var(--panel);
+    }
+
+    .button.primary {
+      border-color: var(--accent);
+      color: #ffffff;
+      background: var(--accent);
+    }
+
+    footer {
+      margin-top: 48px;
+      color: var(--muted);
+      font-size: 0.92rem;
+    }
+  </style>
+</head>
+<body>
+  <main>
+    <header>
+      <h1>GeoAlarm</h1>
+      <p class="lead">A location-based alarm app for Android. GeoAlarm helps you set reminders that ring when you arrive near a selected destination.</p>
+      <div class="actions">
+        <a class="button primary" href="privacy-policy.html">Privacy Policy</a>
+        <a class="button" href="https://github.com/jimmy90109/GeoAlarm">Source Code</a>
+      </div>
+    </header>
+
+    <section class="panel" aria-labelledby="privacy-summary-title">
+      <h2 id="privacy-summary-title">Privacy at a glance</h2>
+      <p>Location data is used on the device to provide location-based alarms. GeoAlarm does not upload your live location, saved destinations, alarm names, radius settings, or schedule details to a GeoAlarm server.</p>
+      <p>The app may use Google Maps Platform services for maps and place search, and optional anonymous analytics to understand app stability and usage.</p>
+    </section>
+
+    <footer>
+      <span>Copyright 2026 GeoAlarm.</span>
+    </footer>
+  </main>
+</body>
+</html>
