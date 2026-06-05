@@ -20,13 +20,17 @@ import com.github.jimmy90109.geoalarm.navigation.AppRoutes
 import androidx.navigation.compose.rememberNavController
 import com.github.jimmy90109.geoalarm.data.AlarmDataRepository
 import com.github.jimmy90109.geoalarm.data.OnboardingRepository
+import com.github.jimmy90109.geoalarm.data.SettingsRepository
 import com.github.jimmy90109.geoalarm.navigation.AppNavHost
 import com.github.jimmy90109.geoalarm.service.GeoAlarmService
 import com.github.jimmy90109.geoalarm.ui.theme.GeoAlarmTheme
+import com.github.jimmy90109.geoalarm.ui.viewmodel.HomeAction
 import com.github.jimmy90109.geoalarm.ui.viewmodel.HomeViewModel
+import com.github.jimmy90109.geoalarm.utils.PaymentShortcutNotifier
 import com.github.jimmy90109.geoalarm.widget.GeoAlarmGlanceWidget
 import androidx.glance.appwidget.updateAll
 import dagger.hilt.android.AndroidEntryPoint
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
@@ -45,6 +49,9 @@ class MainActivity : AppCompatActivity() {
 
     @Inject
     lateinit var onboardingRepository: OnboardingRepository
+
+    @Inject
+    lateinit var settingsRepository: SettingsRepository
 
     @Inject
     lateinit var createGeoAlarmUseCase: CreateGeoAlarmUseCase
@@ -110,6 +117,8 @@ class MainActivity : AppCompatActivity() {
                     if (alarm != null) {
                         if (isArrivedTurnOff) {
                             telemetryTracker.trackArrivedTurnOff()
+                            settingsRepository.paymentShortcutFlow.first()
+                                ?.let { PaymentShortcutNotifier.show(this@MainActivity, it) }
                         }
                         alarmRepository.update(alarm.copy(isEnabled = false))
                         // Also stop the service explicitly just in case
@@ -132,12 +141,12 @@ class MainActivity : AppCompatActivity() {
         } else if (intent.action == "ENABLE_ALARM_FROM_SCHEDULE") {
             val alarmId = intent.getStringExtra("ALARM_ID")
             if (!alarmId.isNullOrEmpty()) {
-                homeViewModel.handleScheduleIntent(alarmId)
+                homeViewModel.onAction(HomeAction.ScheduleIntentHandled(alarmId))
             }
         } else if (intent.action == ACTION_ENABLE_ALARM_FROM_WIDGET) {
             val alarmId = intent.getStringExtra(EXTRA_WIDGET_ALARM_ID)
             if (!alarmId.isNullOrEmpty()) {
-                homeViewModel.handleScheduleIntent(alarmId)
+                homeViewModel.onAction(HomeAction.ScheduleIntentHandled(alarmId))
                 CoroutineScope(kotlinx.coroutines.Dispatchers.IO).launch { GeoAlarmGlanceWidget().updateAll(this@MainActivity) }
             }
         }
@@ -231,7 +240,7 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun resolveStartDestination(intent: Intent, hasSeenOnboarding: Boolean): AppRoutes {
-        if (!hasSeenOnboarding) return AppRoutes.Onboarding
+        if (!hasSeenOnboarding) return AppRoutes.Onboarding()
         return resolveShortcutRoute(intent) ?: AppRoutes.Main
     }
 

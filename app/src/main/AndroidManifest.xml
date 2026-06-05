@@ -17,6 +17,18 @@
     <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
     <uses-permission android:name="android.permission.SCHEDULE_EXACT_ALARM" />
 
+    <queries>
+        <package android:name="com.easycard.wallet" />
+        <package android:name="com.jkos.app" />
+        <package android:name="com.ipass.ipassmoney" />
+        <package android:name="tw.com.icash.a.icashpay" />
+        <package android:name="com.pxpayplus.app" />
+        <package android:name="com.esunbank.ESUNWALLET" />
+        <package android:name="tw.com.pluspay.oneapp" />
+        <package android:name="tw.com.taishinbank.ccapp" />
+        <package android:name="tw.com.twmp.twhcewallet" />
+    </queries>
+
     <application
         android:name=".GeoAlarmApplication"
         android:allowBackup="true"
@@ -73,6 +85,14 @@
                 <action android:name="android.appwidget.action.APPWIDGET_CONFIGURE" />
             </intent-filter>
         </activity>
+
+        <activity
+            android:name=".utils.PaymentShortcutLaunchActivity"
+            android:excludeFromRecents="true"
+            android:exported="false"
+            android:finishOnTaskLaunch="true"
+            android:noHistory="true"
+            android:theme="@android:style/Theme.Translucent.NoTitleBar" />
             
         <activity
             android:name=".MainActivity"

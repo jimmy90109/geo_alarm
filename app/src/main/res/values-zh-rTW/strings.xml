@@ -71,11 +71,14 @@
     <string name="background_location_title">需要背景定位權限</string>
     <string name="background_location_message">此應用程式需要「一律允許」的定位權限才能在背景追蹤您的位置。請前往設定並將定位權限設為「一律允許」。</string>
     <string name="go_to_settings">前往設定</string>
+    <string name="exact_alarm_permission_title">需要精確鬧鐘權限</string>
+    <string name="exact_alarm_permission_message">排程需要「鬧鐘與提醒」權限，定位鬧鐘才能在您設定的時間準時提醒。請前往設定啟用此權限。</string>
     <string name="notification_permission_title">需要通知權限</string>
     <string name="notification_permission_message">此應用程式需要通知權限才能在您抵達目的地時提醒您。請前往設定並啟用通知。</string>
     <string name="notification_retry_title">需要通知權限</string>
     <string name="notification_retry_message">通知功能對於提醒到達目的地至關重要，請允許權限。</string>
     <string name="retry">重試</string>
+    <string name="preview">預覽</string>
     <string name="battery_warning_title">允許背景執行</string>
     <string name="battery_warning_message">為了確保鬧鐘準確運作，請為此應用程式關閉電池最佳化。</string>
     <string name="fix_now">立即設定</string>
@@ -97,6 +100,14 @@
     <string name="notification_high_accuracy">快到了！</string>
     <string name="notification_schedule_title">正要前往 %s？</string>
     <string name="notification_schedule_message">點擊以啟用鬧鐘</string>
+    <string name="payment_shortcut_channel_name">支付捷徑</string>
+    <string name="payment_shortcut_channel_description">抵達後顯示您選擇的支付 App 捷徑</string>
+    <string name="payment_shortcut_notification_title">支付 App 已就緒</string>
+    <string name="payment_shortcut_notification_text">點擊開啟 %s</string>
+    <string name="payment_shortcut_notification_big_text">開啟 %s 以出示乘車碼。</string>
+    <string name="payment_shortcut_notification_action">開啟 %s</string>
+    <string name="test_alarm_name">測試鬧鐘</string>
+    <string name="test_alarm_started">測試鬧鐘已啟動</string>
 
     <!-- Settings -->
     <string name="settings">設定</string>
@@ -109,6 +120,12 @@
     <string name="settings_section_alarm">鬧鐘</string>
     <string name="settings_section_privacy_improvement">隱私與改善</string>
     <string name="settings_ringtone">鈴聲</string>
+    <string name="settings_payment_shortcut">支付 App 捷徑</string>
+    <string name="payment_shortcut_off">關閉</string>
+    <string name="payment_shortcut_description">抵達後關閉鬧鐘時，顯示常用乘車碼 App 的通知捷徑。</string>
+    <string name="payment_shortcut_no_installed_apps">這台裝置尚未安裝支援的支付 App。</string>
+    <string name="payment_shortcut_active_prompt_off">設定關閉鬧鐘後的支付捷徑</string>
+    <string name="payment_shortcut_active_prompt_on">關閉後將顯示 %s 捷徑</string>
     <string name="ringtone_mode_none">關閉</string>
     <string name="ringtone_default">預設鈴聲</string>
     <string name="ringtone_select">選擇鈴聲…</string>

@@ -36,6 +36,7 @@ import com.github.jimmy90109.geoalarm.ui.screens.MainScreen
 import com.github.jimmy90109.geoalarm.ui.screens.OnboardingScreen
 import com.github.jimmy90109.geoalarm.ui.screens.ScheduleEditScreen
 import com.github.jimmy90109.geoalarm.ui.viewmodel.AlarmEditViewModel
+import com.github.jimmy90109.geoalarm.ui.viewmodel.HomeAction
 import com.github.jimmy90109.geoalarm.ui.viewmodel.HomeViewModel
 import com.github.jimmy90109.geoalarm.ui.viewmodel.OnboardingViewModel
 import com.github.jimmy90109.geoalarm.ui.viewmodel.ScheduleEditViewModel
@@ -138,13 +139,13 @@ fun AppNavHost(
 
             LaunchedEffect(highlightedAlarmId) {
                 if (highlightedAlarmId != null) {
-                    viewModel.setHighlightedAlarm(highlightedAlarmId)
+                    viewModel.onAction(HomeAction.AlarmHighlighted(highlightedAlarmId))
                     savedStateHandle.remove<String>("highlight_alarm_id")
                 }
             }
             LaunchedEffect(highlightedScheduleId) {
                 if (highlightedScheduleId != null) {
-                    viewModel.setHighlightedSchedule(highlightedScheduleId)
+                    viewModel.onAction(HomeAction.ScheduleHighlighted(highlightedScheduleId))
                     savedStateHandle.remove<String>("highlight_schedule_id")
                 }
             }
@@ -163,22 +164,26 @@ fun AppNavHost(
                     onNavigateToBatteryOptimization = {
                         navController.navigate(AppRoutes.BatteryOptimization)
                     },
-                    onOpenOnboarding = { navController.navigate(AppRoutes.Onboarding) }
+                    onOpenOnboarding = {
+                        navController.navigate(AppRoutes.Onboarding(showAnalyticsOptIn = false))
+                    }
                 )
             }
         }
 
-        composable<AppRoutes.Onboarding> {
+        composable<AppRoutes.Onboarding> { backStackEntry ->
+            val route = backStackEntry.toRoute<AppRoutes.Onboarding>()
             val onboardingViewModel: OnboardingViewModel = hiltViewModel()
             AnimatedNavScreen {
                 OnboardingScreen(
                     viewModel = onboardingViewModel,
+                    showAnalyticsOptIn = route.showAnalyticsOptIn,
                     onFinished = {
                         if (navController.previousBackStackEntry != null) {
                             navController.popBackStack()
                         } else {
                             navController.navigate(AppRoutes.Main) {
-                                popUpTo(AppRoutes.Onboarding) { inclusive = true }
+                                popUpTo(AppRoutes.Onboarding()) { inclusive = true }
                                 launchSingleTop = true
                             }
                         }

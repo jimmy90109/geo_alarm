@@ -9,8 +9,11 @@ import com.github.jimmy90109.geoalarm.widget.WidgetUpdater
 import com.google.android.gms.maps.model.LatLng
 import dagger.hilt.android.lifecycle.HiltViewModel
 import javax.inject.Inject
+import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 import java.util.UUID
@@ -35,6 +38,27 @@ data class AlarmEditUiState(
     val showDeleteConfirmDialog: Boolean = false
 )
 
+sealed interface AlarmEditAction {
+    data class LoadAlarm(val alarmId: String?) : AlarmEditAction
+    data object MapLoaded : AlarmEditAction
+    data class PositionSelected(val latLng: LatLng) : AlarmEditAction
+    data class SearchPositionSelected(val latLng: LatLng, val placeName: String) : AlarmEditAction
+    data class RadiusChanged(val radius: Float) : AlarmEditAction
+    data class NameChanged(val name: String) : AlarmEditAction
+    data class IconSelected(val iconKey: String) : AlarmEditAction
+    data object NextClicked : AlarmEditAction
+    data object BackToMapClicked : AlarmEditAction
+    data object SaveClicked : AlarmEditAction
+    data object DeleteRequested : AlarmEditAction
+    data object DeleteConfirmed : AlarmEditAction
+    data object DeleteDialogDismissed : AlarmEditAction
+    data object DeleteErrorDismissed : AlarmEditAction
+}
+
+sealed interface AlarmEditEffect {
+    data class NavigateBack(val savedAlarmId: String?) : AlarmEditEffect
+}
+
 @HiltViewModel
 class AlarmEditViewModel @Inject constructor(
     private val repository: AlarmDataRepository,
@@ -44,7 +68,32 @@ class AlarmEditViewModel @Inject constructor(
     private val _uiState = MutableStateFlow(AlarmEditUiState())
     val uiState: StateFlow<AlarmEditUiState> = _uiState.asStateFlow()
 
-    fun loadAlarm(alarmId: String?) {
+    private val _effects = MutableSharedFlow<AlarmEditEffect>()
+    val effects: SharedFlow<AlarmEditEffect> = _effects.asSharedFlow()
+
+    fun onAction(action: AlarmEditAction) {
+        when (action) {
+            is AlarmEditAction.LoadAlarm -> loadAlarm(action.alarmId)
+            AlarmEditAction.MapLoaded -> setMapLoaded()
+            is AlarmEditAction.PositionSelected -> updatePosition(action.latLng)
+            is AlarmEditAction.SearchPositionSelected -> updatePositionFromSearch(
+                action.latLng,
+                action.placeName
+            )
+            is AlarmEditAction.RadiusChanged -> updateRadius(action.radius)
+            is AlarmEditAction.NameChanged -> updateName(action.name)
+            is AlarmEditAction.IconSelected -> selectIcon(action.iconKey)
+            AlarmEditAction.NextClicked -> goToDetailsStep()
+            AlarmEditAction.BackToMapClicked -> goToMapStep()
+            AlarmEditAction.SaveClicked -> saveAlarm()
+            AlarmEditAction.DeleteRequested -> requestDeleteAlarm()
+            AlarmEditAction.DeleteConfirmed -> confirmDeleteAlarm()
+            AlarmEditAction.DeleteDialogDismissed -> dismissDeleteConfirmDialog()
+            AlarmEditAction.DeleteErrorDismissed -> dismissDeleteErrorDialog()
+        }
+    }
+
+    private fun loadAlarm(alarmId: String?) {
         viewModelScope.launch {
             if (alarmId != null) {
                 val alarm = repository.getAlarm(alarmId)
@@ -65,55 +114,55 @@ class AlarmEditViewModel @Inject constructor(
         }
     }
 
-    fun setMapLoaded() {
+    private fun setMapLoaded() {
         _uiState.value = _uiState.value.copy(isLoading = false)
     }
 
-    fun updatePosition(latLng: LatLng) {
+    private fun updatePosition(latLng: LatLng) {
         _uiState.value = _uiState.value.copy(
             selectedPosition = latLng,
             searchText = ""
         )
     }
 
-    fun updatePositionFromSearch(latLng: LatLng, placeName: String) {
+    private fun updatePositionFromSearch(latLng: LatLng, placeName: String) {
         _uiState.value = _uiState.value.copy(
             selectedPosition = latLng,
             searchText = placeName
         )
     }
 
-    fun updateRadius(radius: Float) {
+    private fun updateRadius(radius: Float) {
         _uiState.value = _uiState.value.copy(radius = radius)
     }
 
-    fun updateName(name: String) {
+    private fun updateName(name: String) {
         _uiState.value = _uiState.value.copy(name = name)
     }
 
-    fun selectIcon(iconKey: String) {
+    private fun selectIcon(iconKey: String) {
         _uiState.value = _uiState.value.copy(selectedIconKey = iconKey)
     }
 
-    fun goToDetailsStep() {
+    private fun goToDetailsStep() {
         if (_uiState.value.selectedPosition != null) {
             _uiState.value = _uiState.value.copy(step = AlarmEditStep.DetailsForm)
         }
     }
 
-    fun goToMapStep() {
+    private fun goToMapStep() {
         _uiState.value = _uiState.value.copy(step = AlarmEditStep.MapSelection)
     }
 
-    fun dismissDeleteErrorDialog() {
+    private fun dismissDeleteErrorDialog() {
         _uiState.value = _uiState.value.copy(showDeleteErrorDialog = false)
     }
 
-    fun dismissDeleteConfirmDialog() {
+    private fun dismissDeleteConfirmDialog() {
         _uiState.value = _uiState.value.copy(showDeleteConfirmDialog = false)
     }
 
-    fun saveAlarm() {
+    private fun saveAlarm() {
         val state = _uiState.value
         val position = state.selectedPosition ?: return
         val name = state.name.trim()
@@ -152,13 +201,14 @@ class AlarmEditViewModel @Inject constructor(
                 isSaved = true,
                 savedAlarmId = alarmId,
             )
+            _effects.emit(AlarmEditEffect.NavigateBack(alarmId))
         }
     }
 
     /**
      * Request to delete the alarm. Shows confirmation or error dialog.
      */
-    fun requestDeleteAlarm() {
+    private fun requestDeleteAlarm() {
         val existing = _uiState.value.existingAlarm ?: return
         viewModelScope.launch {
             // Check if alarm is used in any schedule
@@ -174,7 +224,7 @@ class AlarmEditViewModel @Inject constructor(
     /**
      * Confirm and execute the deletion.
      */
-    fun confirmDeleteAlarm() {
+    private fun confirmDeleteAlarm() {
         val existing = _uiState.value.existingAlarm ?: return
         viewModelScope.launch {
             repository.delete(existing)
@@ -183,6 +233,7 @@ class AlarmEditViewModel @Inject constructor(
                 isSaved = true,
                 showDeleteConfirmDialog = false
             )
+            _effects.emit(AlarmEditEffect.NavigateBack(null))
         }
     }
 }

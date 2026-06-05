@@ -7,6 +7,7 @@ import android.content.ComponentName
 import android.content.Context
 import android.content.ContextWrapper
 import android.os.PowerManager
+import android.widget.Toast
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.AnimatedContent
@@ -15,7 +16,9 @@ import androidx.compose.animation.fadeOut
 import androidx.compose.animation.slideInHorizontally
 import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.animation.togetherWith
+import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.PaddingValues
@@ -23,16 +26,17 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.offset
+import androidx.compose.foundation.layout.size
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.LargeFlexibleTopAppBar
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableLongStateOf
@@ -50,7 +54,10 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.zIndex
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.outlined.Info
+import androidx.compose.material.icons.automirrored.outlined.HelpOutline
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleEventObserver
+import com.github.jimmy90109.geoalarm.BuildConfig
 import com.github.jimmy90109.geoalarm.R
 import com.github.jimmy90109.geoalarm.data.Alarm
 import com.github.jimmy90109.geoalarm.data.ScheduleWithAlarm
@@ -59,14 +66,18 @@ import com.github.jimmy90109.geoalarm.ui.components.AlreadyAtDestinationDialog
 import com.github.jimmy90109.geoalarm.ui.components.BackgroundLocationPermissionDialog
 import com.github.jimmy90109.geoalarm.ui.components.DeleteErrorDialog
 import com.github.jimmy90109.geoalarm.ui.components.EditDisabledDialog
+import com.github.jimmy90109.geoalarm.ui.components.ExactAlarmPermissionDialog
 import com.github.jimmy90109.geoalarm.ui.components.HomeFabMenu
 import com.github.jimmy90109.geoalarm.ui.components.NotificationPermissionDialog
 import com.github.jimmy90109.geoalarm.ui.components.NotificationRationaleDialog
 import com.github.jimmy90109.geoalarm.ui.components.ScheduleConflictDialog
 import com.github.jimmy90109.geoalarm.ui.components.SingleAlarmDialog
+import com.github.jimmy90109.geoalarm.ui.viewmodel.HomeAction
 import com.github.jimmy90109.geoalarm.ui.viewmodel.HomeUiState
 import com.github.jimmy90109.geoalarm.ui.viewmodel.HomeViewModel
+import com.github.jimmy90109.geoalarm.utils.PaymentShortcutNotifier
 import com.github.jimmy90109.geoalarm.widget.GeoAlarmGlanceWidgetReceiver
+import androidx.lifecycle.compose.LocalLifecycleOwner
 import com.google.accompanist.permissions.ExperimentalPermissionsApi
 import com.google.accompanist.permissions.isGranted
 import com.google.accompanist.permissions.rememberMultiplePermissionsState
@@ -75,7 +86,8 @@ import com.google.accompanist.permissions.rememberPermissionState
 @OptIn(
     ExperimentalMaterial3Api::class,
     ExperimentalPermissionsApi::class,
-    ExperimentalMaterial3ExpressiveApi::class
+    ExperimentalMaterial3ExpressiveApi::class,
+    ExperimentalFoundationApi::class,
 )
 /**
  * The main screen of the application displaying the list of alarms.
@@ -99,9 +111,23 @@ fun HomeScreen(
     val alarms by viewModel.alarms.collectAsStateWithLifecycle(initialValue = emptyList())
     val schedules by viewModel.schedules.collectAsStateWithLifecycle(initialValue = emptyList())
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
+    val paymentShortcut by viewModel.paymentShortcut.collectAsStateWithLifecycle()
     val context = LocalContext.current
+    val lifecycleOwner = LocalLifecycleOwner.current
     val haptic = LocalHapticFeedback.current
     val scrollBehavior = TopAppBarDefaults.exitUntilCollapsedScrollBehavior()
+
+    DisposableEffect(lifecycleOwner) {
+        val observer = LifecycleEventObserver { _, event ->
+            if (event == Lifecycle.Event.ON_RESUME) {
+                viewModel.onAction(HomeAction.ExactAlarmSettingsReturned)
+            }
+        }
+        lifecycleOwner.lifecycle.addObserver(observer)
+        onDispose {
+            lifecycleOwner.lifecycle.removeObserver(observer)
+        }
+    }
 
     // Permissions
     val locationPermissionState = rememberMultiplePermissionsState(
@@ -117,6 +143,7 @@ fun HomeScreen(
 
     // FAB Menu State
     var showFabMenu by remember { mutableStateOf(false) }
+    var showPaymentShortcutSheet by remember { mutableStateOf(false) }
 
     // Helper: Check location permission -> Enable Alarm
     val checkLocationAndEnableAlarm = { alarm: Alarm ->
@@ -125,12 +152,12 @@ fun HomeScreen(
                 backgroundLocationPermissionState.status.isGranted
             } else {
                 locationPermissionState.allPermissionsGranted
-            }
+        }
 
         if (hasLocationPermission) {
-            viewModel.enableAlarm(alarm, alarms, context)
+            viewModel.onAction(HomeAction.AlarmEnableRequested(alarm, alarms, context))
         } else {
-            viewModel.showBackgroundPermissionDialog()
+            viewModel.onAction(HomeAction.BackgroundPermissionDialogRequested)
         }
     }
 
@@ -148,9 +175,9 @@ fun HomeScreen(
             val showRationale =
                 activity.shouldShowRequestPermissionRationale(Manifest.permission.POST_NOTIFICATIONS)
             if (showRationale) {
-                viewModel.showNotificationRationaleDialog()
+                viewModel.onAction(HomeAction.NotificationRationaleDialogRequested)
             } else {
-                viewModel.showNotificationPermissionDialog()
+                viewModel.onAction(HomeAction.NotificationPermissionDialogRequested)
             }
             pendingAlarm = null
         }
@@ -183,12 +210,12 @@ fun HomeScreen(
                 checkLocationAndEnableAlarm(alarm)
             }
         } else {
-            viewModel.disableAlarm(alarm, context)
+            viewModel.onAction(HomeAction.AlarmDisableRequested(alarm, context))
         }
     }
 
     // Check for active alarm
-    val activeAlarm = alarms.find { it.isEnabled }
+    val activeAlarm = uiState.testActiveAlarm ?: alarms.find { it.isEnabled }
 
     Scaffold(
         modifier = Modifier.nestedScroll(scrollBehavior.nestedScrollConnection),
@@ -202,23 +229,30 @@ fun HomeScreen(
                 },
                 scrollBehavior = scrollBehavior,
                 actions = {
-//                    // Debug test button
-//                    androidx.compose.material3.TextButton(
-//                        onClick = {
-//                            haptic.performHapticFeedback(HapticFeedbackType.ContextClick)
-//                            viewModel.startTestAlarm(context)
-//                        }
-//                    ) {
-//                        Text("🧪 Test Alarm (10s)")
-//                    },
-                    IconButton(
-                        onClick = {
-                            haptic.performHapticFeedback(HapticFeedbackType.ContextClick)
-                            onOpenOnboarding()
-                        }
+                    Box(
+                        modifier = Modifier
+                            .size(48.dp)
+                            .combinedClickable(
+                                onClick = {
+                                    haptic.performHapticFeedback(HapticFeedbackType.ContextClick)
+                                    onOpenOnboarding()
+                                },
+                                onLongClick = {
+                                    if (BuildConfig.DEBUG && activeAlarm == null) {
+                                        haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                                        viewModel.onAction(HomeAction.TestAlarmStarted(context))
+                                        Toast.makeText(
+                                            context,
+                                            R.string.test_alarm_started,
+                                            Toast.LENGTH_SHORT,
+                                        ).show()
+                                    }
+                                },
+                            ),
+                        contentAlignment = Alignment.Center,
                     ) {
                         Icon(
-                            imageVector = Icons.Outlined.Info,
+                            imageVector = Icons.AutoMirrored.Outlined.HelpOutline,
                             contentDescription = stringResource(R.string.open_onboarding)
                         )
                     }
@@ -251,7 +285,7 @@ fun HomeScreen(
                         if (hasLocationPermission) {
                             onAddAlarm()
                         } else {
-                            viewModel.showBackgroundPermissionDialog()
+                            viewModel.onAction(HomeAction.BackgroundPermissionDialogRequested)
                         }
                     })
             }
@@ -293,12 +327,16 @@ fun HomeScreen(
                         alarm = targetAlarm,
                         progress = uiState.monitoringProgress,
                         distanceMeters = uiState.monitoringDistance,
+                        paymentShortcut = paymentShortcut,
+                        onPaymentShortcutClick = { showPaymentShortcutSheet = true },
                         onStopAlarm = { isArrived ->
                             haptic.performHapticFeedback(HapticFeedbackType.Confirm)
-                            viewModel.disableAlarm(
-                                alarm = targetAlarm,
-                                context = context,
-                                trackArrivedTurnOff = isArrived
+                            viewModel.onAction(
+                                HomeAction.AlarmDisableRequested(
+                                    alarm = targetAlarm,
+                                    context = context,
+                                    trackArrivedTurnOff = isArrived
+                                )
                             )
                         },
                     )
@@ -327,7 +365,7 @@ fun HomeScreen(
                                 ),
                                 onAlarmClick = { alarm ->
                                     if (alarm.isEnabled) {
-                                        viewModel.showEditDisabledDialog()
+                                        viewModel.onAction(HomeAction.EditDisabledDialogRequested)
                                     } else {
                                         onAlarmClick(alarm)
                                     }
@@ -335,7 +373,7 @@ fun HomeScreen(
                                 onToggleAlarm = handleAlarmToggle,
                                 onScheduleClick = { schedule -> onScheduleClick(schedule) },
                                 onToggleSchedule = { schedule, isEnabled ->
-                                    viewModel.toggleSchedule(schedule, isEnabled)
+                                    viewModel.onAction(HomeAction.ScheduleToggled(schedule, isEnabled))
                                 },
                                 onAddSchedule = onAddSchedule,
                                 onOpenWidgetPicker = {
@@ -354,7 +392,7 @@ fun HomeScreen(
                                 },
                                 highlightedAlarmId = uiState.highlightedAlarmId,
                                 highlightedScheduleId = uiState.highlightedScheduleId,
-                                onHighlightFinished = { viewModel.clearHighlight() },
+                                onHighlightFinished = { viewModel.onAction(HomeAction.HighlightCleared) },
                             )
                         }
                     }
@@ -378,6 +416,17 @@ fun HomeScreen(
             }
         },
     )
+
+    if (showPaymentShortcutSheet) {
+        PaymentShortcutBottomSheet(
+            selectedShortcut = paymentShortcut,
+            onSelected = {
+                viewModel.onAction(HomeAction.PaymentShortcutSelected(it))
+            },
+            onPreview = { PaymentShortcutNotifier.show(context, it) },
+            onDismiss = { showPaymentShortcutSheet = false },
+        )
+    }
 
     // Battery Optimization Check
     LaunchedEffect(alarms) {
@@ -416,43 +465,51 @@ private fun HomeDialogsContainer(
     val context = LocalContext.current
 
     if (uiState.showEditDisabledDialog) {
-        EditDisabledDialog(onDismiss = { viewModel.dismissEditDisabledDialog() })
+        EditDisabledDialog(onDismiss = { viewModel.onAction(HomeAction.EditDisabledDialogDismissed) })
     }
 
     if (uiState.showSingleAlarmDialog) {
-        SingleAlarmDialog(onDismiss = { viewModel.dismissSingleAlarmDialog() })
+        SingleAlarmDialog(onDismiss = { viewModel.onAction(HomeAction.SingleAlarmDialogDismissed) })
     }
 
     if (uiState.showBackgroundPermissionDialog) {
         BackgroundLocationPermissionDialog(
-            context = context, onDismiss = { viewModel.dismissBackgroundPermissionDialog() })
+            context = context, onDismiss = { viewModel.onAction(HomeAction.BackgroundPermissionDialogDismissed) })
     }
 
     if (uiState.showNotificationPermissionDialog) {
         NotificationPermissionDialog(
-            context = context, onDismiss = { viewModel.dismissNotificationPermissionDialog() })
+            context = context, onDismiss = { viewModel.onAction(HomeAction.NotificationPermissionDialogDismissed) })
+    }
+
+    if (uiState.showExactAlarmPermissionDialog) {
+        ExactAlarmPermissionDialog(
+            context = context,
+            onDismiss = { viewModel.onAction(HomeAction.ExactAlarmPermissionDialogDismissed) },
+            onOpenSettings = { viewModel.onAction(HomeAction.ExactAlarmPermissionSettingsRequested) },
+        )
     }
 
     if (uiState.showNotificationRationaleDialog) {
         NotificationRationaleDialog(
-            onDismiss = { viewModel.dismissNotificationRationaleDialog() },
+            onDismiss = { viewModel.onAction(HomeAction.NotificationRationaleDialogDismissed) },
             onRetry = onRetryNotificationPermission
         )
     }
 
     if (uiState.showAlreadyAtDestinationDialog) {
-        AlreadyAtDestinationDialog(onDismiss = { viewModel.dismissAlreadyAtDestinationDialog() })
+        AlreadyAtDestinationDialog(onDismiss = { viewModel.onAction(HomeAction.AlreadyAtDestinationDialogDismissed) })
     }
 
     // Delete Error Dialog
     if (uiState.showDeleteErrorDialog) {
-        DeleteErrorDialog(onDismiss = { viewModel.dismissDeleteErrorDialog() })
+        DeleteErrorDialog(onDismiss = { viewModel.onAction(HomeAction.DeleteErrorDialogDismissed) })
     }
 
     // Schedule Conflict Dialog
     if (uiState.showScheduleConflictDialog) {
         ScheduleConflictDialog(
-            onConfirm = { viewModel.confirmScheduleConflict() },
-            onDismiss = { viewModel.dismissScheduleConflictDialog() })
+            onConfirm = { viewModel.onAction(HomeAction.ScheduleConflictConfirmed) },
+            onDismiss = { viewModel.onAction(HomeAction.ScheduleConflictDialogDismissed) })
     }
 }

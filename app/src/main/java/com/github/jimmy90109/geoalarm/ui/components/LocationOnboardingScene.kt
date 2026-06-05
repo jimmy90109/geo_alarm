@@ -198,6 +198,7 @@ fun LocationOnboardingScene(
     isDarkMode: Boolean,
     currentLanguage: String,
     onToggleLanguage: () -> Unit,
+    showAnalyticsOptIn: Boolean,
     analyticsEnabled: Boolean,
     onAnalyticsEnabledChange: (Boolean) -> Unit,
     motionConfig: OnboardingMotionConfig = OnboardingMotionConfig(),
@@ -731,6 +732,7 @@ fun LocationOnboardingScene(
             enter = fadeIn(animationSpec = tween(durationMillis = 280, delayMillis = 320))
         ) {
             FinalSetupCard(
+                showAnalyticsOptIn = showAnalyticsOptIn,
                 analyticsEnabled = analyticsEnabled,
                 onAnalyticsEnabledChange = onAnalyticsEnabledChange,
                 onStartNow = onAnimationFinished
@@ -876,6 +878,7 @@ private fun LocationOnboardingSceneLightPreview() {
             isDarkMode = false,
             currentLanguage = "en",
             onToggleLanguage = {},
+            showAnalyticsOptIn = true,
             analyticsEnabled = true,
             onAnalyticsEnabledChange = {}
         )
@@ -891,6 +894,7 @@ private fun LocationOnboardingSceneDarkPreview() {
             isDarkMode = true,
             currentLanguage = "en",
             onToggleLanguage = {},
+            showAnalyticsOptIn = true,
             analyticsEnabled = true,
             onAnalyticsEnabledChange = {}
         )

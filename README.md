@@ -9,7 +9,6 @@
 ![Platform: Android](https://img.shields.io/badge/Platform-Android-green.svg)
 ![Language: Kotlin](https://img.shields.io/badge/Language-Kotlin-purple.svg)
 ![UI: Jetpack Compose](https://img.shields.io/badge/UI-Jetpack%20Compose-blue.svg)
-![Status: In-Development](https://img.shields.io/badge/Status-In--Development-lightgrey.svg)
 
 An intelligent alarm clock app built with **Kotlin** and **Jetpack Compose** that triggers an alarm when you enter a predefined geographical area. Perfect for commuters who want to nap on the train or bus without worrying about missing their stop.
 

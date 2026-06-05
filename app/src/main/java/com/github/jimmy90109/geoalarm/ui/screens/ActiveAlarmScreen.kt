@@ -18,9 +18,16 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowForward
+import androidx.compose.material.icons.outlined.Info
 import androidx.compose.material3.Button
+import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -38,6 +45,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.github.jimmy90109.geoalarm.R
 import com.github.jimmy90109.geoalarm.data.Alarm
+import com.github.jimmy90109.geoalarm.data.PaymentShortcut
 import kotlinx.coroutines.delay
 import kotlin.math.sqrt
 
@@ -47,6 +55,8 @@ fun ActiveAlarmScreen(
     alarm: Alarm,
     progress: Int,
     distanceMeters: Int?,
+    paymentShortcut: PaymentShortcut? = null,
+    onPaymentShortcutClick: () -> Unit = {},
     onStopAlarm: (Boolean) -> Unit,
 ) {
     // Colors
@@ -195,8 +205,9 @@ fun ActiveAlarmScreen(
                 }
 
                 // Right Column: Button
-                Box(
-                    contentAlignment = Alignment.Center
+                Column(
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    verticalArrangement = Arrangement.Center
                 ) {
                     Button(
                         onClick = { onStopAlarm(isArrived) },
@@ -209,6 +220,11 @@ fun ActiveAlarmScreen(
                             )
                         )
                     }
+                    Spacer(modifier = Modifier.height(8.dp))
+                    PaymentShortcutPrompt(
+                        paymentShortcut = paymentShortcut,
+                        onClick = onPaymentShortcutClick,
+                    )
                 }
             }
         } else {
@@ -270,8 +286,45 @@ fun ActiveAlarmScreen(
                         )
                     )
                 }
+
+                Spacer(modifier = Modifier.height(8.dp))
+                PaymentShortcutPrompt(
+                    paymentShortcut = paymentShortcut,
+                    onClick = onPaymentShortcutClick,
+                )
             }
         }
+    }
+}
+
+@Composable
+private fun PaymentShortcutPrompt(
+    paymentShortcut: PaymentShortcut?,
+    onClick: () -> Unit,
+) {
+    TextButton(onClick = onClick) {
+        Icon(
+            imageVector = if (paymentShortcut == null) {
+                Icons.AutoMirrored.Filled.ArrowForward
+            } else {
+                Icons.Outlined.Info
+            },
+            contentDescription = null,
+            modifier = Modifier.size(18.dp),
+        )
+        Spacer(modifier = Modifier.width(6.dp))
+        Text(
+            text = if (paymentShortcut == null) {
+                stringResource(R.string.payment_shortcut_active_prompt_off)
+            } else {
+                stringResource(
+                    R.string.payment_shortcut_active_prompt_on,
+                    paymentShortcut.displayName,
+                )
+            },
+            style = MaterialTheme.typography.bodyMedium,
+            textAlign = TextAlign.Center,
+        )
     }
 }
 

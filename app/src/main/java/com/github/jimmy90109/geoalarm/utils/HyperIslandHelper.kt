@@ -231,4 +231,64 @@ object HyperIslandHelper {
             builder
         }
     }
+
+    /**
+     * Apply HyperIsland extras for payment shortcut notification.
+     */
+    fun applyPaymentShortcutExtras(
+        context: Context,
+        builder: NotificationCompat.Builder,
+        shortcutName: String,
+        openPendingIntent: PendingIntent,
+    ): NotificationCompat.Builder {
+        if (!isSupported(context)) {
+            return builder
+        }
+
+        return try {
+            val title = context.getString(R.string.payment_shortcut_notification_title)
+            val content = context.getString(
+                R.string.payment_shortcut_notification_text,
+                shortcutName,
+            )
+            val hyperBuilder = HyperIslandNotification.Builder(
+                context,
+                BUSINESS_ID,
+                title,
+            ).setSmallWindowTarget("${context.packageName}.MainActivity")
+                .addPicture(HyperPicture(ICON_KEY, context, R.drawable.ic_notification))
+                .setBaseInfo(
+                    title = title,
+                    content = content,
+                    pictureKey = ICON_KEY,
+                )
+                .setIslandConfig(priority = 2)
+                .setIslandFirstFloat(true)
+                .setSmallIslandCircularProgress(
+                    pictureKey = ICON_KEY,
+                    progress = 100,
+                    isCCW = false,
+                )
+                .setBigIslandInfo(
+                    left = ImageTextInfoLeft(
+                        type = 1,
+                        picInfo = PicInfo(type = 1, pic = ICON_KEY),
+                        textInfo = TextInfo(title = shortcutName, content = content),
+                    ),
+                    centerText = TextInfo(title = context.getString(R.string.preview)),
+                )
+
+            val jsonPayload = hyperBuilder.buildJsonParam()
+            val resBundle = hyperBuilder.buildResourceBundle()
+
+            val extras = Bundle()
+            extras.putString("miui.focus.param", jsonPayload)
+            extras.putAll(resBundle)
+            builder.addExtras(extras)
+
+            builder
+        } catch (e: Exception) {
+            builder
+        }
+    }
 }

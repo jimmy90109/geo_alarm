@@ -13,7 +13,9 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.flow.update
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.test.StandardTestDispatcher
 import kotlinx.coroutines.test.TestDispatcher
 import kotlinx.coroutines.test.advanceUntilIdle
@@ -49,7 +51,7 @@ class AlarmEditViewModelTest {
         val repository = buildRepository(alarms = listOf(existing))
         val viewModel = createViewModel(repository)
 
-        viewModel.loadAlarm(existing.id)
+        viewModel.onAction(AlarmEditAction.LoadAlarm(existing.id))
         advanceUntilIdle()
 
         val state = viewModel.uiState.value
@@ -65,7 +67,7 @@ class AlarmEditViewModelTest {
     fun `loadAlarm with null id only clears loading`() = runTest {
         val viewModel = createViewModel(buildRepository())
 
-        viewModel.loadAlarm(null)
+        viewModel.onAction(AlarmEditAction.LoadAlarm(null))
         advanceUntilIdle()
 
         val state = viewModel.uiState.value
@@ -78,8 +80,8 @@ class AlarmEditViewModelTest {
         val alarmDao = FakeAlarmDao()
         val viewModel = createViewModel(buildRepository(alarmDao = alarmDao))
 
-        viewModel.updateName("Home")
-        viewModel.saveAlarm()
+        viewModel.onAction(AlarmEditAction.NameChanged("Home"))
+        viewModel.onAction(AlarmEditAction.SaveClicked)
         advanceUntilIdle()
 
         assertTrue(alarmDao.inserted.isEmpty())
@@ -91,11 +93,13 @@ class AlarmEditViewModelTest {
     fun `saveAlarm creates new alarm and marks saved`() = runTest {
         val alarmDao = FakeAlarmDao()
         val viewModel = createViewModel(buildRepository(alarmDao = alarmDao))
-        viewModel.updatePosition(LatLng(24.9, 121.1))
-        viewModel.updateRadius(1200f)
-        viewModel.updateName("Gym")
+        val effects = mutableListOf<AlarmEditEffect>()
+        val effectsJob = launch { viewModel.effects.collect { effects += it } }
+        viewModel.onAction(AlarmEditAction.PositionSelected(LatLng(24.9, 121.1)))
+        viewModel.onAction(AlarmEditAction.RadiusChanged(1200f))
+        viewModel.onAction(AlarmEditAction.NameChanged("Gym"))
 
-        viewModel.saveAlarm()
+        viewModel.onAction(AlarmEditAction.SaveClicked)
         advanceUntilIdle()
 
         assertEquals(1, alarmDao.inserted.size)
@@ -110,6 +114,8 @@ class AlarmEditViewModelTest {
         val state = viewModel.uiState.value
         assertTrue(state.isSaved)
         assertNotNull(state.savedAlarmId)
+        assertEquals(listOf(AlarmEditEffect.NavigateBack(state.savedAlarmId)), effects)
+        effectsJob.cancel()
     }
 
     @Test
@@ -125,13 +131,13 @@ class AlarmEditViewModelTest {
         val alarmDao = FakeAlarmDao(initialAlarms = listOf(existing))
         val repository = buildRepository(alarmDao = alarmDao)
         val viewModel = createViewModel(repository)
-        viewModel.loadAlarm(existing.id)
+        viewModel.onAction(AlarmEditAction.LoadAlarm(existing.id))
         advanceUntilIdle()
-        viewModel.updatePosition(LatLng(11.0, 12.0))
-        viewModel.updateRadius(900f)
-        viewModel.updateName("New name")
+        viewModel.onAction(AlarmEditAction.PositionSelected(LatLng(11.0, 12.0)))
+        viewModel.onAction(AlarmEditAction.RadiusChanged(900f))
+        viewModel.onAction(AlarmEditAction.NameChanged("New name"))
 
-        viewModel.saveAlarm()
+        viewModel.onAction(AlarmEditAction.SaveClicked)
         advanceUntilIdle()
 
         assertEquals(1, alarmDao.updated.size)
@@ -149,17 +155,17 @@ class AlarmEditViewModelTest {
     @Test
     fun `goToDetailsStep changes step when position exists and goToMapStep restores`() = runTest {
         val viewModel = createViewModel(buildRepository())
-        viewModel.loadAlarm(null)
+        viewModel.onAction(AlarmEditAction.LoadAlarm(null))
         advanceUntilIdle()
 
-        viewModel.goToDetailsStep()
+        viewModel.onAction(AlarmEditAction.NextClicked)
         assertEquals(AlarmEditStep.MapSelection, viewModel.uiState.value.step)
 
-        viewModel.updatePosition(LatLng(25.0, 121.0))
-        viewModel.goToDetailsStep()
+        viewModel.onAction(AlarmEditAction.PositionSelected(LatLng(25.0, 121.0)))
+        viewModel.onAction(AlarmEditAction.NextClicked)
         assertEquals(AlarmEditStep.DetailsForm, viewModel.uiState.value.step)
 
-        viewModel.goToMapStep()
+        viewModel.onAction(AlarmEditAction.BackToMapClicked)
         assertEquals(AlarmEditStep.MapSelection, viewModel.uiState.value.step)
     }
 
@@ -167,11 +173,11 @@ class AlarmEditViewModelTest {
     fun `saveAlarm stores selected icon`() = runTest {
         val alarmDao = FakeAlarmDao()
         val viewModel = createViewModel(buildRepository(alarmDao = alarmDao))
-        viewModel.updatePosition(LatLng(24.9, 121.1))
-        viewModel.updateName("Office")
-        viewModel.selectIcon("train")
+        viewModel.onAction(AlarmEditAction.PositionSelected(LatLng(24.9, 121.1)))
+        viewModel.onAction(AlarmEditAction.NameChanged("Office"))
+        viewModel.onAction(AlarmEditAction.IconSelected("train"))
 
-        viewModel.saveAlarm()
+        viewModel.onAction(AlarmEditAction.SaveClicked)
         advanceUntilIdle()
 
         val created = alarmDao.inserted.single()
@@ -195,10 +201,10 @@ class AlarmEditViewModelTest {
                 scheduleDao = scheduleDao
             )
         )
-        viewModel.loadAlarm(existing.id)
+        viewModel.onAction(AlarmEditAction.LoadAlarm(existing.id))
         advanceUntilIdle()
 
-        viewModel.requestDeleteAlarm()
+        viewModel.onAction(AlarmEditAction.DeleteRequested)
         advanceUntilIdle()
 
         assertTrue(viewModel.uiState.value.showDeleteErrorDialog)
@@ -223,17 +229,21 @@ class AlarmEditViewModelTest {
                 scheduleDao = scheduleDao
             )
         )
-        viewModel.loadAlarm(existing.id)
+        viewModel.onAction(AlarmEditAction.LoadAlarm(existing.id))
         advanceUntilIdle()
-        viewModel.requestDeleteAlarm()
+        viewModel.onAction(AlarmEditAction.DeleteRequested)
         advanceUntilIdle()
+        val effects = mutableListOf<AlarmEditEffect>()
+        val effectsJob = launch { viewModel.effects.collect { effects += it } }
 
-        viewModel.confirmDeleteAlarm()
+        viewModel.onAction(AlarmEditAction.DeleteConfirmed)
         advanceUntilIdle()
 
         assertEquals(listOf(existing), alarmDao.deleted)
         assertTrue(viewModel.uiState.value.isSaved)
         assertFalse(viewModel.uiState.value.showDeleteConfirmDialog)
+        assertEquals(listOf(AlarmEditEffect.NavigateBack(null)), effects)
+        effectsJob.cancel()
     }
 
     private fun buildRepository(

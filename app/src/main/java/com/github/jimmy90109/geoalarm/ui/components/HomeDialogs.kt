@@ -13,6 +13,7 @@ import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.res.stringResource
 import com.github.jimmy90109.geoalarm.R
+import com.github.jimmy90109.geoalarm.util.ExactAlarmPermissionHelper
 
 /**
  * Dialog shown when trying to edit an enabled alarm.
@@ -103,6 +104,36 @@ fun NotificationPermissionDialog(
                         data = Uri.fromParts("package", context.packageName, null)
                     }
                     context.startActivity(intent)
+                },
+            ) {
+                Text(stringResource(R.string.go_to_settings))
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) {
+                Text(stringResource(R.string.cancel))
+            }
+        },
+    )
+}
+
+@Composable
+fun ExactAlarmPermissionDialog(
+    context: Context,
+    onDismiss: () -> Unit,
+    onOpenSettings: () -> Unit,
+) {
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text(stringResource(R.string.exact_alarm_permission_title)) },
+        text = { Text(stringResource(R.string.exact_alarm_permission_message)) },
+        confirmButton = {
+            Button(
+                onClick = {
+                    onOpenSettings()
+                    context.startActivity(
+                        ExactAlarmPermissionHelper.createRequestExactAlarmIntent(context)
+                    )
                 },
             ) {
                 Text(stringResource(R.string.go_to_settings))

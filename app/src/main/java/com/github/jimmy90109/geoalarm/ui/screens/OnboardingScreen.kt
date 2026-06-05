@@ -3,28 +3,43 @@ package com.github.jimmy90109.geoalarm.ui.screens
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.ui.Modifier
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.github.jimmy90109.geoalarm.ui.components.LocationOnboardingScene
+import com.github.jimmy90109.geoalarm.ui.viewmodel.OnboardingAction
+import com.github.jimmy90109.geoalarm.ui.viewmodel.OnboardingEffect
 import com.github.jimmy90109.geoalarm.ui.viewmodel.OnboardingViewModel
 
 @Composable
 fun OnboardingScreen(
     viewModel: OnboardingViewModel,
+    showAnalyticsOptIn: Boolean,
     onFinished: () -> Unit,
 ) {
+    val uiState = viewModel.uiState.collectAsStateWithLifecycle()
     val analyticsEnabled = viewModel.analyticsEnabled.collectAsStateWithLifecycle()
-    val currentLanguage = viewModel.currentLanguage
+
+    LaunchedEffect(viewModel) {
+        viewModel.effects.collect { effect ->
+            when (effect) {
+                OnboardingEffect.Completed -> onFinished()
+            }
+        }
+    }
 
     LocationOnboardingScene(
         modifier = Modifier.fillMaxSize(),
         isDarkMode = isSystemInDarkTheme(),
-        currentLanguage = currentLanguage,
-        onToggleLanguage = viewModel::toggleLanguage,
+        currentLanguage = uiState.value.currentLanguage,
+        onToggleLanguage = { viewModel.onAction(OnboardingAction.LanguageToggled) },
+        showAnalyticsOptIn = showAnalyticsOptIn,
         analyticsEnabled = analyticsEnabled.value,
-        onAnalyticsEnabledChange = viewModel::setAnalyticsEnabled,
+        onAnalyticsEnabledChange = {
+            viewModel.onAction(OnboardingAction.AnalyticsEnabledChanged(it))
+        },
         onAnimationFinished = {
-            viewModel.completeOnboarding(onFinished)
+            viewModel.onAction(OnboardingAction.Completed(trackAnalyticsOptIn = showAnalyticsOptIn))
         },
     )
 }
