@@ -31,7 +31,6 @@ import androidx.compose.material.icons.filled.AccountBalanceWallet
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.Stop
-import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
@@ -46,16 +45,12 @@ import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -73,16 +68,11 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import androidx.lifecycle.Lifecycle
-import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import androidx.lifecycle.compose.LocalLifecycleOwner
 import com.github.jimmy90109.geoalarm.R
 import com.github.jimmy90109.geoalarm.data.PaymentShortcut
 import com.github.jimmy90109.geoalarm.data.RingtoneSettings
-import com.github.jimmy90109.geoalarm.data.UpdateStatus
 import com.github.jimmy90109.geoalarm.ui.viewmodel.SettingsAction
-import com.github.jimmy90109.geoalarm.ui.viewmodel.SettingsEffect
 import com.github.jimmy90109.geoalarm.ui.viewmodel.SettingsViewModel
 import com.github.jimmy90109.geoalarm.utils.AudioUtils
 import com.github.jimmy90109.geoalarm.utils.PaymentShortcutNotifier
@@ -99,26 +89,7 @@ fun SettingsScreen(
     val analyticsEnabled by viewModel.analyticsEnabled.collectAsStateWithLifecycle()
     val currentLanguage = viewModel.currentLanguage
     val context = LocalContext.current
-    val lifecycleOwner = LocalLifecycleOwner.current
     val ringtonePickerTitle = stringResource(R.string.ringtone_select)
-
-    LaunchedEffect(viewModel) {
-        viewModel.effects.collect { effect ->
-            when (effect) {
-                is SettingsEffect.OpenIntent -> context.startActivity(effect.intent)
-            }
-        }
-    }
-
-    DisposableEffect(lifecycleOwner, context) {
-        val observer = LifecycleEventObserver { _, event ->
-            if (event == Lifecycle.Event.ON_RESUME) {
-                viewModel.onAction(SettingsAction.PendingInstallRetryRequested(context))
-            }
-        }
-        lifecycleOwner.lifecycle.addObserver(observer)
-        onDispose { lifecycleOwner.lifecycle.removeObserver(observer) }
-    }
 
     // Ringtone picker launcher
     val ringtonePickerLauncher = rememberLauncherForActivityResult(
@@ -154,71 +125,6 @@ fun SettingsScreen(
         ) {
             val configuration = LocalConfiguration.current
             val isLandscape = configuration.orientation == Configuration.ORIENTATION_LANDSCAPE
-
-            // Shared Logic for About Section
-            val updateStatus by viewModel.updateStatus.collectAsStateWithLifecycle()
-            var showUpdateDialog by remember { mutableStateOf(false) }
-
-            // Handle status changes (e.g. show dialog when Available detected)
-            LaunchedEffect(updateStatus) {
-                if (updateStatus is UpdateStatus.Available) {
-                    showUpdateDialog = true
-                }
-                if (updateStatus is UpdateStatus.Error) {
-                    android.widget.Toast.makeText(
-                        context,
-                        (updateStatus as UpdateStatus.Error).message,
-                        android.widget.Toast.LENGTH_SHORT
-                    ).show()
-                    viewModel.onAction(SettingsAction.UpdateStateReset)
-                }
-            }
-
-            if (showUpdateDialog) {
-                val status = updateStatus
-                if (status is UpdateStatus.Available) {
-                    AlertDialog(
-                        onDismissRequest = {
-                            showUpdateDialog = false
-                            viewModel.onAction(SettingsAction.UpdateStateReset)
-                        },
-                        title = { Text(stringResource(R.string.update_available_title)) },
-                        text = {
-                            Text(
-                                stringResource(
-                                    R.string.update_available_message,
-                                    status.version,
-                                )
-                            )
-                        },
-                        confirmButton = {
-                            TextButton(
-                                onClick = {
-                                    viewModel.onAction(
-                                        SettingsAction.UpdateDownloadRequested(
-                                            status.downloadUrl,
-                                            status.sha256
-                                        )
-                                    )
-                                    showUpdateDialog = false
-                                },
-                            ) {
-                                Text(stringResource(R.string.download))
-                            }
-                        },
-                        dismissButton = {
-                            TextButton(
-                                onClick = {
-                                    showUpdateDialog = false
-                                    viewModel.onAction(SettingsAction.UpdateStateReset)
-                                },
-                            ) {
-                                Text(stringResource(R.string.cancel))
-                            }
-                        },
-                    )
-                }
-            }
 
             if (isLandscape) {
                 // LANDSCAPE: Two Columns
@@ -262,21 +168,7 @@ fun SettingsScreen(
                         )
                         Spacer(modifier = Modifier.height(16.dp))
                         SettingsAboutSection(
-                            updateStatus = updateStatus,
                             currentVersion = viewModel.currentVersion,
-                            onUpdateClick = { status ->
-                                when (status) {
-                                    is UpdateStatus.Idle, is UpdateStatus.Error -> viewModel.onAction(SettingsAction.UpdateCheckRequested)
-                                    is UpdateStatus.Available -> showUpdateDialog = true
-                                    is UpdateStatus.ReadyToInstall -> viewModel.onAction(
-                                        SettingsAction.UpdateInstallRequested(status.apkUri, context)
-                                    )
-                                    is UpdateStatus.Downloading -> {
-                                        android.widget.Toast.makeText(context, R.string.update_downloading, android.widget.Toast.LENGTH_SHORT).show()
-                                    }
-                                    else -> {}
-                                }
-                            },
                         )
                     }
                 }
@@ -310,21 +202,7 @@ fun SettingsScreen(
                     )
                     Spacer(modifier = Modifier.height(24.dp))
                     SettingsAboutSection(
-                        updateStatus = updateStatus,
                         currentVersion = viewModel.currentVersion,
-                        onUpdateClick = { status ->
-                            when (status) {
-                                is UpdateStatus.Idle, is UpdateStatus.Error -> viewModel.onAction(SettingsAction.UpdateCheckRequested)
-                                is UpdateStatus.Available -> showUpdateDialog = true
-                                is UpdateStatus.ReadyToInstall -> viewModel.onAction(
-                                    SettingsAction.UpdateInstallRequested(status.apkUri, context)
-                                )
-                                is UpdateStatus.Downloading -> {
-                                    android.widget.Toast.makeText(context, R.string.update_downloading, android.widget.Toast.LENGTH_SHORT).show()
-                                }
-                                else -> {}
-                            }
-                        },
                     )
                 }
             }
@@ -796,21 +674,15 @@ private fun SettingsPrivacySection(
 
 @Composable
 private fun SettingsAboutSection(
-    updateStatus: UpdateStatus, currentVersion: String, onUpdateClick: (UpdateStatus) -> Unit
+    currentVersion: String
 ) {
     SettingsSectionHeader(title = stringResource(R.string.section_about))
 
-    val updateValue = when (updateStatus) {
-        is UpdateStatus.Checking -> stringResource(R.string.checking_update)
-        is UpdateStatus.Downloading -> stringResource(R.string.update_downloading)
-        is UpdateStatus.ReadyToInstall -> stringResource(R.string.update_ready_to_install)
-        else -> stringResource(R.string.settings_version_label, currentVersion)
-    }
-
     SettingsCard(
-        title = stringResource(R.string.check_for_updates),
-        value = updateValue,
-        onClick = { onUpdateClick(updateStatus) },
+        title = stringResource(R.string.section_about),
+        value = stringResource(R.string.settings_version_label, currentVersion),
+        onClick = {},
+        enabled = false,
     )
 }
 
