@@ -46,6 +46,7 @@ import androidx.compose.ui.unit.sp
 import com.github.jimmy90109.geoalarm.R
 import com.github.jimmy90109.geoalarm.data.Alarm
 import com.github.jimmy90109.geoalarm.data.PaymentShortcut
+import com.github.jimmy90109.geoalarm.utils.DistanceFormatter
 import kotlinx.coroutines.delay
 import kotlin.math.sqrt
 
@@ -112,6 +113,7 @@ fun ActiveAlarmScreen(
     )
 
     val configuration = LocalConfiguration.current
+    val distanceLocale = configuration.locales[0]
     val isLandscape = configuration.orientation == ORIENTATION_LANDSCAPE
 
     Box(
@@ -188,7 +190,7 @@ fun ActiveAlarmScreen(
                         Text(
                             text = if (distanceMeters != null) stringResource(
                                 R.string.distance_meters,
-                                distanceMeters
+                                DistanceFormatter.formatMeters(distanceMeters, distanceLocale)
                             ) else "--", style = MaterialTheme.typography.displayLarge.copy(
                                 fontWeight = FontWeight.Bold,
                                 fontSize = 64.sp, // Slightly smaller for landscape
@@ -256,7 +258,8 @@ fun ActiveAlarmScreen(
                 } else {
                     Text(
                         text = if (distanceMeters != null) stringResource(
-                            R.string.distance_meters, distanceMeters
+                            R.string.distance_meters,
+                            DistanceFormatter.formatMeters(distanceMeters, distanceLocale),
                         ) else "--", style = MaterialTheme.typography.displayMedium.copy(
                             fontWeight = FontWeight.Bold,
                         )

@@ -106,6 +106,7 @@ import com.github.jimmy90109.geoalarm.ui.viewmodel.AlarmEditEffect
 import com.github.jimmy90109.geoalarm.ui.viewmodel.AlarmEditStep
 import com.github.jimmy90109.geoalarm.ui.viewmodel.AlarmEditUiState
 import com.github.jimmy90109.geoalarm.ui.viewmodel.AlarmEditViewModel
+import com.github.jimmy90109.geoalarm.utils.DistanceFormatter
 import com.google.android.gms.maps.CameraUpdateFactory
 import com.google.android.gms.maps.model.CameraPosition
 import com.google.android.gms.maps.model.LatLng
@@ -979,6 +980,7 @@ fun AlarmEditRadiusControl(
     elevation: androidx.compose.ui.unit.Dp = 0.dp,
 ) {
     val view = LocalView.current
+    val distanceLocale = LocalConfiguration.current.locales[0]
     Card(
         shape = RoundedCornerShape(44.dp),
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
@@ -990,7 +992,10 @@ fun AlarmEditRadiusControl(
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
             Text(
-                text = stringResource(R.string.radius_label, radius.toInt()),
+                text = stringResource(
+                    R.string.radius_label,
+                    DistanceFormatter.formatMeters(radius.toInt(), distanceLocale),
+                ),
                 style = MaterialTheme.typography.bodyLarge
             )
             Spacer(modifier = Modifier.height(8.dp))

@@ -64,6 +64,11 @@ object HyperIslandHelper {
         }
 
         return try {
+            val formattedRemainingDistance = DistanceFormatter.formatMeters(
+                remainingDistance,
+                context.resources.configuration.locales[0],
+            )
+
             // Determine progress value (0% for FAR zone)
             val displayProgress = when (zone) {
                 MonitoringZone.FAR -> 0
@@ -88,7 +93,7 @@ object HyperIslandHelper {
                         MonitoringZone.FAR -> context.getString(R.string.notification_power_saving)
                         MonitoringZone.MID, MonitoringZone.NEAR -> context.getString(
                             R.string.notification_distance,
-                            remainingDistance,
+                            formattedRemainingDistance,
                             progress,
                         )
                     },

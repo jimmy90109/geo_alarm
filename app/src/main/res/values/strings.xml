@@ -40,7 +40,7 @@
     <string name="select_alarm_icon">Select Alarm Icon</string>
     <string name="next_step">Next</string>
     <string name="back_to_map_step">Back to map</string>
-    <string name="radius_label">Radius: %d m</string>
+    <string name="radius_label">Radius: %s m</string>
     <string name="save">Save</string>
     <string name="cancel">Cancel</string>
     <string name="delete">Delete</string>
@@ -89,7 +89,7 @@
     
     <!-- Notification strings -->
     <string name="notification_title">Heading to %s</string>
-    <string name="notification_distance">%1$dm left • %2$d%%</string>
+    <string name="notification_distance">%1$sm left • %2$d%%</string>
     <string name="notification_cancel">Cancel</string>
     <string name="notification_arrived_title">Arrived at %s!</string>
     <string name="notification_arrived_text">You have reached your destination.</string>
@@ -141,7 +141,7 @@
 
     <!--  Monitoring Screen  -->
     <string name="cancel_alarm">Cancel Alarm</string>
-    <string name="distance_meters">Remaining %d m</string>
+    <string name="distance_meters">Remaining %s m</string>
     <string name="arrived_status">Arrived</string>
     <string name="section_all_alarm">All alarms</string>
     <string name="section_schedules">Schedules</string>

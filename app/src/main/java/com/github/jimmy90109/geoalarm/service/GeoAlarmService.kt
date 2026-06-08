@@ -20,6 +20,7 @@ import com.github.jimmy90109.geoalarm.GeoAlarmApplication
 import com.github.jimmy90109.geoalarm.MainActivity
 import com.github.jimmy90109.geoalarm.R
 import com.github.jimmy90109.geoalarm.utils.AudioUtils
+import com.github.jimmy90109.geoalarm.utils.DistanceFormatter
 import com.github.jimmy90109.geoalarm.utils.HyperIslandHelper
 import com.github.jimmy90109.geoalarm.utils.WakeLocker
 import com.github.jimmy90109.geoalarm.widget.GeoAlarmGlanceWidget
@@ -588,6 +589,11 @@ class GeoAlarmService : Service() {
                     cancelPendingIntent,
                 )
 
+        val formattedRemainingDistance = DistanceFormatter.formatMeters(
+            remainingDistance,
+            resources.configuration.locales[0],
+        )
+
         when (zone) {
             MonitoringZone.FAR -> {
                 builder.setContentTitle(getString(R.string.notification_title, alarmName))
@@ -598,7 +604,11 @@ class GeoAlarmService : Service() {
             MonitoringZone.MID -> {
                 builder.setContentTitle(getString(R.string.notification_title, alarmName))
                     .setContentText(
-                        getString(R.string.notification_distance, remainingDistance, progress)
+                        getString(
+                            R.string.notification_distance,
+                            formattedRemainingDistance,
+                            progress,
+                        )
                     ).setSubText(getString(R.string.notification_balanced))
                     .setProgress(100, progress, false).setShortCriticalText("$progress%")
             }
@@ -606,7 +616,11 @@ class GeoAlarmService : Service() {
             MonitoringZone.NEAR -> {
                 builder.setContentTitle(getString(R.string.notification_title, alarmName))
                     .setContentText(
-                        getString(R.string.notification_distance, remainingDistance, progress)
+                        getString(
+                            R.string.notification_distance,
+                            formattedRemainingDistance,
+                            progress,
+                        )
                     ).setSubText(getString(R.string.notification_high_accuracy))
                     .setProgress(100, progress, false).setShortCriticalText("$progress%")
             }
