@@ -135,6 +135,8 @@
     <string name="analytics_help_improve_description">匿名傳送應用程式使用狀況。我們不會收集您的定位資訊、任何鬧鐘詳細資訊。這僅用來幫助開發者了解產品是否穩定運作。</string>
     <string name="analytics_enabled">開啟</string>
     <string name="analytics_disabled">關閉</string>
+    <string name="privacy_policy">隱私權政策</string>
+    <string name="view">查看</string>
 
     <!-- About -->
     <string name="section_about">關於</string>

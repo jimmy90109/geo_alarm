@@ -62,6 +62,7 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalHapticFeedback
+import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.font.FontWeight
@@ -77,6 +78,8 @@ import com.github.jimmy90109.geoalarm.ui.viewmodel.SettingsViewModel
 import com.github.jimmy90109.geoalarm.utils.AudioUtils
 import com.github.jimmy90109.geoalarm.utils.PaymentShortcutNotifier
 
+private const val PRIVACY_POLICY_URL = "https://jimmy90109.github.io/geo_alarm/privacy-policy.html"
+
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalMaterial3ExpressiveApi::class)
 @Composable
 fun SettingsScreen(
@@ -89,6 +92,7 @@ fun SettingsScreen(
     val analyticsEnabled by viewModel.analyticsEnabled.collectAsStateWithLifecycle()
     val currentLanguage = viewModel.currentLanguage
     val context = LocalContext.current
+    val uriHandler = LocalUriHandler.current
     val ringtonePickerTitle = stringResource(R.string.ringtone_select)
 
     // Ringtone picker launcher
@@ -164,7 +168,8 @@ fun SettingsScreen(
                     ) {
                         SettingsPrivacySection(
                             analyticsEnabled = analyticsEnabled,
-                            onPrivacyClick = { viewModel.onAction(SettingsAction.AnalyticsSheetRequested) }
+                            onPrivacyClick = { viewModel.onAction(SettingsAction.AnalyticsSheetRequested) },
+                            onPrivacyPolicyClick = { uriHandler.openUri(PRIVACY_POLICY_URL) },
                         )
                         Spacer(modifier = Modifier.height(16.dp))
                         SettingsAboutSection(
@@ -198,7 +203,8 @@ fun SettingsScreen(
                     Spacer(modifier = Modifier.height(16.dp))
                     SettingsPrivacySection(
                         analyticsEnabled = analyticsEnabled,
-                        onPrivacyClick = { viewModel.onAction(SettingsAction.AnalyticsSheetRequested) }
+                        onPrivacyClick = { viewModel.onAction(SettingsAction.AnalyticsSheetRequested) },
+                        onPrivacyPolicyClick = { uriHandler.openUri(PRIVACY_POLICY_URL) },
                     )
                     Spacer(modifier = Modifier.height(24.dp))
                     SettingsAboutSection(
@@ -658,7 +664,8 @@ private fun PaymentShortcutGridCard(
 @Composable
 private fun SettingsPrivacySection(
     analyticsEnabled: Boolean,
-    onPrivacyClick: () -> Unit
+    onPrivacyClick: () -> Unit,
+    onPrivacyPolicyClick: () -> Unit,
 ) {
     SettingsSectionHeader(title = stringResource(R.string.settings_section_privacy_improvement))
     SettingsCard(
@@ -669,6 +676,12 @@ private fun SettingsPrivacySection(
             stringResource(R.string.analytics_disabled)
         },
         onClick = onPrivacyClick
+    )
+    Spacer(modifier = Modifier.height(8.dp))
+    SettingsCard(
+        title = stringResource(R.string.privacy_policy),
+        value = stringResource(R.string.view),
+        onClick = onPrivacyPolicyClick,
     )
 }
 

@@ -135,6 +135,8 @@
     <string name="analytics_help_improve_description">Send anonymous app usage data. We do not collect your location data or any alarm details. This is only used to help developers understand whether the product is operating stably.</string>
     <string name="analytics_enabled">On</string>
     <string name="analytics_disabled">Off</string>
+    <string name="privacy_policy">Privacy Policy</string>
+    <string name="view">View</string>
 
     <!-- About -->
     <string name="section_about">About</string>
