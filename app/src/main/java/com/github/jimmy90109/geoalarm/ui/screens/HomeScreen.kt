@@ -229,7 +229,7 @@ fun HomeScreen(
                 continueAlarmEnable(alarm)
             }
         } else {
-            viewModel.onAction(HomeAction.AlarmDisableRequested(alarm, context))
+            viewModel.onAction(HomeAction.AlarmDisableRequested(alarm))
         }
     }
 
@@ -347,7 +347,6 @@ fun HomeScreen(
                             viewModel.onAction(
                                 HomeAction.AlarmDisableRequested(
                                     alarm = targetAlarm,
-                                    context = context,
                                     trackArrivedTurnOff = isArrived
                                 )
                             )

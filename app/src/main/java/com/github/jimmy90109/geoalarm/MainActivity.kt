@@ -10,7 +10,7 @@ import androidx.activity.enableEdgeToEdge
 import androidx.activity.viewModels
 import androidx.appcompat.app.AppCompatActivity
 import androidx.lifecycle.lifecycleScope
-import com.github.jimmy90109.geoalarm.analytics.TelemetryTracker
+import com.github.jimmy90109.geoalarm.appactions.AlarmTurnOffUseCase
 import com.github.jimmy90109.geoalarm.appactions.AppActionContract
 import com.github.jimmy90109.geoalarm.appactions.AppActionParsers
 import com.github.jimmy90109.geoalarm.appactions.AppActionResult
@@ -19,20 +19,16 @@ import com.github.jimmy90109.geoalarm.appactions.CreateScheduleUseCase
 import com.github.jimmy90109.geoalarm.appactions.StartAlarmUseCase
 import com.github.jimmy90109.geoalarm.navigation.AppRoutes
 import androidx.navigation.compose.rememberNavController
-import com.github.jimmy90109.geoalarm.data.AlarmDataRepository
 import com.github.jimmy90109.geoalarm.data.OnboardingRepository
-import com.github.jimmy90109.geoalarm.data.SettingsRepository
 import com.github.jimmy90109.geoalarm.data.location.CurrentLocationRepository
 import com.github.jimmy90109.geoalarm.navigation.AppNavHost
 import com.github.jimmy90109.geoalarm.service.GeoAlarmService
 import com.github.jimmy90109.geoalarm.ui.theme.GeoAlarmTheme
 import com.github.jimmy90109.geoalarm.ui.viewmodel.HomeAction
 import com.github.jimmy90109.geoalarm.ui.viewmodel.HomeViewModel
-import com.github.jimmy90109.geoalarm.utils.PaymentShortcutNotifier
 import com.github.jimmy90109.geoalarm.widget.GeoAlarmGlanceWidget
 import androidx.glance.appwidget.updateAll
 import dagger.hilt.android.AndroidEntryPoint
-import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
@@ -47,13 +43,10 @@ class MainActivity : AppCompatActivity() {
     }
 
     @Inject
-    lateinit var alarmRepository: AlarmDataRepository
-
-    @Inject
     lateinit var onboardingRepository: OnboardingRepository
 
     @Inject
-    lateinit var settingsRepository: SettingsRepository
+    lateinit var alarmTurnOffUseCase: AlarmTurnOffUseCase
 
     @Inject
     lateinit var createGeoAlarmUseCase: CreateGeoAlarmUseCase
@@ -63,9 +56,6 @@ class MainActivity : AppCompatActivity() {
 
     @Inject
     lateinit var startAlarmUseCase: StartAlarmUseCase
-
-    @Inject
-    lateinit var telemetryTracker: TelemetryTracker
 
     @Inject
     lateinit var currentLocationRepository: CurrentLocationRepository
@@ -117,25 +107,8 @@ class MainActivity : AppCompatActivity() {
             val isArrivedTurnOff = intent.getStringExtra(GeoAlarmService.EXTRA_CANCEL_SOURCE) ==
                 GeoAlarmService.CANCEL_SOURCE_ARRIVAL_TURN_OFF
             if (!alarmId.isNullOrEmpty()) {
-                // Find and disable the alarm
-                CoroutineScope(kotlinx.coroutines.Dispatchers.IO).launch {
-                    val alarm = alarmRepository.getAlarm(alarmId)
-                    if (alarm != null) {
-                        if (isArrivedTurnOff) {
-                            telemetryTracker.trackArrivedTurnOff()
-                            settingsRepository.paymentShortcutFlow.first()
-                                ?.let { PaymentShortcutNotifier.show(this@MainActivity, it) }
-                        }
-                        alarmRepository.update(alarm.copy(isEnabled = false))
-                        // Also stop the service explicitly just in case
-                        val stopIntent = Intent(
-                            this@MainActivity,
-                            GeoAlarmService::class.java,
-                        )
-                        stopIntent.action = GeoAlarmService.ACTION_STOP
-                        startService(stopIntent)
-                        CoroutineScope(kotlinx.coroutines.Dispatchers.IO).launch { GeoAlarmGlanceWidget().updateAll(this@MainActivity) }
-                    }
+                lifecycleScope.launch {
+                    alarmTurnOffUseCase(alarmId, isArrivedTurnOff)
                 }
             }
         } else if (intent.action == AppActionContract.ACTION_CREATE_GEO_ALARM) {

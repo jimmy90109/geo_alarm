@@ -15,7 +15,7 @@ import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.github.jimmy90109.geoalarm.BuildConfig
 import com.github.jimmy90109.geoalarm.R
-import com.github.jimmy90109.geoalarm.analytics.TelemetryTracker
+import com.github.jimmy90109.geoalarm.appactions.AlarmTurnOffUseCase
 import com.github.jimmy90109.geoalarm.data.Alarm
 import com.github.jimmy90109.geoalarm.data.AlarmDataRepository
 import com.github.jimmy90109.geoalarm.data.AlarmSchedule
@@ -23,9 +23,9 @@ import com.github.jimmy90109.geoalarm.data.PaymentShortcut
 import com.github.jimmy90109.geoalarm.data.SettingsRepository
 import com.github.jimmy90109.geoalarm.data.location.AlarmActivationPermissionChecker
 import com.github.jimmy90109.geoalarm.service.GeoAlarmService
+import com.github.jimmy90109.geoalarm.service.GeoAlarmContract
 import com.github.jimmy90109.geoalarm.service.ScheduleManager
 import com.github.jimmy90109.geoalarm.util.ExactAlarmPermissionHelper
-import com.github.jimmy90109.geoalarm.utils.PaymentShortcutNotifier
 import com.github.jimmy90109.geoalarm.widget.GeoAlarmGlanceWidget
 import com.google.android.gms.location.LocationServices
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -91,7 +91,6 @@ sealed interface HomeAction {
     ) : HomeAction
     data class AlarmDisableRequested(
         val alarm: Alarm,
-        val context: Context,
         val trackArrivedTurnOff: Boolean = false
     ) : HomeAction
     data class PaymentShortcutSelected(val shortcut: PaymentShortcut?) : HomeAction
@@ -109,17 +108,13 @@ sealed interface HomeAction {
 class HomeViewModel @Inject constructor(
     application: Application,
     private val repository: AlarmDataRepository,
-    private val telemetryTracker: TelemetryTracker,
+    private val alarmTurnOffUseCase: AlarmTurnOffUseCase,
     private val settingsRepository: SettingsRepository,
     private val activationPermissionChecker: AlarmActivationPermissionChecker,
 ) : AndroidViewModel(application) {
     private enum class ActivationSettingsKind {
         PRECISE,
         BACKGROUND
-    }
-
-    private companion object {
-        const val TEST_ALARM_ID = "debug_test_alarm"
     }
 
     private val fusedLocationClient = LocationServices.getFusedLocationProviderClient(application)
@@ -138,12 +133,24 @@ class HomeViewModel @Inject constructor(
                 _uiState.value = _uiState.value.copy(
                     monitoringProgress = progress, monitoringDistance = distance
                 )
+            } else if (intent?.action == GeoAlarmContract.ACTION_ALARM_STOPPED) {
+                val stoppedAlarmId = intent.getStringExtra(GeoAlarmService.EXTRA_ALARM_ID)
+                if (stoppedAlarmId == GeoAlarmContract.TEST_ALARM_ID) {
+                    _uiState.value = _uiState.value.copy(
+                        testActiveAlarm = null,
+                        monitoringProgress = 0,
+                        monitoringDistance = null,
+                    )
+                }
             }
         }
     }
 
     init {
-        val filter = IntentFilter(GeoAlarmService.ACTION_PROGRESS_UPDATE)
+        val filter = IntentFilter().apply {
+            addAction(GeoAlarmService.ACTION_PROGRESS_UPDATE)
+            addAction(GeoAlarmContract.ACTION_ALARM_STOPPED)
+        }
         ContextCompat.registerReceiver(
             application, progressReceiver, filter, ContextCompat.RECEIVER_NOT_EXPORTED
         )
@@ -206,7 +213,6 @@ class HomeViewModel @Inject constructor(
             is HomeAction.AlarmEnableRequested -> enableAlarm(action.alarm, action.alarms, action.context)
             is HomeAction.AlarmDisableRequested -> disableAlarm(
                 action.alarm,
-                action.context,
                 action.trackArrivedTurnOff
             )
             is HomeAction.PaymentShortcutSelected -> setPaymentShortcut(action.shortcut)
@@ -478,29 +484,17 @@ class HomeViewModel @Inject constructor(
      * Disables the alarm and stops the monitoring service.
      *
      * @param alarm The alarm to disable.
-     * @param context Context used to stop the service.
      */
-    private fun disableAlarm(alarm: Alarm, context: Context, trackArrivedTurnOff: Boolean = false) {
+    private fun disableAlarm(alarm: Alarm, trackArrivedTurnOff: Boolean = false) {
         viewModelScope.launch {
-            if (trackArrivedTurnOff) {
-                telemetryTracker.trackArrivedTurnOff()
-                settingsRepository.paymentShortcutFlow.first()
-                    ?.let { PaymentShortcutNotifier.show(context, it) }
-            }
-            if (alarm.id == TEST_ALARM_ID) {
+            alarmTurnOffUseCase(alarm.id, trackArrivedTurnOff)
+            if (alarm.id == GeoAlarmContract.TEST_ALARM_ID) {
                 _uiState.value = _uiState.value.copy(
                     testActiveAlarm = null,
                     monitoringProgress = 0,
                     monitoringDistance = null,
                 )
-                stopMonitoringService(context)
-                GeoAlarmGlanceWidget().updateAll(context)
-                return@launch
             }
-            repository.update(alarm.copy(isEnabled = false))
-            // Stop Service after DB state is persisted to avoid widget refresh races.
-            stopMonitoringService(context)
-            GeoAlarmGlanceWidget().updateAll(context)
         }
     }
 
@@ -587,7 +581,7 @@ class HomeViewModel @Inject constructor(
         if (!BuildConfig.DEBUG || alarms.value.any { it.isEnabled }) return
 
         val testAlarm = Alarm(
-            id = TEST_ALARM_ID,
+            id = GeoAlarmContract.TEST_ALARM_ID,
             name = context.getString(R.string.test_alarm_name),
             latitude = 0.0,
             longitude = 0.0,
@@ -602,7 +596,7 @@ class HomeViewModel @Inject constructor(
 
         val serviceIntent = Intent(context, GeoAlarmService::class.java).apply {
             action = GeoAlarmService.ACTION_TEST
-            putExtra(GeoAlarmService.EXTRA_ALARM_ID, TEST_ALARM_ID)
+            putExtra(GeoAlarmService.EXTRA_ALARM_ID, GeoAlarmContract.TEST_ALARM_ID)
             putExtra(GeoAlarmService.EXTRA_NAME, testAlarm.name)
         }
         if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.O) {
@@ -612,10 +606,4 @@ class HomeViewModel @Inject constructor(
         }
     }
 
-    private fun stopMonitoringService(context: Context) {
-        val serviceIntent = Intent(context, GeoAlarmService::class.java).apply {
-            action = GeoAlarmService.ACTION_STOP
-        }
-        context.startService(serviceIntent)
-    }
 }

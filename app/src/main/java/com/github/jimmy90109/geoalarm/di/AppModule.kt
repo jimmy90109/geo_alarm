@@ -3,6 +3,8 @@ package com.github.jimmy90109.geoalarm.di
 import android.content.Context
 import com.github.jimmy90109.geoalarm.appactions.AlarmManagerScheduleGateway
 import com.github.jimmy90109.geoalarm.appactions.AlarmServiceStarter
+import com.github.jimmy90109.geoalarm.appactions.AlarmTurnOffEffects
+import com.github.jimmy90109.geoalarm.appactions.AndroidAlarmTurnOffEffects
 import com.github.jimmy90109.geoalarm.appactions.AndroidAlarmServiceStarter
 import com.github.jimmy90109.geoalarm.appactions.AndroidGeocodingService
 import com.github.jimmy90109.geoalarm.appactions.GeocodingService
@@ -78,6 +80,12 @@ abstract class RepositoryModule {
     abstract fun bindAlarmServiceStarter(
         alarmServiceStarter: AndroidAlarmServiceStarter
     ): AlarmServiceStarter
+
+    @Binds
+    @Singleton
+    abstract fun bindAlarmTurnOffEffects(
+        effects: AndroidAlarmTurnOffEffects
+    ): AlarmTurnOffEffects
 
     @Binds
     @Singleton

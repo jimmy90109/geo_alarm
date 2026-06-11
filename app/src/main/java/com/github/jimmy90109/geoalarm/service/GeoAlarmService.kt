@@ -15,6 +15,7 @@ import android.os.VibrationEffect
 import android.os.Vibrator
 import android.os.VibratorManager
 import android.util.Log
+import com.github.jimmy90109.geoalarm.ArrivalAlarmActivity
 import androidx.core.app.NotificationCompat
 import com.github.jimmy90109.geoalarm.GeoAlarmApplication
 import com.github.jimmy90109.geoalarm.MainActivity
@@ -43,6 +44,9 @@ import kotlinx.coroutines.cancel
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
+import kotlinx.coroutines.withContext
 
 class GeoAlarmService : Service() {
 
@@ -57,7 +61,6 @@ class GeoAlarmService : Service() {
         // Output Actions
         const val ACTION_CANCEL_ALARM =
             "ACTION_CANCEL_ALARM" // User clicked "Cancel" on notification
-
         const val EXTRA_ALARM_ID = "EXTRA_ALARM_ID"
         const val EXTRA_NAME = "EXTRA_NAME"
         const val EXTRA_DEST_LAT = "EXTRA_DEST_LAT"
@@ -116,6 +119,7 @@ class GeoAlarmService : Service() {
     private var vibrator: Vibrator? = null
     private var mediaPlayer: MediaPlayer? = null
     private val serviceScope = CoroutineScope(Dispatchers.Main + Job())
+    private val geofenceActionMutex = Mutex()
     private var testJob: Job? = null  // For test mode
 
     override fun onCreate() {
@@ -132,6 +136,10 @@ class GeoAlarmService : Service() {
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
+        if (GeoAlarmServiceStartPolicy.requiresImmediateForeground(intent?.action)) {
+            startForegroundService()
+        }
+
         when (intent?.action) {
             ACTION_START -> {
                 if (!isServiceRunning) {
@@ -155,16 +163,11 @@ class GeoAlarmService : Service() {
             }
 
             ACTION_GEOFENCE_TRIGGERED -> {
-                // Destination geofence triggered - arrival!
-                triggerArrival()
+                handleGeofenceAction(ACTION_GEOFENCE_TRIGGERED)
             }
 
             ACTION_WARNING_GEOFENCE_TRIGGERED -> {
-                // 5km warning geofence triggered - switch to MID zone
-                Log.d("GeoAlarmService", "Warning geofence triggered, switching to MID zone")
-                if (currentZone == MonitoringZone.FAR) {
-                    switchToZone(MonitoringZone.MID)
-                }
+                handleGeofenceAction(ACTION_WARNING_GEOFENCE_TRIGGERED)
             }
 
             ACTION_NOTIFICATION_DISMISSED -> {
@@ -183,21 +186,7 @@ class GeoAlarmService : Service() {
             }
 
             ACTION_STOP -> {
-                testJob?.cancel()
-                serviceScope.cancel() // Cancel any pending ringtone coroutines first
-                stopGpsUpdates()
-                removeAllGeofences()
-                vibrator?.cancel()
-                mediaPlayer?.apply {
-                    if (isPlaying) stop()
-                    release()
-                }
-                mediaPlayer = null
-                AudioUtils.abandonAudioFocus(this)
-                WakeLocker.release()
-                GeoAlarmWidgetRuntimeStore.clear(this)
-                CoroutineScope(Dispatchers.IO).launch { GeoAlarmGlanceWidget().updateAll(this@GeoAlarmService) }
-                stopSelf()
+                cleanUpAndStop()
             }
 
             ACTION_TEST -> {
@@ -238,6 +227,82 @@ class GeoAlarmService : Service() {
             }
         }
         return START_STICKY
+    }
+
+    private fun handleGeofenceAction(action: String) {
+        serviceScope.launch {
+            geofenceActionMutex.withLock {
+                if (!isServiceRunning) {
+                    val activeAlarm = withContext(Dispatchers.IO) {
+                        runCatching {
+                            GeoAlarmServiceStartPolicy.selectActiveAlarm(
+                                repository.getAllAlarmsOneShot()
+                            )
+                        }.onFailure { error ->
+                            Log.e("GeoAlarmService", "Failed to restore active alarm", error)
+                        }.getOrNull()
+                    }
+                    if (activeAlarm == null) {
+                        Log.w(
+                            "GeoAlarmService",
+                            "Ignoring stale geofence action because there is no unique active alarm",
+                        )
+                        cleanUpAndStop()
+                        return@withLock
+                    }
+
+                    alarmId = activeAlarm.id
+                    alarmName = activeAlarm.name
+                    destLat = activeAlarm.latitude
+                    destLng = activeAlarm.longitude
+                    radius = activeAlarm.radius
+                    isServiceRunning = true
+
+                    // Replace the temporary foreground notification with restored alarm details.
+                    startForegroundService()
+                }
+
+                when (action) {
+                    ACTION_GEOFENCE_TRIGGERED -> {
+                        if (!isArrived) {
+                            isArrived = true
+                            triggerArrival()
+                        }
+                    }
+
+                    ACTION_WARNING_GEOFENCE_TRIGGERED -> {
+                        Log.d(
+                            "GeoAlarmService",
+                            "Warning geofence triggered, switching to MID zone",
+                        )
+                        if (!isArrived && currentZone == MonitoringZone.FAR) {
+                            switchToZone(MonitoringZone.MID)
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    private fun cleanUpAndStop() {
+        testJob?.cancel()
+        serviceScope.cancel()
+        stopGpsUpdates()
+        removeAllGeofences()
+        vibrator?.cancel()
+        mediaPlayer?.apply {
+            if (isPlaying) stop()
+            release()
+        }
+        mediaPlayer = null
+        AudioUtils.abandonAudioFocus(this)
+        WakeLocker.release()
+        GeoAlarmWidgetRuntimeStore.clear(this)
+        CoroutineScope(Dispatchers.IO).launch {
+            GeoAlarmGlanceWidget().updateAll(this@GeoAlarmService)
+        }
+        stopForeground(STOP_FOREGROUND_REMOVE)
+        stopSelf()
     }
 
     /**
@@ -654,6 +719,18 @@ class GeoAlarmService : Service() {
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
         )
 
+        val showArrivalIntent = Intent(this, ArrivalAlarmActivity::class.java).apply {
+            flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_SINGLE_TOP
+            putExtra(EXTRA_ALARM_ID, alarmId)
+            putExtra(EXTRA_NAME, alarmName)
+        }
+        val showArrivalPendingIntent = PendingIntent.getActivity(
+            this,
+            3,
+            showArrivalIntent,
+            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
+        )
+
         // Delete intent for when notification is swiped away
         val deleteIntent = Intent(this, GeoAlarmService::class.java).apply {
             action = ACTION_NOTIFICATION_DISMISSED
@@ -685,7 +762,7 @@ class GeoAlarmService : Service() {
             .setDeleteIntent(deletePendingIntent)
 
         if (canUseFullScreenIntent) {
-            builder.setFullScreenIntent(turnOffPendingIntent, true)
+            builder.setFullScreenIntent(showArrivalPendingIntent, true)
         }
 
         // Apply Xiaomi HyperOS Dynamic Island extras if supported

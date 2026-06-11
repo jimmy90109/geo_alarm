@@ -118,12 +118,16 @@ internal class InMemoryAlarmDataRepository : AlarmDataRepository {
 
     val insertedAlarms = mutableListOf<Alarm>()
     val insertedSchedules = mutableListOf<AlarmSchedule>()
+    var getAlarmCalls = 0
 
     override val allAlarms: Flow<List<Alarm>> = alarmsFlow
     override val allSchedules: Flow<List<AlarmSchedule>> = schedulesFlow
     override val allSchedulesWithAlarm: Flow<List<ScheduleWithAlarm>> = MutableStateFlow(emptyList())
 
-    override suspend fun getAlarm(id: String): Alarm? = alarmsStorage[id]
+    override suspend fun getAlarm(id: String): Alarm? {
+        getAlarmCalls += 1
+        return alarmsStorage[id]
+    }
 
     override suspend fun getAllAlarmsOneShot(): List<Alarm> = alarmsStorage.values.toList()
 
