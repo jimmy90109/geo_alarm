@@ -17,8 +17,8 @@
     <string name="onboarding_intro_privacy_item_2">Location data is processed only on your device</string>
     <string name="onboarding_intro_privacy_item_3">We do not upload location data to any server</string>
     <string name="onboarding_intro_privacy_item_4">Enable permission with confidence for precise reminders</string>
-    <string name="onboarding_location_permission_title">Location Permission Required (Allow all the time)</string>
-    <string name="onboarding_location_permission_body">Geo Alarm needs "Allow all the time" location access to detect when you enter the alarm area in the background.</string>
+    <string name="onboarding_location_permission_title">Allow Precise Location</string>
+    <string name="onboarding_location_permission_body">Geo Alarm uses precise location to set destinations. When an alarm is enabled, Geo Alarm also accesses location while the app is closed or not in use to detect when you enter the alarm area. Background access will be requested only when you enable an alarm.</string>
     <string name="onboarding_notification_permission_title">Notification Permission Required</string>
     <string name="onboarding_notification_permission_body">Notification permission is needed so we can alert you right when you enter the target area.</string>
     <string name="onboarding_notification_retry_message">Notification permission was not granted. Please try again.</string>
@@ -69,7 +69,9 @@
     <string name="already_at_destination_title">Already at Destination</string>
     <string name="already_at_destination_message">You are already within the alarm radius. The alarm will trigger immediately if enabled.</string>
     <string name="background_location_title">Background Location Required</string>
-    <string name="background_location_message">This app needs "Allow all the time" location permission to track your location in the background. Please go to Settings and set location permission to "Allow all the time".</string>
+    <string name="background_location_message">To enable this alarm, Geo Alarm must access your location while the app is closed or not in use so it can detect when you enter the alarm area. Go to Settings and choose "Allow all the time".</string>
+    <string name="precise_location_title">Precise Location Required</string>
+    <string name="precise_location_message">Precise location is required for reliable alarm-area detection. Go to Settings, allow location access, and turn on precise location before enabling this alarm.</string>
     <string name="go_to_settings">Go to Settings</string>
     <string name="exact_alarm_permission_title">Exact Alarm Permission Required</string>
     <string name="exact_alarm_permission_message">Schedules need the Alarms &amp; reminders permission so Geo Alarm can notify you at the selected time. Please enable it in Settings.</string>

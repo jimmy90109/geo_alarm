@@ -17,7 +17,9 @@ import com.github.jimmy90109.geoalarm.data.AlarmRepository
 import com.github.jimmy90109.geoalarm.data.AppDatabase
 import com.github.jimmy90109.geoalarm.data.ScheduleDao
 import com.github.jimmy90109.geoalarm.data.location.AndroidCurrentLocationClient
+import com.github.jimmy90109.geoalarm.data.location.AndroidAlarmActivationPermissionChecker
 import com.github.jimmy90109.geoalarm.data.location.AndroidLocationPermissionChecker
+import com.github.jimmy90109.geoalarm.data.location.AlarmActivationPermissionChecker
 import com.github.jimmy90109.geoalarm.data.location.CurrentLocationClient
 import com.github.jimmy90109.geoalarm.data.location.CurrentLocationRepository
 import com.github.jimmy90109.geoalarm.data.location.DefaultCurrentLocationRepository
@@ -112,6 +114,12 @@ abstract class RepositoryModule {
     abstract fun bindLocationPermissionChecker(
         checker: AndroidLocationPermissionChecker
     ): LocationPermissionChecker
+
+    @Binds
+    @Singleton
+    abstract fun bindAlarmActivationPermissionChecker(
+        checker: AndroidAlarmActivationPermissionChecker
+    ): AlarmActivationPermissionChecker
 
     @Binds
     @Singleton

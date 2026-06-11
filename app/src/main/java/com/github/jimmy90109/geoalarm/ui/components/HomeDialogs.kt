@@ -55,7 +55,9 @@ fun SingleAlarmDialog(onDismiss: () -> Unit) {
  */
 @Composable
 fun BackgroundLocationPermissionDialog(
-    context: Context, onDismiss: () -> Unit,
+    context: Context,
+    onDismiss: () -> Unit,
+    onOpenSettings: () -> Unit,
 ) {
     AlertDialog(
         onDismissRequest = onDismiss,
@@ -64,8 +66,39 @@ fun BackgroundLocationPermissionDialog(
         confirmButton = {
             Button(
                 onClick = {
-                    onDismiss()
+                    onOpenSettings()
                     // Navigate to app settings
+                    val intent = Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS).apply {
+                        data = Uri.fromParts("package", context.packageName, null)
+                    }
+                    context.startActivity(intent)
+                },
+            ) {
+                Text(stringResource(R.string.go_to_settings))
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) {
+                Text(stringResource(R.string.cancel))
+            }
+        },
+    )
+}
+
+@Composable
+fun PreciseLocationPermissionDialog(
+    context: Context,
+    onDismiss: () -> Unit,
+    onOpenSettings: () -> Unit,
+) {
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text(stringResource(R.string.precise_location_title)) },
+        text = { Text(stringResource(R.string.precise_location_message)) },
+        confirmButton = {
+            Button(
+                onClick = {
+                    onOpenSettings()
                     val intent = Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS).apply {
                         data = Uri.fromParts("package", context.packageName, null)
                     }

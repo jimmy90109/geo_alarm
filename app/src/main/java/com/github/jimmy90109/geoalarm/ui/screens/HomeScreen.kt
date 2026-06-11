@@ -70,6 +70,7 @@ import com.github.jimmy90109.geoalarm.ui.components.ExactAlarmPermissionDialog
 import com.github.jimmy90109.geoalarm.ui.components.HomeFabMenu
 import com.github.jimmy90109.geoalarm.ui.components.NotificationPermissionDialog
 import com.github.jimmy90109.geoalarm.ui.components.NotificationRationaleDialog
+import com.github.jimmy90109.geoalarm.ui.components.PreciseLocationPermissionDialog
 import com.github.jimmy90109.geoalarm.ui.components.ScheduleConflictDialog
 import com.github.jimmy90109.geoalarm.ui.components.SingleAlarmDialog
 import com.github.jimmy90109.geoalarm.ui.viewmodel.HomeAction
@@ -78,14 +79,9 @@ import com.github.jimmy90109.geoalarm.ui.viewmodel.HomeViewModel
 import com.github.jimmy90109.geoalarm.utils.PaymentShortcutNotifier
 import com.github.jimmy90109.geoalarm.widget.GeoAlarmGlanceWidgetReceiver
 import androidx.lifecycle.compose.LocalLifecycleOwner
-import com.google.accompanist.permissions.ExperimentalPermissionsApi
-import com.google.accompanist.permissions.isGranted
-import com.google.accompanist.permissions.rememberMultiplePermissionsState
-import com.google.accompanist.permissions.rememberPermissionState
 
 @OptIn(
     ExperimentalMaterial3Api::class,
-    ExperimentalPermissionsApi::class,
     ExperimentalMaterial3ExpressiveApi::class,
     ExperimentalFoundationApi::class,
 )
@@ -121,6 +117,7 @@ fun HomeScreen(
         val observer = LifecycleEventObserver { _, event ->
             if (event == Lifecycle.Event.ON_RESUME) {
                 viewModel.onAction(HomeAction.ExactAlarmSettingsReturned)
+                viewModel.onAction(HomeAction.ActivationPermissionSettingsReturned)
             }
         }
         lifecycleOwner.lifecycle.addObserver(observer)
@@ -129,17 +126,11 @@ fun HomeScreen(
         }
     }
 
-    // Permissions
-    val locationPermissionState = rememberMultiplePermissionsState(
-        listOf(Manifest.permission.ACCESS_FINE_LOCATION, Manifest.permission.ACCESS_COARSE_LOCATION)
-    )
-    val backgroundLocationPermissionState =
-        rememberPermissionState(Manifest.permission.ACCESS_BACKGROUND_LOCATION)
-
     // Notification Logic
     var notificationPermissionLaunchTime by remember { mutableLongStateOf(0L) }
     var preRationale by remember { mutableStateOf(false) }
     var pendingAlarm by remember { mutableStateOf<Alarm?>(null) }
+    lateinit var continueAlarmEnable: (Alarm) -> Unit
 
     // FAB Menu State
     var showFabMenu by remember { mutableStateOf(false) }
@@ -147,18 +138,20 @@ fun HomeScreen(
 
     // Helper: Check location permission -> Enable Alarm
     val checkLocationAndEnableAlarm = { alarm: Alarm ->
-        val hasLocationPermission =
-            if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.Q) {
-                backgroundLocationPermissionState.status.isGranted
-            } else {
-                locationPermissionState.allPermissionsGranted
-        }
+        viewModel.onAction(HomeAction.AlarmEnableRequested(alarm, alarms, context))
+    }
 
-        if (hasLocationPermission) {
-            viewModel.onAction(HomeAction.AlarmEnableRequested(alarm, alarms, context))
-        } else {
-            viewModel.onAction(HomeAction.BackgroundPermissionDialogRequested)
+    val locationPermissionLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.RequestMultiplePermissions()
+    ) { permissions ->
+        pendingAlarm?.let { alarm ->
+            if (permissions[Manifest.permission.ACCESS_FINE_LOCATION] == true) {
+                continueAlarmEnable(alarm)
+            } else {
+                viewModel.onAction(HomeAction.AlarmEnableRequested(alarm, alarms, context))
+            }
         }
+        pendingAlarm = null
     }
 
     // Permission Launcher
@@ -183,31 +176,48 @@ fun HomeScreen(
         }
     }
 
+    continueAlarmEnable = { alarm ->
+        // Check Notification Permission (Android 13+)
+        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.TIRAMISU) {
+            val permission = Manifest.permission.POST_NOTIFICATIONS
+            val isGranted = androidx.core.content.ContextCompat.checkSelfPermission(
+                context, permission
+            ) == android.content.pm.PackageManager.PERMISSION_GRANTED
+
+            if (!isGranted) {
+                val activity = context.findActivity()
+                if (activity != null) {
+                    pendingAlarm = alarm
+                    preRationale = activity.shouldShowRequestPermissionRationale(permission)
+                    notificationPermissionLaunchTime = System.currentTimeMillis()
+                    notificationPermissionLauncher.launch(permission)
+                }
+            } else {
+                checkLocationAndEnableAlarm(alarm)
+            }
+        } else {
+            checkLocationAndEnableAlarm(alarm)
+        }
+    }
+
     // Unified Toggle Logic
     val handleAlarmToggle = { alarm: Alarm, isChecked: Boolean ->
         if (isChecked) {
-            // 1. Check Notification Permission (Android 13+)
-            if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.TIRAMISU) {
-                val permission = Manifest.permission.POST_NOTIFICATIONS
-                val isGranted = androidx.core.content.ContextCompat.checkSelfPermission(
-                    context, permission
-                ) == android.content.pm.PackageManager.PERMISSION_GRANTED
+            val hasPreciseLocation = androidx.core.content.ContextCompat.checkSelfPermission(
+                context,
+                Manifest.permission.ACCESS_FINE_LOCATION
+            ) == android.content.pm.PackageManager.PERMISSION_GRANTED
 
-                if (!isGranted) {
-                    val activity = context.findActivity()
-                    if (activity != null) {
-                        pendingAlarm = alarm
-                        preRationale = activity.shouldShowRequestPermissionRationale(permission)
-                        notificationPermissionLaunchTime = System.currentTimeMillis()
-                        notificationPermissionLauncher.launch(permission)
-                    }
-                } else {
-                    // 2. Check Location -> Enable
-                    checkLocationAndEnableAlarm(alarm)
-                }
+            if (!hasPreciseLocation) {
+                pendingAlarm = alarm
+                locationPermissionLauncher.launch(
+                    arrayOf(
+                        Manifest.permission.ACCESS_FINE_LOCATION,
+                        Manifest.permission.ACCESS_COARSE_LOCATION
+                    )
+                )
             } else {
-                // < Android 13: Directly Check Location -> Enable
-                checkLocationAndEnableAlarm(alarm)
+                continueAlarmEnable(alarm)
             }
         } else {
             viewModel.onAction(HomeAction.AlarmDisableRequested(alarm, context))
@@ -274,19 +284,7 @@ fun HomeScreen(
                     },
                     onAddAlarm = {
                         showFabMenu = false
-                        // Add Alarm Permission Check Logic
-                        val hasLocationPermission =
-                            if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.Q) {
-                                backgroundLocationPermissionState.status.isGranted
-                            } else {
-                                locationPermissionState.allPermissionsGranted
-                            }
-
-                        if (hasLocationPermission) {
-                            onAddAlarm()
-                        } else {
-                            viewModel.onAction(HomeAction.BackgroundPermissionDialogRequested)
-                        }
+                        onAddAlarm()
                     })
             }
         },
@@ -474,7 +472,18 @@ private fun HomeDialogsContainer(
 
     if (uiState.showBackgroundPermissionDialog) {
         BackgroundLocationPermissionDialog(
-            context = context, onDismiss = { viewModel.onAction(HomeAction.BackgroundPermissionDialogDismissed) })
+            context = context,
+            onDismiss = { viewModel.onAction(HomeAction.BackgroundPermissionDialogDismissed) },
+            onOpenSettings = { viewModel.onAction(HomeAction.BackgroundPermissionSettingsRequested) },
+        )
+    }
+
+    if (uiState.showPreciseLocationPermissionDialog) {
+        PreciseLocationPermissionDialog(
+            context = context,
+            onDismiss = { viewModel.onAction(HomeAction.PreciseLocationPermissionDialogDismissed) },
+            onOpenSettings = { viewModel.onAction(HomeAction.PreciseLocationPermissionSettingsRequested) },
+        )
     }
 
     if (uiState.showNotificationPermissionDialog) {

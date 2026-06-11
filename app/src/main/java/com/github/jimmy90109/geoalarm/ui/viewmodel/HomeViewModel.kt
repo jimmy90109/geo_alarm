@@ -1,7 +1,5 @@
 package com.github.jimmy90109.geoalarm.ui.viewmodel
 
-import android.Manifest.permission.ACCESS_COARSE_LOCATION
-import android.Manifest.permission.ACCESS_FINE_LOCATION
 import android.Manifest.permission.POST_NOTIFICATIONS
 import android.app.Application
 import android.content.BroadcastReceiver
@@ -23,6 +21,7 @@ import com.github.jimmy90109.geoalarm.data.AlarmDataRepository
 import com.github.jimmy90109.geoalarm.data.AlarmSchedule
 import com.github.jimmy90109.geoalarm.data.PaymentShortcut
 import com.github.jimmy90109.geoalarm.data.SettingsRepository
+import com.github.jimmy90109.geoalarm.data.location.AlarmActivationPermissionChecker
 import com.github.jimmy90109.geoalarm.service.GeoAlarmService
 import com.github.jimmy90109.geoalarm.service.ScheduleManager
 import com.github.jimmy90109.geoalarm.util.ExactAlarmPermissionHelper
@@ -44,6 +43,7 @@ data class HomeUiState(
     val showEditDisabledDialog: Boolean = false,
     val showSingleAlarmDialog: Boolean = false,
     val showBackgroundPermissionDialog: Boolean = false,
+    val showPreciseLocationPermissionDialog: Boolean = false,
     val showNotificationPermissionDialog: Boolean = false,
     val showExactAlarmPermissionDialog: Boolean = false,
     val showNotificationRationaleDialog: Boolean = false,
@@ -67,6 +67,10 @@ sealed interface HomeAction {
     data object SingleAlarmDialogDismissed : HomeAction
     data object BackgroundPermissionDialogRequested : HomeAction
     data object BackgroundPermissionDialogDismissed : HomeAction
+    data object BackgroundPermissionSettingsRequested : HomeAction
+    data object PreciseLocationPermissionDialogDismissed : HomeAction
+    data object PreciseLocationPermissionSettingsRequested : HomeAction
+    data object ActivationPermissionSettingsReturned : HomeAction
     data object NotificationPermissionDialogRequested : HomeAction
     data object NotificationPermissionDialogDismissed : HomeAction
     data object ExactAlarmPermissionDialogDismissed : HomeAction
@@ -107,7 +111,13 @@ class HomeViewModel @Inject constructor(
     private val repository: AlarmDataRepository,
     private val telemetryTracker: TelemetryTracker,
     private val settingsRepository: SettingsRepository,
+    private val activationPermissionChecker: AlarmActivationPermissionChecker,
 ) : AndroidViewModel(application) {
+    private enum class ActivationSettingsKind {
+        PRECISE,
+        BACKGROUND
+    }
+
     private companion object {
         const val TEST_ALARM_ID = "debug_test_alarm"
     }
@@ -115,6 +125,9 @@ class HomeViewModel @Inject constructor(
     private val fusedLocationClient = LocationServices.getFusedLocationProviderClient(application)
     private val scheduleManager = ScheduleManager(application)
     private var pendingScheduleToEnable: AlarmSchedule? = null
+    private var pendingAlarmToEnable: Alarm? = null
+    private var pendingAlarmList: List<Alarm> = emptyList()
+    private var pendingActivationSettingsKind: ActivationSettingsKind? = null
 
     private val progressReceiver = object : BroadcastReceiver() {
         override fun onReceive(context: Context?, intent: Intent?) {
@@ -173,6 +186,10 @@ class HomeViewModel @Inject constructor(
             HomeAction.SingleAlarmDialogDismissed -> dismissSingleAlarmDialog()
             HomeAction.BackgroundPermissionDialogRequested -> showBackgroundPermissionDialog()
             HomeAction.BackgroundPermissionDialogDismissed -> dismissBackgroundPermissionDialog()
+            HomeAction.BackgroundPermissionSettingsRequested -> hideBackgroundPermissionDialog()
+            HomeAction.PreciseLocationPermissionDialogDismissed -> dismissPreciseLocationPermissionDialog()
+            HomeAction.PreciseLocationPermissionSettingsRequested -> hidePreciseLocationPermissionDialog()
+            HomeAction.ActivationPermissionSettingsReturned -> handleActivationPermissionSettingsReturned()
             HomeAction.NotificationPermissionDialogRequested -> showNotificationPermissionDialog()
             HomeAction.NotificationPermissionDialogDismissed -> dismissNotificationPermissionDialog()
             HomeAction.ExactAlarmPermissionDialogDismissed -> dismissExactAlarmPermissionDialog()
@@ -240,7 +257,55 @@ class HomeViewModel @Inject constructor(
     }
 
     private fun dismissBackgroundPermissionDialog() {
+        clearPendingAlarmActivation()
         _uiState.value = _uiState.value.copy(showBackgroundPermissionDialog = false)
+    }
+
+    private fun hideBackgroundPermissionDialog() {
+        pendingActivationSettingsKind = ActivationSettingsKind.BACKGROUND
+        _uiState.value = _uiState.value.copy(showBackgroundPermissionDialog = false)
+    }
+
+    private fun dismissPreciseLocationPermissionDialog() {
+        clearPendingAlarmActivation()
+        _uiState.value = _uiState.value.copy(showPreciseLocationPermissionDialog = false)
+    }
+
+    private fun hidePreciseLocationPermissionDialog() {
+        pendingActivationSettingsKind = ActivationSettingsKind.PRECISE
+        _uiState.value = _uiState.value.copy(showPreciseLocationPermissionDialog = false)
+    }
+
+    private fun handleActivationPermissionSettingsReturned() {
+        val alarm = pendingAlarmToEnable ?: return
+        val alarms = pendingAlarmList
+        val settingsKind = pendingActivationSettingsKind ?: return
+        val canContinue = when (settingsKind) {
+            ActivationSettingsKind.PRECISE ->
+                activationPermissionChecker.hasPreciseForegroundLocation()
+            ActivationSettingsKind.BACKGROUND ->
+                activationPermissionChecker.hasPreciseForegroundLocation() &&
+                    activationPermissionChecker.hasBackgroundLocation()
+        }
+        clearPendingAlarmActivation()
+        _uiState.value = _uiState.value.copy(
+            showPreciseLocationPermissionDialog = false,
+            showBackgroundPermissionDialog = false
+        )
+        if (canContinue) {
+            enableAlarm(alarm, alarms, getApplication())
+        }
+    }
+
+    private fun savePendingAlarmActivation(alarm: Alarm, alarms: List<Alarm>) {
+        pendingAlarmToEnable = alarm
+        pendingAlarmList = alarms
+    }
+
+    private fun clearPendingAlarmActivation() {
+        pendingAlarmToEnable = null
+        pendingAlarmList = emptyList()
+        pendingActivationSettingsKind = null
     }
 
     private fun showNotificationPermissionDialog() {
@@ -329,6 +394,12 @@ class HomeViewModel @Inject constructor(
             return
         }
 
+        if (!activationPermissionChecker.hasPreciseForegroundLocation()) {
+            savePendingAlarmActivation(alarm, alarms)
+            _uiState.value = _uiState.value.copy(showPreciseLocationPermissionDialog = true)
+            return
+        }
+
         // Check notification permission (Android 13+) for non-UI entry points (widget/schedule).
         if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.TIRAMISU) {
             val hasNotificationPermission = ContextCompat.checkSelfPermission(
@@ -341,15 +412,8 @@ class HomeViewModel @Inject constructor(
             }
         }
 
-        // Check location to see if already at destination
-        if (ContextCompat.checkSelfPermission(
-                context, ACCESS_FINE_LOCATION
-            ) != PackageManager.PERMISSION_GRANTED && ContextCompat.checkSelfPermission(
-                context, ACCESS_COARSE_LOCATION
-            ) != PackageManager.PERMISSION_GRANTED
-        ) {
-            // Do not start location foreground service without runtime location permission.
-            // This path can be reached from non-UI triggers (e.g. widget/schedule intent).
+        if (!activationPermissionChecker.hasBackgroundLocation()) {
+            savePendingAlarmActivation(alarm, alarms)
             showBackgroundPermissionDialog()
             return
         }
