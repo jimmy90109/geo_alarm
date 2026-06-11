@@ -81,10 +81,7 @@
     <string name="notification_retry_message">Notifications are essential for alerts. Please allow access.</string>
     <string name="retry">Retry</string>
     <string name="preview">Preview</string>
-    <string name="battery_warning_title">Allow Background Execution</string>
-    <string name="battery_warning_message">To ensure the alarm works reliably, please turn off battery optimization for this app.</string>
-    <string name="fix_now">Fix Now</string>
-    <string name="battery_optimization_required_toast">Please fix this setting to ensure alarms work.</string>
+    <string name="battery_optimization_banner_message">Strongly recommended: turn off battery optimization for reliable alarms.</string>
     
     <!-- Search strings -->
     <string name="search_location">Search location</string>

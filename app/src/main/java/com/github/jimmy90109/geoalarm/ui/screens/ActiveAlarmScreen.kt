@@ -16,16 +16,19 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowForward
+import androidx.compose.material.icons.filled.BatteryAlert
 import androidx.compose.material.icons.outlined.Info
 import androidx.compose.material3.Button
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -56,6 +59,8 @@ fun ActiveAlarmScreen(
     alarm: Alarm,
     progress: Int,
     distanceMeters: Int?,
+    showBatteryOptimizationWarning: Boolean = false,
+    onBatteryOptimizationClick: () -> Unit = {},
     paymentShortcut: PaymentShortcut? = null,
     onPaymentShortcutClick: () -> Unit = {},
     onStopAlarm: (Boolean) -> Unit,
@@ -297,6 +302,56 @@ fun ActiveAlarmScreen(
                 )
             }
         }
+
+        if (showBatteryOptimizationWarning) {
+            BatteryOptimizationBanner(
+                onClick = onBatteryOptimizationClick,
+                modifier = Modifier
+                    .align(Alignment.TopCenter)
+                    .padding(horizontal = 24.dp, vertical = 24.dp),
+            )
+        }
+    }
+}
+
+@Composable
+private fun BatteryOptimizationBanner(
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    Surface(
+        onClick = onClick,
+        modifier = modifier.fillMaxWidth(),
+        shape = MaterialTheme.shapes.large,
+        color = MaterialTheme.colorScheme.errorContainer,
+        contentColor = MaterialTheme.colorScheme.onErrorContainer,
+        tonalElevation = 6.dp,
+    ) {
+        Row(
+            modifier = Modifier.padding(horizontal = 16.dp, vertical = 14.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Icon(
+                imageVector = Icons.Default.BatteryAlert,
+                contentDescription = null,
+                modifier = Modifier.size(24.dp),
+            )
+            Column(
+                modifier = Modifier.padding(start = 12.dp),
+            ) {
+                Text(
+                    text = stringResource(R.string.battery_optimization_banner_message),
+                    style = MaterialTheme.typography.bodyMedium,
+                    fontWeight = FontWeight.SemiBold,
+                )
+                Text(
+                    text = stringResource(R.string.go_to_settings),
+                    modifier = Modifier.padding(top = 10.dp),
+                    style = MaterialTheme.typography.labelLarge,
+                    fontWeight = FontWeight.Bold,
+                )
+            }
+        }
     }
 }
 
@@ -357,6 +412,7 @@ fun ActiveAlarmScreenPreview() {
             alarm = mockAlarm,
             progress = progressState.intValue,
             distanceMeters = if (progressState.intValue == 10) 5000 else 250,
+            showBatteryOptimizationWarning = true,
             onStopAlarm = {},
         )
     }

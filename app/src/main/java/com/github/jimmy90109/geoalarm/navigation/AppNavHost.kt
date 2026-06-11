@@ -1,7 +1,5 @@
 package com.github.jimmy90109.geoalarm.navigation
 
-import android.content.Intent
-import android.provider.Settings
 import android.view.RoundedCorner
 import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.tween
@@ -31,7 +29,6 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.toRoute
 import com.github.jimmy90109.geoalarm.ui.screens.AlarmEditScreen
-import com.github.jimmy90109.geoalarm.ui.screens.BatteryOptimizationScreen
 import com.github.jimmy90109.geoalarm.ui.screens.MainScreen
 import com.github.jimmy90109.geoalarm.ui.screens.OnboardingScreen
 import com.github.jimmy90109.geoalarm.ui.screens.ScheduleEditScreen
@@ -161,9 +158,6 @@ fun AppNavHost(
                     onScheduleClick = { scheduleId ->
                         navController.navigate(AppRoutes.ScheduleEdit(scheduleId))
                     },
-                    onNavigateToBatteryOptimization = {
-                        navController.navigate(AppRoutes.BatteryOptimization)
-                    },
                     onOpenOnboarding = {
                         navController.navigate(AppRoutes.Onboarding(showAnalyticsOptIn = false))
                     }
@@ -208,21 +202,6 @@ fun AppNavHost(
                         }
                         navController.popBackStack()
                     })
-            }
-        }
-
-        composable<AppRoutes.BatteryOptimization> {
-            val context = LocalContext.current
-            AnimatedNavScreen {
-                BatteryOptimizationScreen(
-                    onFix = {
-                        val intent = Intent(Settings.ACTION_IGNORE_BATTERY_OPTIMIZATION_SETTINGS)
-                        context.startActivity(intent)
-                    },
-                    onOptimizationDisabled = {
-                        navController.popBackStack()
-                    },
-                )
             }
         }
 

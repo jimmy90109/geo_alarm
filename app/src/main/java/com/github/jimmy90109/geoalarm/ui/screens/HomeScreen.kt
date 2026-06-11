@@ -6,7 +6,9 @@ import android.appwidget.AppWidgetManager
 import android.content.ComponentName
 import android.content.Context
 import android.content.ContextWrapper
+import android.content.Intent
 import android.os.PowerManager
+import android.provider.Settings
 import android.widget.Toast
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
@@ -92,7 +94,6 @@ import androidx.lifecycle.compose.LocalLifecycleOwner
  * @param viewModel The ViewModel capable of managing home screen state.
  * @param onAddAlarm Callback to navigate to 'Add Alarm' screen.
  * @param onAlarmClick Callback to navigate to 'Edit Alarm' screen.
- * @param onNavigateToBatteryOptimization Callback to navigate to battery optimization warning screen.
  */
 @Composable
 fun HomeScreen(
@@ -101,7 +102,6 @@ fun HomeScreen(
     onAlarmClick: (Alarm) -> Unit,
     onAddSchedule: () -> Unit,
     onScheduleClick: (ScheduleWithAlarm) -> Unit,
-    onNavigateToBatteryOptimization: () -> Unit,
     onOpenOnboarding: () -> Unit
 ) {
     val alarms by viewModel.alarms.collectAsStateWithLifecycle(initialValue = emptyList())
@@ -112,12 +112,21 @@ fun HomeScreen(
     val lifecycleOwner = LocalLifecycleOwner.current
     val haptic = LocalHapticFeedback.current
     val scrollBehavior = TopAppBarDefaults.exitUntilCollapsedScrollBehavior()
+    var showBatteryOptimizationWarning by remember { mutableStateOf(false) }
 
-    DisposableEffect(lifecycleOwner) {
+    fun refreshBatteryOptimizationWarning() {
+        val powerManager = context.getSystemService(Context.POWER_SERVICE) as PowerManager
+        showBatteryOptimizationWarning =
+            alarms.any { it.isEnabled } &&
+                !powerManager.isIgnoringBatteryOptimizations(context.packageName)
+    }
+
+    DisposableEffect(lifecycleOwner, alarms) {
         val observer = LifecycleEventObserver { _, event ->
             if (event == Lifecycle.Event.ON_RESUME) {
                 viewModel.onAction(HomeAction.ExactAlarmSettingsReturned)
                 viewModel.onAction(HomeAction.ActivationPermissionSettingsReturned)
+                refreshBatteryOptimizationWarning()
             }
         }
         lifecycleOwner.lifecycle.addObserver(observer)
@@ -325,6 +334,12 @@ fun HomeScreen(
                         alarm = targetAlarm,
                         progress = uiState.monitoringProgress,
                         distanceMeters = uiState.monitoringDistance,
+                        showBatteryOptimizationWarning = showBatteryOptimizationWarning,
+                        onBatteryOptimizationClick = {
+                            context.startActivity(
+                                Intent(Settings.ACTION_IGNORE_BATTERY_OPTIMIZATION_SETTINGS)
+                            )
+                        },
                         paymentShortcut = paymentShortcut,
                         onPaymentShortcutClick = { showPaymentShortcutSheet = true },
                         onStopAlarm = { isArrived ->
@@ -426,15 +441,8 @@ fun HomeScreen(
         )
     }
 
-    // Battery Optimization Check
     LaunchedEffect(alarms) {
-        val anyEnabled = alarms.any { it.isEnabled }
-        if (anyEnabled) {
-            val powerManager = context.getSystemService(Context.POWER_SERVICE) as PowerManager
-            if (!powerManager.isIgnoringBatteryOptimizations(context.packageName)) {
-                onNavigateToBatteryOptimization()
-            }
-        }
+        refreshBatteryOptimizationWarning()
     }
 }
 

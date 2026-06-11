@@ -81,10 +81,7 @@
     <string name="notification_retry_message">通知功能對於提醒到達目的地至關重要，請允許權限。</string>
     <string name="retry">重試</string>
     <string name="preview">預覽</string>
-    <string name="battery_warning_title">允許背景執行</string>
-    <string name="battery_warning_message">為了確保鬧鐘準確運作，請為此應用程式關閉電池最佳化。</string>
-    <string name="fix_now">立即設定</string>
-    <string name="battery_optimization_required_toast">請修正此設定以確保鬧鐘正常運作</string>
+    <string name="battery_optimization_banner_message">強烈建議關閉電池最佳化，確保鬧鐘可靠運作。</string>
     
     <!-- 搜尋字串 -->
     <string name="search_location">搜尋地點</string>

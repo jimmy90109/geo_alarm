@@ -50,7 +50,6 @@ fun MainScreen(
     onAlarmClick: (String) -> Unit,
     onAddSchedule: () -> Unit,
     onScheduleClick: (String) -> Unit,
-    onNavigateToBatteryOptimization: () -> Unit,
     onOpenOnboarding: () -> Unit,
 ) {
     val navController = rememberNavController()
@@ -126,7 +125,6 @@ fun MainScreen(
                     onAlarmClick = onAlarmClick,
                     onAddSchedule = onAddSchedule,
                     onScheduleClick = onScheduleClick,
-                    onNavigateToBatteryOptimization = onNavigateToBatteryOptimization,
                     onOpenOnboarding = onOpenOnboarding,
                     isLandscape = true
                 )
@@ -155,7 +153,6 @@ fun MainScreen(
                 onAlarmClick = onAlarmClick,
                 onAddSchedule = onAddSchedule,
                 onScheduleClick = onScheduleClick,
-                onNavigateToBatteryOptimization = onNavigateToBatteryOptimization,
                 onOpenOnboarding = onOpenOnboarding,
                 isLandscape = false
             )
@@ -186,7 +183,6 @@ fun MainNavHost(
     onAlarmClick: (String) -> Unit,
     onAddSchedule: () -> Unit,
     onScheduleClick: (String) -> Unit,
-    onNavigateToBatteryOptimization: () -> Unit,
     onOpenOnboarding: () -> Unit,
     isLandscape: Boolean
 ) {
@@ -245,7 +241,6 @@ fun MainNavHost(
                 onAlarmClick = { alarm -> onAlarmClick(alarm.id) },
                 onAddSchedule = onAddSchedule,
                 onScheduleClick = { schedule -> onScheduleClick(schedule.schedule.id) },
-                onNavigateToBatteryOptimization = onNavigateToBatteryOptimization,
                 onOpenOnboarding = onOpenOnboarding
             )
         }

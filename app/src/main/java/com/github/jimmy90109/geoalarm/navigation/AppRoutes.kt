@@ -20,6 +20,4 @@ sealed interface AppRoutes {
     @Serializable
     data class ScheduleEdit(val scheduleId: String? = null) : AppRoutes
 
-    @Serializable
-    data object BatteryOptimization : AppRoutes
 }
