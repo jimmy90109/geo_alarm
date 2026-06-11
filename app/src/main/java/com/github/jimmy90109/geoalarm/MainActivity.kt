@@ -9,6 +9,7 @@ import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.viewModels
 import androidx.appcompat.app.AppCompatActivity
+import androidx.lifecycle.lifecycleScope
 import com.github.jimmy90109.geoalarm.analytics.TelemetryTracker
 import com.github.jimmy90109.geoalarm.appactions.AppActionContract
 import com.github.jimmy90109.geoalarm.appactions.AppActionParsers
@@ -21,6 +22,7 @@ import androidx.navigation.compose.rememberNavController
 import com.github.jimmy90109.geoalarm.data.AlarmDataRepository
 import com.github.jimmy90109.geoalarm.data.OnboardingRepository
 import com.github.jimmy90109.geoalarm.data.SettingsRepository
+import com.github.jimmy90109.geoalarm.data.location.CurrentLocationRepository
 import com.github.jimmy90109.geoalarm.navigation.AppNavHost
 import com.github.jimmy90109.geoalarm.service.GeoAlarmService
 import com.github.jimmy90109.geoalarm.ui.theme.GeoAlarmTheme
@@ -65,6 +67,9 @@ class MainActivity : AppCompatActivity() {
     @Inject
     lateinit var telemetryTracker: TelemetryTracker
 
+    @Inject
+    lateinit var currentLocationRepository: CurrentLocationRepository
+
     private val homeViewModel: HomeViewModel by viewModels()
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -92,6 +97,10 @@ class MainActivity : AppCompatActivity() {
 
         if (savedInstanceState == null) {
             handleIntent(intent)
+        }
+
+        lifecycleScope.launch {
+            currentLocationRepository.warmUp()
         }
     }
 

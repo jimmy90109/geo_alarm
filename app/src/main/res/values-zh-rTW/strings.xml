@@ -86,6 +86,7 @@
     
     <!-- 搜尋字串 -->
     <string name="search_location">搜尋地點</string>
+    <string name="getting_current_location">正在取得你的位置…</string>
 
     <!-- 通知字串 -->
     <string name="notification_title">前往 %s</string>

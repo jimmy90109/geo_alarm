@@ -86,6 +86,7 @@
     
     <!-- Search strings -->
     <string name="search_location">Search location</string>
+    <string name="getting_current_location">Getting your current location…</string>
     
     <!-- Notification strings -->
     <string name="notification_title">Heading to %s</string>

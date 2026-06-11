@@ -16,6 +16,14 @@ import com.github.jimmy90109.geoalarm.data.AnalyticsPreferencesStore
 import com.github.jimmy90109.geoalarm.data.AlarmRepository
 import com.github.jimmy90109.geoalarm.data.AppDatabase
 import com.github.jimmy90109.geoalarm.data.ScheduleDao
+import com.github.jimmy90109.geoalarm.data.location.AndroidCurrentLocationClient
+import com.github.jimmy90109.geoalarm.data.location.AndroidLocationPermissionChecker
+import com.github.jimmy90109.geoalarm.data.location.CurrentLocationClient
+import com.github.jimmy90109.geoalarm.data.location.CurrentLocationRepository
+import com.github.jimmy90109.geoalarm.data.location.DefaultCurrentLocationRepository
+import com.github.jimmy90109.geoalarm.data.location.ElapsedRealtimeNanosProvider
+import com.github.jimmy90109.geoalarm.data.location.LocationPermissionChecker
+import com.github.jimmy90109.geoalarm.data.location.SystemElapsedRealtimeNanosProvider
 import com.github.jimmy90109.geoalarm.widget.AppWidgetUpdater
 import com.github.jimmy90109.geoalarm.widget.WidgetUpdater
 import dagger.Binds
@@ -86,4 +94,28 @@ abstract class RepositoryModule {
     abstract fun bindAnalyticsPreferencesStore(
         repository: AnalyticsPreferencesRepository
     ): AnalyticsPreferencesStore
+
+    @Binds
+    @Singleton
+    abstract fun bindCurrentLocationRepository(
+        repository: DefaultCurrentLocationRepository
+    ): CurrentLocationRepository
+
+    @Binds
+    @Singleton
+    abstract fun bindCurrentLocationClient(
+        client: AndroidCurrentLocationClient
+    ): CurrentLocationClient
+
+    @Binds
+    @Singleton
+    abstract fun bindLocationPermissionChecker(
+        checker: AndroidLocationPermissionChecker
+    ): LocationPermissionChecker
+
+    @Binds
+    @Singleton
+    abstract fun bindElapsedRealtimeNanosProvider(
+        provider: SystemElapsedRealtimeNanosProvider
+    ): ElapsedRealtimeNanosProvider
 }

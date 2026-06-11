@@ -1,8 +1,10 @@
 package com.github.jimmy90109.geoalarm.ui.screens
 
+import android.Manifest
 import android.app.Activity
-import android.os.Build
 import android.content.res.Configuration
+import android.content.pm.PackageManager
+import android.os.Build
 import androidx.activity.compose.BackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
@@ -92,9 +94,11 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.platform.LocalView
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.IntOffset
+import androidx.core.content.ContextCompat
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.github.jimmy90109.geoalarm.R
 import com.github.jimmy90109.geoalarm.ui.components.AlarmIconBadge
@@ -106,6 +110,7 @@ import com.github.jimmy90109.geoalarm.ui.viewmodel.AlarmEditEffect
 import com.github.jimmy90109.geoalarm.ui.viewmodel.AlarmEditStep
 import com.github.jimmy90109.geoalarm.ui.viewmodel.AlarmEditUiState
 import com.github.jimmy90109.geoalarm.ui.viewmodel.AlarmEditViewModel
+import com.github.jimmy90109.geoalarm.ui.theme.GeoAlarmTheme
 import com.github.jimmy90109.geoalarm.utils.DistanceFormatter
 import com.google.android.gms.maps.CameraUpdateFactory
 import com.google.android.gms.maps.model.CameraPosition
@@ -126,6 +131,9 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlin.math.roundToInt
 
+private val DefaultMapPosition = LatLng(25.034, 121.564)
+private const val INITIAL_LOCATION_FALLBACK_DELAY_MS = 1200L
+
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalMaterial3ExpressiveApi::class)
 @Composable
 fun AlarmEditScreen(
@@ -140,9 +148,13 @@ fun AlarmEditScreen(
     val haptic = LocalHapticFeedback.current
     val isLandscape = configuration.orientation == Configuration.ORIENTATION_LANDSCAPE
     val isDetailsStep = uiState.step == AlarmEditStep.DetailsForm
+    var canShowInitialLocationFallback by remember(alarmId) { mutableStateOf(alarmId != null) }
 
     val cameraPositionState = rememberCameraPositionState {
-        position = CameraPosition.fromLatLngZoom(LatLng(25.034, 121.564), 13f)
+        position = CameraPosition.fromLatLngZoom(
+            uiState.currentLocation ?: DefaultMapPosition,
+            if (uiState.currentLocation != null) 15f else 13f
+        )
     }
 
     val autocompleteLauncher = rememberLauncherForActivityResult(
@@ -182,6 +194,33 @@ fun AlarmEditScreen(
         viewModel.onAction(AlarmEditAction.MapLoaded)
     }
 
+    LaunchedEffect(alarmId, uiState.currentLocation, uiState.selectedPosition) {
+        if (alarmId == null && uiState.currentLocation == null && uiState.selectedPosition == null) {
+            canShowInitialLocationFallback = false
+            delay(INITIAL_LOCATION_FALLBACK_DELAY_MS)
+            canShowInitialLocationFallback = true
+        } else {
+            canShowInitialLocationFallback = true
+        }
+    }
+
+    LaunchedEffect(
+        alarmId,
+        uiState.currentLocation,
+        uiState.selectedPosition,
+        uiState.hasUserInteractedWithMap
+    ) {
+        val currentLocation = uiState.currentLocation
+        if (
+            alarmId == null &&
+            currentLocation != null &&
+            uiState.selectedPosition == null &&
+            !uiState.hasUserInteractedWithMap
+        ) {
+            cameraPositionState.animate(CameraUpdateFactory.newLatLngZoom(currentLocation, 15f))
+        }
+    }
+
     LaunchedEffect(uiState.selectedPosition) {
         uiState.selectedPosition?.let { latLng ->
             cameraPositionState.animate(CameraUpdateFactory.newLatLngZoom(latLng, 15f))
@@ -209,13 +248,17 @@ fun AlarmEditScreen(
                 onBack = onNavigateBack,
                 onSearch = ::launchAutocomplete,
                 onMapClick = { viewModel.onAction(AlarmEditAction.PositionSelected(it)) },
+                onMapInteracted = { viewModel.onAction(AlarmEditAction.MapInteracted) },
                 onRadiusChange = { viewModel.onAction(AlarmEditAction.RadiusChanged(it)) },
                 onNext = { viewModel.onAction(AlarmEditAction.NextClicked) },
                 onDelete = { viewModel.onAction(AlarmEditAction.DeleteRequested) },
                 onNameChange = { viewModel.onAction(AlarmEditAction.NameChanged(it)) },
                 onIconSelected = { viewModel.onAction(AlarmEditAction.IconSelected(it)) },
                 onBackToMap = { viewModel.onAction(AlarmEditAction.BackToMapClicked) },
-                onSave = { viewModel.onAction(AlarmEditAction.SaveClicked) }
+                onSave = { viewModel.onAction(AlarmEditAction.SaveClicked) },
+                hideMapForInitialLocation = !canShowInitialLocationFallback &&
+                    uiState.currentLocation == null &&
+                    uiState.selectedPosition == null
             )
         } else {
             AlarmEditPortraitLayout(
@@ -225,13 +268,17 @@ fun AlarmEditScreen(
                 onBack = onNavigateBack,
                 onSearch = ::launchAutocomplete,
                 onMapClick = { viewModel.onAction(AlarmEditAction.PositionSelected(it)) },
+                onMapInteracted = { viewModel.onAction(AlarmEditAction.MapInteracted) },
                 onRadiusChange = { viewModel.onAction(AlarmEditAction.RadiusChanged(it)) },
                 onNext = { viewModel.onAction(AlarmEditAction.NextClicked) },
                 onDelete = { viewModel.onAction(AlarmEditAction.DeleteRequested) },
                 onNameChange = { viewModel.onAction(AlarmEditAction.NameChanged(it)) },
                 onIconSelected = { viewModel.onAction(AlarmEditAction.IconSelected(it)) },
                 onBackToMap = { viewModel.onAction(AlarmEditAction.BackToMapClicked) },
-                onSave = { viewModel.onAction(AlarmEditAction.SaveClicked) }
+                onSave = { viewModel.onAction(AlarmEditAction.SaveClicked) },
+                hideMapForInitialLocation = !canShowInitialLocationFallback &&
+                    uiState.currentLocation == null &&
+                    uiState.selectedPosition == null
             )
         }
     }
@@ -271,13 +318,15 @@ private fun AlarmEditPortraitLayout(
     onBack: () -> Unit,
     onSearch: () -> Unit,
     onMapClick: (LatLng) -> Unit,
+    onMapInteracted: () -> Unit,
     onRadiusChange: (Float) -> Unit,
     onNext: () -> Unit,
     onDelete: () -> Unit,
     onNameChange: (String) -> Unit,
     onIconSelected: (String) -> Unit,
     onBackToMap: () -> Unit,
-    onSave: () -> Unit
+    onSave: () -> Unit,
+    hideMapForInitialLocation: Boolean
 ) {
     val haptic = LocalHapticFeedback.current
     val density = LocalDensity.current
@@ -337,6 +386,7 @@ private fun AlarmEditPortraitLayout(
                 onBack = onBack,
                 onSearch = onSearch,
                 onMapClick = onMapClick,
+                onMapInteracted = onMapInteracted,
                 onRadiusChange = onRadiusChange,
                 onNext = {
                     haptic.performHapticFeedback(HapticFeedbackType.Confirm)
@@ -351,7 +401,8 @@ private fun AlarmEditPortraitLayout(
                     haptic.performHapticFeedback(HapticFeedbackType.ContextClick)
                     onBackToMap()
                 },
-                modifier = Modifier.offset { IntOffset(x = 0, y = firstOffsetYPx) }
+                modifier = Modifier.offset { IntOffset(x = 0, y = firstOffsetYPx) },
+                hideMapForInitialLocation = hideMapForInitialLocation
             )
         }
     }
@@ -365,13 +416,15 @@ private fun AlarmEditLandscapeLayout(
     onBack: () -> Unit,
     onSearch: () -> Unit,
     onMapClick: (LatLng) -> Unit,
+    onMapInteracted: () -> Unit,
     onRadiusChange: (Float) -> Unit,
     onNext: () -> Unit,
     onDelete: () -> Unit,
     onNameChange: (String) -> Unit,
     onIconSelected: (String) -> Unit,
     onBackToMap: () -> Unit,
-    onSave: () -> Unit
+    onSave: () -> Unit,
+    hideMapForInitialLocation: Boolean
 ) {
     val haptic = LocalHapticFeedback.current
     val density = LocalDensity.current
@@ -435,6 +488,7 @@ private fun AlarmEditLandscapeLayout(
                 onBack = onBack,
                 onSearch = onSearch,
                 onMapClick = onMapClick,
+                onMapInteracted = onMapInteracted,
                 onRadiusChange = onRadiusChange,
                 onNext = {
                     haptic.performHapticFeedback(HapticFeedbackType.Confirm)
@@ -449,7 +503,8 @@ private fun AlarmEditLandscapeLayout(
                     haptic.performHapticFeedback(HapticFeedbackType.ContextClick)
                     onBackToMap()
                 },
-                modifier = Modifier.offset { IntOffset(x = firstOffsetXPx, y = 0) }
+                modifier = Modifier.offset { IntOffset(x = firstOffsetXPx, y = 0) },
+                hideMapForInitialLocation = hideMapForInitialLocation
             )
         }
     }
@@ -462,12 +517,14 @@ private fun AlarmEditPortraitStepOnePage(
     onBack: () -> Unit,
     onSearch: () -> Unit,
     onMapClick: (LatLng) -> Unit,
+    onMapInteracted: () -> Unit,
     onRadiusChange: (Float) -> Unit,
     onNext: () -> Unit,
     onDelete: () -> Unit,
     dimAlpha: Float,
     onDimmedAreaClick: () -> Unit,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    hideMapForInitialLocation: Boolean
 ) {
     val haptic = LocalHapticFeedback.current
     val navigationBottom = WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding()
@@ -479,6 +536,8 @@ private fun AlarmEditPortraitStepOnePage(
             cameraPositionState = cameraPositionState,
             uiState = uiState,
             onMapClick = onMapClick,
+            onMapInteracted = onMapInteracted,
+            hideForInitialLocation = hideMapForInitialLocation,
             contentPadding = PaddingValues(bottom = 220.dp),
             modifier = Modifier.fillMaxSize()
         )
@@ -557,12 +616,14 @@ private fun AlarmEditLandscapeStepOnePage(
     onBack: () -> Unit,
     onSearch: () -> Unit,
     onMapClick: (LatLng) -> Unit,
+    onMapInteracted: () -> Unit,
     onRadiusChange: (Float) -> Unit,
     onNext: () -> Unit,
     onDelete: () -> Unit,
     dimAlpha: Float,
     onDimmedAreaClick: () -> Unit,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    hideMapForInitialLocation: Boolean
 ) {
     val haptic = LocalHapticFeedback.current
     val deviceCorner = rememberSystemDisplayCornerRadiusDp()
@@ -576,6 +637,8 @@ private fun AlarmEditLandscapeStepOnePage(
             cameraPositionState = cameraPositionState,
             uiState = uiState,
             onMapClick = onMapClick,
+            onMapInteracted = onMapInteracted,
+            hideForInitialLocation = hideMapForInitialLocation,
             contentPadding = PaddingValues(end = 400.dp),
             modifier = Modifier.fillMaxSize()
         )
@@ -869,23 +932,39 @@ fun AlarmEditMapContent(
     cameraPositionState: CameraPositionState,
     uiState: AlarmEditUiState,
     onMapClick: (LatLng) -> Unit,
+    onMapInteracted: () -> Unit,
     modifier: Modifier = Modifier,
-    contentPadding: PaddingValues = PaddingValues(0.dp)
+    contentPadding: PaddingValues = PaddingValues(0.dp),
+    hideForInitialLocation: Boolean = false
 ) {
     val context = LocalContext.current
     val darkTheme = isSystemInDarkTheme()
     var mapProperties by remember { mutableStateOf(MapProperties()) }
+    val hasLocationPermission = remember {
+        ContextCompat.checkSelfPermission(
+            context,
+            Manifest.permission.ACCESS_FINE_LOCATION
+        ) == PackageManager.PERMISSION_GRANTED ||
+            ContextCompat.checkSelfPermission(
+                context,
+                Manifest.permission.ACCESS_COARSE_LOCATION
+            ) == PackageManager.PERMISSION_GRANTED
+    }
 
-    LaunchedEffect(darkTheme) {
+    LaunchedEffect(darkTheme, hasLocationPermission) {
         mapProperties = if (darkTheme) {
             mapProperties.copy(
                 mapStyleOptions = MapStyleOptions.loadRawResourceStyle(
                     context,
                     R.raw.map_style_dark
-                )
+                ),
+                isMyLocationEnabled = hasLocationPermission
             )
         } else {
-            mapProperties.copy(mapStyleOptions = null)
+            mapProperties.copy(
+                mapStyleOptions = null,
+                isMyLocationEnabled = hasLocationPermission
+            )
         }
     }
 
@@ -904,6 +983,7 @@ fun AlarmEditMapContent(
                 awaitEachGesture {
                     awaitFirstDown(requireUnconsumed = false)
                     haptic.performHapticFeedback(HapticFeedbackType.ContextClick)
+                    onMapInteracted()
                 }
             }
     ) {
@@ -934,12 +1014,46 @@ fun AlarmEditMapContent(
             }
         }
 
-        AnimatedVisibility(visible = !isMapLoaded, exit = fadeOut()) {
-            Box(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .background(backgroundColor)
-            )
+        InitialMapLocationCover(
+            visible = !isMapLoaded || hideForInitialLocation,
+            backgroundColor = backgroundColor,
+            showLocationProgress = hideForInitialLocation
+        )
+    }
+}
+
+@OptIn(ExperimentalMaterial3ExpressiveApi::class)
+@Composable
+private fun InitialMapLocationCover(
+    visible: Boolean,
+    backgroundColor: Color,
+    showLocationProgress: Boolean,
+    modifier: Modifier = Modifier
+) {
+    AnimatedVisibility(
+        visible = visible,
+        exit = fadeOut(),
+        modifier = modifier
+    ) {
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .background(backgroundColor),
+            contentAlignment = Alignment.Center
+        ) {
+            if (showLocationProgress) {
+                Column(
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    verticalArrangement = Arrangement.spacedBy(16.dp)
+                ) {
+                    LoadingIndicator(modifier = Modifier.size(64.dp))
+                    Text(
+                        text = stringResource(R.string.getting_current_location),
+                        style = MaterialTheme.typography.bodyLarge,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+            }
         }
     }
 }
@@ -1087,6 +1201,69 @@ fun AlarmEditRadiusControl(
                     Text(primaryButtonLabel)
                 }
             }
+        }
+    }
+}
+
+@Preview(
+    name = "Waiting for initial location",
+    showBackground = true,
+    widthDp = 412,
+    heightDp = 915
+)
+@Composable
+private fun InitialMapLocationCoverPreview() {
+    GeoAlarmTheme {
+        val backgroundColor = MaterialTheme.colorScheme.surfaceVariant
+        val navigationBottom = WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding()
+        val bottomPadding = maxOf(navigationBottom, 24.dp)
+
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .background(backgroundColor)
+        ) {
+            InitialMapLocationCover(
+                visible = true,
+                backgroundColor = backgroundColor,
+                showLocationProgress = true,
+                modifier = Modifier.fillMaxSize()
+            )
+
+            com.github.jimmy90109.geoalarm.ui.components.TopAppBar(
+                modifier = Modifier
+                    .align(Alignment.TopCenter)
+                    .padding(start = 24.dp, end = 24.dp),
+                title = { Text(stringResource(R.string.add_alarm)) },
+                navigationIcon = {
+                    IconButton(onClick = {}) {
+                        Icon(
+                            Icons.AutoMirrored.Filled.ArrowBack,
+                            contentDescription = stringResource(R.string.cancel)
+                        )
+                    }
+                },
+                actions = {
+                    IconButton(onClick = {}) {
+                        Icon(
+                            Icons.Filled.Search,
+                            contentDescription = stringResource(R.string.search_location)
+                        )
+                    }
+                }
+            )
+
+            AlarmEditRadiusControl(
+                radius = 1000f,
+                onRadiusChange = {},
+                onPrimaryClick = {},
+                primaryButtonLabel = stringResource(R.string.next_step),
+                primaryEnabled = false,
+                elevation = 10.dp,
+                modifier = Modifier
+                    .align(Alignment.BottomCenter)
+                    .padding(start = 24.dp, end = 24.dp, bottom = bottomPadding)
+            )
         }
     }
 }

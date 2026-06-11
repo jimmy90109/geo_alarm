@@ -5,6 +5,7 @@ import androidx.lifecycle.viewModelScope
 import com.github.jimmy90109.geoalarm.data.Alarm
 import com.github.jimmy90109.geoalarm.data.AlarmDataRepository
 import com.github.jimmy90109.geoalarm.data.DEFAULT_ALARM_ICON_KEY
+import com.github.jimmy90109.geoalarm.data.location.CurrentLocationRepository
 import com.github.jimmy90109.geoalarm.widget.WidgetUpdater
 import com.google.android.gms.maps.model.LatLng
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -35,12 +36,15 @@ data class AlarmEditUiState(
     val isSaved: Boolean = false,
     val savedAlarmId: String? = null, // ID of the alarm that was just saved (for highlight animation)
     val showDeleteErrorDialog: Boolean = false,
-    val showDeleteConfirmDialog: Boolean = false
+    val showDeleteConfirmDialog: Boolean = false,
+    val currentLocation: LatLng? = null,
+    val hasUserInteractedWithMap: Boolean = false
 )
 
 sealed interface AlarmEditAction {
     data class LoadAlarm(val alarmId: String?) : AlarmEditAction
     data object MapLoaded : AlarmEditAction
+    data object MapInteracted : AlarmEditAction
     data class PositionSelected(val latLng: LatLng) : AlarmEditAction
     data class SearchPositionSelected(val latLng: LatLng, val placeName: String) : AlarmEditAction
     data class RadiusChanged(val radius: Float) : AlarmEditAction
@@ -62,7 +66,8 @@ sealed interface AlarmEditEffect {
 @HiltViewModel
 class AlarmEditViewModel @Inject constructor(
     private val repository: AlarmDataRepository,
-    private val widgetUpdater: WidgetUpdater
+    private val widgetUpdater: WidgetUpdater,
+    private val currentLocationRepository: CurrentLocationRepository
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(AlarmEditUiState())
@@ -71,10 +76,22 @@ class AlarmEditViewModel @Inject constructor(
     private val _effects = MutableSharedFlow<AlarmEditEffect>()
     val effects: SharedFlow<AlarmEditEffect> = _effects.asSharedFlow()
 
+    init {
+        viewModelScope.launch {
+            currentLocationRepository.currentLocation.collect { location ->
+                _uiState.value = _uiState.value.copy(currentLocation = location)
+            }
+        }
+        viewModelScope.launch {
+            currentLocationRepository.warmUp()
+        }
+    }
+
     fun onAction(action: AlarmEditAction) {
         when (action) {
             is AlarmEditAction.LoadAlarm -> loadAlarm(action.alarmId)
             AlarmEditAction.MapLoaded -> setMapLoaded()
+            AlarmEditAction.MapInteracted -> markMapInteracted()
             is AlarmEditAction.PositionSelected -> updatePosition(action.latLng)
             is AlarmEditAction.SearchPositionSelected -> updatePositionFromSearch(
                 action.latLng,
@@ -105,6 +122,7 @@ class AlarmEditViewModel @Inject constructor(
                         name = alarm.name,
                         selectedIconKey = alarm.iconKey,
                         step = AlarmEditStep.MapSelection,
+                        hasUserInteractedWithMap = true,
                         isLoading = false
                     )
                     return@launch
@@ -118,17 +136,23 @@ class AlarmEditViewModel @Inject constructor(
         _uiState.value = _uiState.value.copy(isLoading = false)
     }
 
+    private fun markMapInteracted() {
+        _uiState.value = _uiState.value.copy(hasUserInteractedWithMap = true)
+    }
+
     private fun updatePosition(latLng: LatLng) {
         _uiState.value = _uiState.value.copy(
             selectedPosition = latLng,
-            searchText = ""
+            searchText = "",
+            hasUserInteractedWithMap = true
         )
     }
 
     private fun updatePositionFromSearch(latLng: LatLng, placeName: String) {
         _uiState.value = _uiState.value.copy(
             selectedPosition = latLng,
-            searchText = placeName
+            searchText = placeName,
+            hasUserInteractedWithMap = true
         )
     }
 

@@ -7,12 +7,14 @@ import com.github.jimmy90109.geoalarm.data.DEFAULT_ALARM_ICON_KEY
 import com.github.jimmy90109.geoalarm.data.AlarmSchedule
 import com.github.jimmy90109.geoalarm.data.ScheduleDao
 import com.github.jimmy90109.geoalarm.data.ScheduleWithAlarm
+import com.github.jimmy90109.geoalarm.data.location.CurrentLocationRepository
 import com.github.jimmy90109.geoalarm.widget.WidgetUpdater
 import com.google.android.gms.maps.model.LatLng
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
@@ -170,6 +172,71 @@ class AlarmEditViewModelTest {
     }
 
     @Test
+    fun `new alarm receives cached current location`() = runTest {
+        val currentLocationRepository = FakeCurrentLocationRepository(
+            initialLocation = LatLng(25.2, 121.6)
+        )
+        val viewModel = createViewModel(
+            repository = buildRepository(),
+            currentLocationRepository = currentLocationRepository
+        )
+
+        viewModel.onAction(AlarmEditAction.LoadAlarm(null))
+        advanceUntilIdle()
+
+        val state = viewModel.uiState.value
+        assertEquals(LatLng(25.2, 121.6), state.currentLocation)
+        assertNull(state.selectedPosition)
+        assertFalse(state.hasUserInteractedWithMap)
+        assertEquals(1, currentLocationRepository.warmUpCount)
+    }
+
+    @Test
+    fun `existing alarm keeps selected alarm position when current location exists`() = runTest {
+        val existing = Alarm(
+            id = "alarm-current-location",
+            name = "Station",
+            latitude = 24.9,
+            longitude = 121.1,
+            radius = 800.0,
+            isEnabled = false
+        )
+        val viewModel = createViewModel(
+            repository = buildRepository(alarms = listOf(existing)),
+            currentLocationRepository = FakeCurrentLocationRepository(
+                initialLocation = LatLng(25.2, 121.6)
+            )
+        )
+
+        viewModel.onAction(AlarmEditAction.LoadAlarm(existing.id))
+        advanceUntilIdle()
+
+        val state = viewModel.uiState.value
+        assertEquals(LatLng(24.9, 121.1), state.selectedPosition)
+        assertEquals(LatLng(25.2, 121.6), state.currentLocation)
+        assertTrue(state.hasUserInteractedWithMap)
+    }
+
+    @Test
+    fun `map interaction is retained when current location arrives later`() = runTest {
+        val currentLocationRepository = FakeCurrentLocationRepository()
+        val viewModel = createViewModel(
+            repository = buildRepository(),
+            currentLocationRepository = currentLocationRepository
+        )
+        viewModel.onAction(AlarmEditAction.LoadAlarm(null))
+        viewModel.onAction(AlarmEditAction.MapInteracted)
+
+        currentLocationRepository.emit(LatLng(25.2, 121.6))
+        advanceUntilIdle()
+
+        val state = viewModel.uiState.value
+        assertEquals(LatLng(25.2, 121.6), state.currentLocation)
+        assertNull(state.selectedPosition)
+        assertTrue(state.hasUserInteractedWithMap)
+    }
+
+    @Test
     fun `saveAlarm stores selected icon`() = runTest {
         val alarmDao = FakeAlarmDao()
         val viewModel = createViewModel(buildRepository(alarmDao = alarmDao))
@@ -254,8 +321,9 @@ class AlarmEditViewModelTest {
 
     private fun createViewModel(
         repository: AlarmRepository,
-        widgetUpdater: WidgetUpdater = FakeWidgetUpdater()
-    ): AlarmEditViewModel = AlarmEditViewModel(repository, widgetUpdater)
+        widgetUpdater: WidgetUpdater = FakeWidgetUpdater(),
+        currentLocationRepository: CurrentLocationRepository = FakeCurrentLocationRepository()
+    ): AlarmEditViewModel = AlarmEditViewModel(repository, widgetUpdater, currentLocationRepository)
 }
 
 @OptIn(ExperimentalCoroutinesApi::class)
@@ -273,6 +341,23 @@ class MainDispatcherRule(
 
 private class FakeWidgetUpdater : WidgetUpdater {
     override suspend fun refreshAll() = Unit
+}
+
+private class FakeCurrentLocationRepository(
+    initialLocation: LatLng? = null
+) : CurrentLocationRepository {
+    private val locations = MutableStateFlow(initialLocation)
+    override val currentLocation: StateFlow<LatLng?> = locations
+    var warmUpCount = 0
+        private set
+
+    override suspend fun warmUp() {
+        warmUpCount += 1
+    }
+
+    fun emit(location: LatLng?) {
+        locations.value = location
+    }
 }
 
 private class FakeAlarmDao(
