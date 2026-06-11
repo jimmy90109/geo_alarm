@@ -79,9 +79,6 @@ class MainActivity : AppCompatActivity() {
         val hasSeenOnboarding = runBlocking {
             onboardingRepository.hasSeenLocationOnboarding()
         }
-        runBlocking {
-            telemetryTracker.trackAppFirstOpenIfNeeded(isNewOnboardingUser = !hasSeenOnboarding)
-        }
         val startDestination = resolveStartDestination(intent, hasSeenOnboarding)
 
         setContent {

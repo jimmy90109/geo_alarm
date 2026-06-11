@@ -350,6 +350,7 @@ internal fun FinalSetupCard(
                 .align(Alignment.BottomCenter)
                 .widthIn(max = 360.dp)
                 .fillMaxWidth()
+                .padding(start = 8.dp, end = 8.dp, bottom = 32.dp)
                 .graphicsLayer {
                     alpha = buttonAlpha
                     translationY = buttonOffsetY
@@ -388,7 +389,13 @@ internal fun FinalSetupCard(
                     }
                 }
                 Box(
-                    modifier = Modifier.fillMaxWidth()
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .graphicsLayer {
+                            scaleX = buttonScale
+                            scaleY = buttonScale
+                        }
+                        .padding(4.dp)
                 ) {
                     Button(
                         onClick = {
@@ -396,13 +403,10 @@ internal fun FinalSetupCard(
                             onStartNow()
                         },
                         enabled = showButton,
+                        shape = CircleShape,
                         modifier = Modifier
                             .fillMaxWidth()
                             .height(48.dp)
-                            .graphicsLayer {
-                                scaleX = buttonScale
-                                scaleY = buttonScale
-                            }
                     ) {
                         Text(
                             text = androidx.compose.ui.res.stringResource(R.string.onboarding_start_now),

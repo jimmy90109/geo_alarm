@@ -8,9 +8,6 @@ interface AnalyticsPreferencesStore {
     suspend fun isAnalyticsEnabled(): Boolean
     suspend fun setAnalyticsEnabled(enabled: Boolean)
 
-    suspend fun hasSentAppFirstOpen(): Boolean
-    suspend fun setAppFirstOpenSent(sent: Boolean)
-
     suspend fun hasSentAnalyticsOptIn(): Boolean
     suspend fun setAnalyticsOptInSent(sent: Boolean)
 }

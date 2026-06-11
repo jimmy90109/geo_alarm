@@ -8,6 +8,7 @@ import androidx.core.os.LocaleListCompat
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.github.jimmy90109.geoalarm.BuildConfig
+import com.github.jimmy90109.geoalarm.analytics.TelemetryTracker
 import com.github.jimmy90109.geoalarm.data.AlarmDataRepository
 import com.github.jimmy90109.geoalarm.data.AnalyticsPreferencesStore
 import com.github.jimmy90109.geoalarm.data.PaymentShortcut
@@ -61,7 +62,8 @@ class SettingsViewModel @Inject constructor(
     application: Application,
     private val settingsRepository: SettingsRepository,
     private val analyticsPreferencesStore: AnalyticsPreferencesStore,
-    private val alarmRepository: AlarmDataRepository
+    private val alarmRepository: AlarmDataRepository,
+    private val telemetryTracker: TelemetryTracker,
 ) : AndroidViewModel(application) {
 
     private val _uiState = MutableStateFlow(SettingsUiState())
@@ -88,7 +90,7 @@ class SettingsViewModel @Inject constructor(
         .stateIn(
             scope = viewModelScope,
             started = SharingStarted.WhileSubscribed(5000),
-            initialValue = true
+            initialValue = false
         )
 
     // Preview player
@@ -198,6 +200,9 @@ class SettingsViewModel @Inject constructor(
     private fun setAnalyticsEnabled(enabled: Boolean) {
         viewModelScope.launch {
             analyticsPreferencesStore.setAnalyticsEnabled(enabled)
+            if (enabled) {
+                telemetryTracker.trackAnalyticsOptInIfNeeded()
+            }
         }
     }
 

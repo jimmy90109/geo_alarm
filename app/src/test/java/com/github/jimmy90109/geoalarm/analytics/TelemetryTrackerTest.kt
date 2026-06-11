@@ -3,6 +3,7 @@ package com.github.jimmy90109.geoalarm.analytics
 import com.github.jimmy90109.geoalarm.data.AnalyticsPreferencesStore
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
@@ -11,38 +12,16 @@ import org.junit.Test
 class TelemetryTrackerTest {
 
     @Test
-    fun `trackAppFirstOpenIfNeeded sends once for new onboarding users`() = runTest {
-        val analytics = FakeAnalytics()
-        val store = FakeAnalyticsPreferencesStore()
-        val tracker = TelemetryTracker(analytics, store)
-
-        tracker.trackAppFirstOpenIfNeeded(isNewOnboardingUser = true)
-        tracker.trackAppFirstOpenIfNeeded(isNewOnboardingUser = true)
-
-        assertEquals(listOf(AnalyticsEvents.APP_FIRST_OPEN), analytics.events)
-        assertTrue(store.hasSentAppFirstOpen())
-    }
-
-    @Test
-    fun `trackAppFirstOpenIfNeeded skips non onboarding users`() = runTest {
-        val analytics = FakeAnalytics()
-        val store = FakeAnalyticsPreferencesStore()
-        val tracker = TelemetryTracker(analytics, store)
-
-        tracker.trackAppFirstOpenIfNeeded(isNewOnboardingUser = false)
-
-        assertTrue(analytics.events.isEmpty())
-        assertTrue(!store.hasSentAppFirstOpen())
-    }
-
-    @Test
     fun `trackAnalyticsOptInIfNeeded sends once only when enabled`() = runTest {
         val analytics = FakeAnalytics()
         val store = FakeAnalyticsPreferencesStore()
         val tracker = TelemetryTracker(analytics, store)
 
-        tracker.trackAnalyticsOptInIfNeeded()
-        tracker.trackAnalyticsOptInIfNeeded()
+        store.setAnalyticsEnabled(true)
+        val first = launch { tracker.trackAnalyticsOptInIfNeeded() }
+        val second = launch { tracker.trackAnalyticsOptInIfNeeded() }
+        first.join()
+        second.join()
 
         assertEquals(listOf(AnalyticsEvents.ANALYTICS_OPT_IN), analytics.events)
         assertTrue(store.hasSentAnalyticsOptIn())
@@ -58,6 +37,7 @@ class TelemetryTrackerTest {
         val store = FakeAnalyticsPreferencesStore()
         val tracker = TelemetryTracker(analytics, store)
 
+        store.setAnalyticsEnabled(true)
         tracker.trackArrivedTurnOff()
         store.setAnalyticsEnabled(false)
         tracker.trackArrivedTurnOff()
@@ -66,14 +46,15 @@ class TelemetryTrackerTest {
     }
 
     @Test
-    fun `trackAppFirstOpenIfNeeded does not mark sent when signaling fails`() = runTest {
-        val analytics = FailingAnalytics()
+    fun `disabled analytics never signals`() = runTest {
+        val analytics = FakeAnalytics()
         val store = FakeAnalyticsPreferencesStore()
         val tracker = TelemetryTracker(analytics, store)
 
-        tracker.trackAppFirstOpenIfNeeded(isNewOnboardingUser = true)
+        tracker.trackAnalyticsOptInIfNeeded()
+        tracker.trackArrivedTurnOff()
 
-        assertTrue(!store.hasSentAppFirstOpen())
+        assertTrue(analytics.events.isEmpty())
     }
 }
 
@@ -86,13 +67,8 @@ private class FakeAnalytics : AppAnalytics {
     }
 }
 
-private class FailingAnalytics : AppAnalytics {
-    override fun signal(eventName: String): Boolean = false
-}
-
 private class FakeAnalyticsPreferencesStore : AnalyticsPreferencesStore {
-    private val analyticsEnabledState = MutableStateFlow(true)
-    private var appFirstOpenSent = false
+    private val analyticsEnabledState = MutableStateFlow(false)
     private var analyticsOptInSent = false
 
     override val analyticsEnabledFlow: Flow<Boolean> = analyticsEnabledState
@@ -101,12 +77,6 @@ private class FakeAnalyticsPreferencesStore : AnalyticsPreferencesStore {
 
     override suspend fun setAnalyticsEnabled(enabled: Boolean) {
         analyticsEnabledState.value = enabled
-    }
-
-    override suspend fun hasSentAppFirstOpen(): Boolean = appFirstOpenSent
-
-    override suspend fun setAppFirstOpenSent(sent: Boolean) {
-        appFirstOpenSent = sent
     }
 
     override suspend fun hasSentAnalyticsOptIn(): Boolean = analyticsOptInSent
