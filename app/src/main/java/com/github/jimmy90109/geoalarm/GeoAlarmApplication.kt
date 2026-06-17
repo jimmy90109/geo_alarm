@@ -46,7 +46,7 @@ class GeoAlarmApplication : Application(), AppFunctionConfiguration.Provider {
 
         // Initialize Places SDK
         if (!Places.isInitialized()) {
-            Places.initialize(this, BuildConfig.GOOGLE_MAPS_API_KEY)
+            Places.initializeWithNewPlacesApiEnabled(this, BuildConfig.GOOGLE_MAPS_API_KEY)
         }
 
         createNotificationChannel()

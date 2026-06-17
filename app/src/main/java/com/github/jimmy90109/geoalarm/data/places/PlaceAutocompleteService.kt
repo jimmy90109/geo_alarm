@@ -1,0 +1,181 @@
+package com.github.jimmy90109.geoalarm.data.places
+
+import android.content.Context
+import android.text.Html
+import com.google.android.gms.maps.model.LatLng
+import com.google.android.libraries.places.api.Places
+import com.google.android.libraries.places.api.model.AutocompleteSessionToken
+import com.google.android.libraries.places.api.model.CircularBounds
+import com.google.android.libraries.places.api.model.Place
+import com.google.android.libraries.places.api.net.FetchPhotoRequest
+import com.google.android.libraries.places.api.net.FetchPlaceRequest
+import com.google.android.libraries.places.api.net.FindAutocompletePredictionsRequest
+import dagger.hilt.android.qualifiers.ApplicationContext
+import java.util.UUID
+import java.util.concurrent.ConcurrentHashMap
+import javax.inject.Inject
+import javax.inject.Singleton
+import kotlin.coroutines.resume
+import kotlin.coroutines.resumeWithException
+import kotlinx.coroutines.async
+import kotlinx.coroutines.awaitAll
+import kotlinx.coroutines.coroutineScope
+import kotlinx.coroutines.suspendCancellableCoroutine
+
+data class PlaceSuggestion(
+    val placeId: String,
+    val primaryText: String,
+    val secondaryText: String,
+    val fullText: String
+)
+
+interface PlaceAutocompleteService {
+    fun startSession(): String
+    fun endSession(sessionId: String)
+    suspend fun suggestions(
+        query: String,
+        locationBiasCenter: LatLng?,
+        sessionId: String
+    ): List<PlaceSuggestion>
+
+    suspend fun resolveCandidates(
+        suggestions: List<PlaceSuggestion>,
+        selectedPlaceId: String,
+        sessionId: String
+    ): List<PlaceCandidate>
+}
+
+@Singleton
+class AndroidPlaceAutocompleteService @Inject constructor(
+    @ApplicationContext context: Context
+) : PlaceAutocompleteService {
+    private val placesClient = Places.createClient(context)
+    private val sessions = ConcurrentHashMap<String, AutocompleteSessionToken>()
+
+    override fun startSession(): String {
+        val id = UUID.randomUUID().toString()
+        sessions[id] = AutocompleteSessionToken.newInstance()
+        return id
+    }
+
+    override fun endSession(sessionId: String) {
+        sessions.remove(sessionId)
+    }
+
+    override suspend fun suggestions(
+        query: String,
+        locationBiasCenter: LatLng?,
+        sessionId: String
+    ): List<PlaceSuggestion> {
+        val token = sessions[sessionId] ?: return emptyList()
+        val request = FindAutocompletePredictionsRequest.builder()
+            .setQuery(query)
+            .setSessionToken(token)
+            .apply {
+                locationBiasCenter?.let {
+                    setLocationBias(CircularBounds.newInstance(it, LOCATION_BIAS_RADIUS_METERS))
+                    setOrigin(it)
+                }
+            }
+            .build()
+
+        return suspendCancellableCoroutine { continuation ->
+            placesClient.findAutocompletePredictions(request)
+                .addOnSuccessListener { response ->
+                    if (continuation.isActive) {
+                        continuation.resume(
+                            response.autocompletePredictions.take(MAX_RESULTS).map { prediction ->
+                                PlaceSuggestion(
+                                    placeId = prediction.placeId,
+                                    primaryText = prediction.getPrimaryText(null).toString(),
+                                    secondaryText = prediction.getSecondaryText(null).toString(),
+                                    fullText = prediction.getFullText(null).toString()
+                                )
+                            }
+                        )
+                    }
+                }
+                .addOnFailureListener { error ->
+                    if (continuation.isActive) continuation.resumeWithException(error)
+                }
+        }
+    }
+
+    override suspend fun resolveCandidates(
+        suggestions: List<PlaceSuggestion>,
+        selectedPlaceId: String,
+        sessionId: String
+    ): List<PlaceCandidate> = coroutineScope {
+        val token = sessions.remove(sessionId)
+        suggestions.take(MAX_RESULTS).map { suggestion ->
+            async {
+                runCatching {
+                    fetchCandidate(
+                        suggestion = suggestion,
+                        sessionToken = token.takeIf { suggestion.placeId == selectedPlaceId }
+                    )
+                }.getOrNull()
+            }
+        }.awaitAll().filterNotNull()
+    }
+
+    private suspend fun fetchCandidate(
+        suggestion: PlaceSuggestion,
+        sessionToken: AutocompleteSessionToken?
+    ): PlaceCandidate {
+        val fields = listOf(
+            Place.Field.ID,
+            Place.Field.DISPLAY_NAME,
+            Place.Field.FORMATTED_ADDRESS,
+            Place.Field.LOCATION,
+            Place.Field.PHOTO_METADATAS
+        )
+        val request = FetchPlaceRequest.builder(suggestion.placeId, fields)
+            .apply { sessionToken?.let(::setSessionToken) }
+            .build()
+        val place = suspendCancellableCoroutine { continuation ->
+            placesClient.fetchPlace(request)
+                .addOnSuccessListener { response ->
+                    if (continuation.isActive) continuation.resume(response.place)
+                }
+                .addOnFailureListener { error ->
+                    if (continuation.isActive) continuation.resumeWithException(error)
+                }
+        }
+        val location = place.location ?: error("Place has no location")
+        val photoMetadata = place.photoMetadatas?.firstOrNull()
+        val photo = photoMetadata?.let { metadata ->
+            runCatching {
+                suspendCancellableCoroutine { continuation ->
+                    placesClient.fetchPhoto(
+                        FetchPhotoRequest.builder(metadata)
+                            .setMaxWidth(PHOTO_MAX_WIDTH)
+                            .setMaxHeight(PHOTO_MAX_HEIGHT)
+                            .build()
+                    ).addOnSuccessListener { response ->
+                        if (continuation.isActive) continuation.resume(response.bitmap)
+                    }.addOnFailureListener { error ->
+                        if (continuation.isActive) continuation.resumeWithException(error)
+                    }
+                }
+            }.getOrNull()
+        }
+        return PlaceCandidate(
+            id = place.id ?: suggestion.placeId,
+            name = place.displayName ?: suggestion.primaryText,
+            address = place.formattedAddress ?: suggestion.secondaryText,
+            location = location,
+            photo = photo,
+            photoAttribution = photoMetadata?.attributions?.let {
+                Html.fromHtml(it, Html.FROM_HTML_MODE_COMPACT).toString()
+            }.orEmpty()
+        )
+    }
+
+    private companion object {
+        const val MAX_RESULTS = 5
+        const val PHOTO_MAX_WIDTH = 640
+        const val PHOTO_MAX_HEIGHT = 360
+        const val LOCATION_BIAS_RADIUS_METERS = 50_000.0
+    }
+}

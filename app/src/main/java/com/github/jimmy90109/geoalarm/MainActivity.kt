@@ -23,6 +23,7 @@ import com.github.jimmy90109.geoalarm.data.OnboardingRepository
 import com.github.jimmy90109.geoalarm.data.location.CurrentLocationRepository
 import com.github.jimmy90109.geoalarm.navigation.AppNavHost
 import com.github.jimmy90109.geoalarm.service.GeoAlarmService
+import com.github.jimmy90109.geoalarm.share.SharedPlaceParser
 import com.github.jimmy90109.geoalarm.ui.theme.GeoAlarmTheme
 import com.github.jimmy90109.geoalarm.ui.viewmodel.HomeAction
 import com.github.jimmy90109.geoalarm.ui.viewmodel.HomeViewModel
@@ -65,11 +66,13 @@ class MainActivity : AppCompatActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
+        logSharedText(intent)
 
         val hasSeenOnboarding = runBlocking {
             onboardingRepository.hasSeenLocationOnboarding()
         }
-        val startDestination = resolveStartDestination(intent, hasSeenOnboarding)
+        val requestedRoute = resolveRequestedRoute(intent)
+        val startDestination = resolveStartDestination(hasSeenOnboarding)
 
         setContent {
             GeoAlarmTheme {
@@ -77,6 +80,7 @@ class MainActivity : AppCompatActivity() {
                 AppNavHost(
                     navController = navController,
                     startDestination = startDestination,
+                    requestedDestination = requestedRoute,
                 )
 
             }
@@ -94,7 +98,8 @@ class MainActivity : AppCompatActivity() {
     override fun onNewIntent(intent: Intent) {
         super.onNewIntent(intent)
         setIntent(intent)
-        if (resolveShortcutRoute(intent) != null) {
+        logSharedText(intent)
+        if (resolveRequestedRoute(intent) != null) {
             recreate()
             return
         }
@@ -128,6 +133,11 @@ class MainActivity : AppCompatActivity() {
                 homeViewModel.onAction(HomeAction.ScheduleIntentHandled(alarmId))
                 CoroutineScope(kotlinx.coroutines.Dispatchers.IO).launch { GeoAlarmGlanceWidget().updateAll(this@MainActivity) }
             }
+        } else if (intent.action == Intent.ACTION_SEND &&
+            intent.type?.startsWith("text/plain") == true &&
+            parseSharedPlace(intent) == null
+        ) {
+            logAndNotify("INVALID_SHARED_PLACE", getString(R.string.invalid_shared_place))
         }
     }
 
@@ -218,12 +228,14 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
-    private fun resolveStartDestination(intent: Intent, hasSeenOnboarding: Boolean): AppRoutes {
+    private fun resolveStartDestination(hasSeenOnboarding: Boolean): AppRoutes {
         if (!hasSeenOnboarding) return AppRoutes.Onboarding()
-        return resolveShortcutRoute(intent) ?: AppRoutes.Main
+        return AppRoutes.Main
     }
 
-    private fun resolveShortcutRoute(intent: Intent): AppRoutes? {
+    private fun resolveRequestedRoute(intent: Intent): AppRoutes? {
+        resolveSharedPlaceRoute(intent)?.let { return it }
+
         val data = intent.data ?: return null
         if (!isShortcutDeepLink(data)) return null
 
@@ -231,6 +243,49 @@ class MainActivity : AppCompatActivity() {
             "/add-alarm" -> AppRoutes.AlarmEdit()
             "/add-schedule" -> AppRoutes.ScheduleEdit()
             else -> null
+        }
+    }
+
+    private fun resolveSharedPlaceRoute(intent: Intent): AppRoutes.AlarmEdit? {
+        if (intent.action != Intent.ACTION_SEND || intent.type?.startsWith("text/plain") != true) {
+            return null
+        }
+        val sharedPlace = parseSharedPlace(intent) ?: return null
+        return AppRoutes.AlarmEdit(
+            sharedPlaceQuery = sharedPlace.query,
+            sharedPlaceSource = sharedPlace.source
+        )
+    }
+
+    private fun parseSharedPlace(intent: Intent) =
+        SharedPlaceParser.parse(sharedTextCandidates(intent))
+
+    private fun sharedTextCandidates(intent: Intent): List<String> = buildList {
+        intent.getCharSequenceExtra(Intent.EXTRA_TEXT)?.toString()?.let(::add)
+        intent.getCharSequenceExtra(Intent.EXTRA_TITLE)?.toString()?.let(::add)
+        intent.getCharSequenceExtra(Intent.EXTRA_SUBJECT)?.toString()?.let(::add)
+        intent.clipData?.let { clipData ->
+            for (index in 0 until clipData.itemCount) {
+                clipData.getItemAt(index).text?.toString()?.let(::add)
+            }
+        }
+    }.map(String::trim).filter(String::isNotEmpty).distinct()
+
+    private fun logSharedText(intent: Intent) {
+        if (
+            BuildConfig.DEBUG &&
+            intent.action == Intent.ACTION_SEND &&
+            intent.type?.startsWith("text/plain") == true
+        ) {
+            Log.d(
+                TAG,
+                "Received share: type=${intent.type}, " +
+                    "text=${intent.getCharSequenceExtra(Intent.EXTRA_TEXT)}, " +
+                    "title=${intent.getCharSequenceExtra(Intent.EXTRA_TITLE)}, " +
+                    "subject=${intent.getCharSequenceExtra(Intent.EXTRA_SUBJECT)}, " +
+                    "clipItems=${intent.clipData?.itemCount ?: 0}, " +
+                    "allText=${sharedTextCandidates(intent)}"
+            )
         }
     }
 

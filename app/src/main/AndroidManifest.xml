@@ -104,7 +104,7 @@
         <activity
             android:name=".MainActivity"
             android:exported="true"
-            android:launchMode="singleTop"
+            android:launchMode="singleTask"
             android:theme="@style/Theme.GeoAlarm">
             <intent-filter>
                 <action android:name="com.github.jimmy90109.geoalarm.action.CREATE_GEO_ALARM" />
@@ -135,6 +135,11 @@
                     android:host="shortcut"
                     android:pathPrefix="/add-schedule"
                     android:scheme="geoalarm" />
+            </intent-filter>
+            <intent-filter>
+                <action android:name="android.intent.action.SEND" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <data android:mimeType="text/plain" />
             </intent-filter>
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />

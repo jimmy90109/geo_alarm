@@ -8,8 +8,14 @@ import com.github.jimmy90109.geoalarm.data.AlarmSchedule
 import com.github.jimmy90109.geoalarm.data.ScheduleDao
 import com.github.jimmy90109.geoalarm.data.ScheduleWithAlarm
 import com.github.jimmy90109.geoalarm.data.location.CurrentLocationRepository
+import com.github.jimmy90109.geoalarm.data.places.PlaceCandidate
+import com.github.jimmy90109.geoalarm.data.places.PlaceAutocompleteService
+import com.github.jimmy90109.geoalarm.data.places.PlaceSearchService
+import com.github.jimmy90109.geoalarm.data.places.PlaceSuggestion
+import com.github.jimmy90109.geoalarm.share.SharedPlaceSource
 import com.github.jimmy90109.geoalarm.widget.WidgetUpdater
 import com.google.android.gms.maps.model.LatLng
+import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.Flow
@@ -172,6 +178,330 @@ class AlarmEditViewModelTest {
     }
 
     @Test
+    fun `shared place search with one result selects and names place`() = runTest {
+        val candidate = placeCandidate("one", "Memorial Hall", 25.0, 121.5)
+        val viewModel = createViewModel(
+            repository = buildRepository(),
+            placeSearchService = FakePlaceSearchService(listOf(candidate))
+        )
+
+        viewModel.onAction(AlarmEditAction.SearchSharedPlace("Memorial Hall"))
+        advanceUntilIdle()
+
+        val state = viewModel.uiState.value
+        assertEquals(candidate.location, state.selectedPosition)
+        assertEquals(candidate.name, state.name)
+        assertTrue(state.placeCandidates.isEmpty())
+    }
+
+    @Test
+    fun `shared place search limits candidates and confirm selects current candidate`() = runTest {
+        val candidates = (0..6).map {
+            placeCandidate("$it", "Place $it", 25.0 + it, 121.0 + it)
+        }
+        val viewModel = createViewModel(
+            repository = buildRepository(),
+            placeSearchService = FakePlaceSearchService(candidates)
+        )
+
+        viewModel.onAction(AlarmEditAction.SearchSharedPlace("Place"))
+        advanceUntilIdle()
+        assertEquals(5, viewModel.uiState.value.placeCandidates.size)
+        assertNull(viewModel.uiState.value.selectedPosition)
+
+        viewModel.onAction(AlarmEditAction.CandidateChanged(2))
+        viewModel.onAction(AlarmEditAction.CandidateConfirmed)
+
+        val state = viewModel.uiState.value
+        assertEquals(candidates[2].location, state.selectedPosition)
+        assertEquals(candidates[2].name, state.name)
+        assertTrue(state.placeCandidates.isEmpty())
+    }
+
+    @Test
+    fun `cancelling shared place candidates leaves position unselected`() = runTest {
+        val viewModel = createViewModel(
+            repository = buildRepository(),
+            placeSearchService = FakePlaceSearchService(
+                listOf(
+                    placeCandidate("1", "First", 25.0, 121.0),
+                    placeCandidate("2", "Second", 26.0, 122.0)
+                )
+            )
+        )
+        viewModel.onAction(AlarmEditAction.SearchSharedPlace("Place"))
+        advanceUntilIdle()
+
+        viewModel.onAction(AlarmEditAction.CandidateSelectionCancelled)
+
+        assertNull(viewModel.uiState.value.selectedPosition)
+        assertTrue(viewModel.uiState.value.placeCandidates.isEmpty())
+    }
+
+    @Test
+    fun `empty shared place search result exposes error`() = runTest {
+        val viewModel = createViewModel(
+            repository = buildRepository(),
+            placeSearchService = FakePlaceSearchService(emptyList())
+        )
+
+        viewModel.onAction(AlarmEditAction.SearchSharedPlace("Missing"))
+        advanceUntilIdle()
+
+        assertTrue(viewModel.uiState.value.showSharedPlaceSearchError)
+        assertFalse(viewModel.uiState.value.isSearchingSharedPlace)
+    }
+
+    @Test
+    fun `failed shared place search exposes error`() = runTest {
+        val viewModel = createViewModel(
+            repository = buildRepository(),
+            placeSearchService = FakePlaceSearchService(error = IllegalStateException("network"))
+        )
+
+        viewModel.onAction(AlarmEditAction.SearchSharedPlace("Unavailable"))
+        advanceUntilIdle()
+
+        assertTrue(viewModel.uiState.value.showSharedPlaceSearchError)
+        assertTrue(viewModel.uiState.value.placeCandidates.isEmpty())
+    }
+
+    @Test
+    fun `plain text address search with multiple results selects first result`() = runTest {
+        val candidates = listOf(
+            placeCandidate("first", "First result", 25.0, 121.5),
+            placeCandidate("second", "Second result", 25.1, 121.6)
+        )
+        val placeSearchService = FakePlaceSearchService(candidates)
+        val viewModel = createViewModel(
+            repository = buildRepository(),
+            placeSearchService = placeSearchService
+        )
+
+        viewModel.onAction(
+            AlarmEditAction.SearchSharedPlace(
+                query = "台北市中正區中山南路21號",
+                source = SharedPlaceSource.PlainTextAddress
+            )
+        )
+        advanceUntilIdle()
+
+        val state = viewModel.uiState.value
+        assertEquals(candidates.first().location, state.selectedPosition)
+        assertEquals(candidates.first().name, state.name)
+        assertEquals(AlarmEditControlMode.Radius, state.controlMode)
+        assertTrue(state.placeCandidates.isEmpty())
+        assertEquals(listOf(null), placeSearchService.locationBiasCenters)
+    }
+
+    @Test
+    fun `empty plain text address search exposes error`() = runTest {
+        val viewModel = createViewModel(
+            repository = buildRepository(),
+            placeSearchService = FakePlaceSearchService(emptyList())
+        )
+
+        viewModel.onAction(
+            AlarmEditAction.SearchSharedPlace(
+                query = "Missing address",
+                source = SharedPlaceSource.PlainTextAddress
+            )
+        )
+        advanceUntilIdle()
+
+        assertTrue(viewModel.uiState.value.showSharedPlaceSearchError)
+        assertNull(viewModel.uiState.value.selectedPosition)
+    }
+
+    @Test
+    fun `in app search with one result selects place and passes map center bias`() = runTest {
+        val candidate = placeCandidate("one", "Memorial Hall", 25.0, 121.5)
+        val mapCenter = LatLng(25.04, 121.52)
+        val placeSearchService = FakePlaceSearchService(listOf(candidate))
+        val viewModel = createViewModel(buildRepository(), placeSearchService = placeSearchService)
+
+        viewModel.onAction(AlarmEditAction.StartInAppSearch(mapCenter))
+        viewModel.onAction(AlarmEditAction.InAppSearchQueryChanged("Memorial Hall"))
+        viewModel.onAction(AlarmEditAction.SubmitInAppSearch)
+        advanceUntilIdle()
+
+        val state = viewModel.uiState.value
+        assertEquals(AlarmEditControlMode.Radius, state.controlMode)
+        assertNull(state.candidateSource)
+        assertTrue(state.placeCandidates.isEmpty())
+        assertEquals(candidate.location, state.selectedPosition)
+        assertEquals(candidate.name, state.name)
+        assertEquals(listOf("Memorial Hall"), placeSearchService.queries)
+        assertEquals(listOf(mapCenter), placeSearchService.locationBiasCenters)
+    }
+
+    @Test
+    fun `in app search with multiple results shows candidates`() = runTest {
+        val candidates = listOf(
+            placeCandidate("one", "First", 25.0, 121.5),
+            placeCandidate("two", "Second", 25.1, 121.6)
+        )
+        val viewModel = createViewModel(
+            repository = buildRepository(),
+            placeSearchService = FakePlaceSearchService(candidates)
+        )
+
+        viewModel.onAction(AlarmEditAction.StartInAppSearch(LatLng(25.04, 121.52)))
+        viewModel.onAction(AlarmEditAction.InAppSearchQueryChanged("Place"))
+        viewModel.onAction(AlarmEditAction.SubmitInAppSearch)
+        advanceUntilIdle()
+
+        val state = viewModel.uiState.value
+        assertEquals(AlarmEditControlMode.Candidates, state.controlMode)
+        assertEquals(PlaceCandidateSource.InAppTextSearch, state.candidateSource)
+        assertEquals(candidates, state.placeCandidates)
+        assertNull(state.selectedPosition)
+    }
+
+    @Test
+    fun `cancelling in app search restores full selection snapshot`() = runTest {
+        val originalPosition = LatLng(24.9, 121.1)
+        val viewModel = createViewModel(buildRepository())
+        viewModel.onAction(AlarmEditAction.SearchPositionSelected(originalPosition, "Original"))
+        viewModel.onAction(AlarmEditAction.NameChanged("Custom name"))
+        viewModel.onAction(AlarmEditAction.RadiusChanged(1350f))
+
+        viewModel.onAction(AlarmEditAction.StartInAppSearch(LatLng(25.0, 121.5)))
+        viewModel.onAction(AlarmEditAction.InAppSearchQueryChanged("Replacement"))
+        viewModel.onAction(AlarmEditAction.CancelInAppSearch)
+
+        val state = viewModel.uiState.value
+        assertEquals(AlarmEditControlMode.Radius, state.controlMode)
+        assertEquals(originalPosition, state.selectedPosition)
+        assertEquals("Original", state.searchText)
+        assertEquals("Custom name", state.name)
+        assertEquals(1350f, state.radius)
+        assertTrue(state.placeCandidates.isEmpty())
+    }
+
+    @Test
+    fun `failed in app search returns to input and retains query`() = runTest {
+        val viewModel = createViewModel(
+            repository = buildRepository(),
+            placeSearchService = FakePlaceSearchService(error = IllegalStateException("network"))
+        )
+        viewModel.onAction(AlarmEditAction.StartInAppSearch(LatLng(25.0, 121.5)))
+        viewModel.onAction(AlarmEditAction.InAppSearchQueryChanged("Unavailable"))
+
+        viewModel.onAction(AlarmEditAction.SubmitInAppSearch)
+        advanceUntilIdle()
+
+        val state = viewModel.uiState.value
+        assertEquals(AlarmEditControlMode.SearchInput, state.controlMode)
+        assertEquals("Unavailable", state.inAppSearchQuery)
+        assertTrue(state.inAppSearchError)
+    }
+
+    @Test
+    fun `blank in app search query is not submitted`() = runTest {
+        val placeSearchService = FakePlaceSearchService()
+        val viewModel = createViewModel(buildRepository(), placeSearchService = placeSearchService)
+        viewModel.onAction(AlarmEditAction.StartInAppSearch(LatLng(25.0, 121.5)))
+        viewModel.onAction(AlarmEditAction.InAppSearchQueryChanged("   "))
+
+        viewModel.onAction(AlarmEditAction.SubmitInAppSearch)
+        advanceUntilIdle()
+
+        assertEquals(AlarmEditControlMode.SearchInput, viewModel.uiState.value.controlMode)
+        assertTrue(placeSearchService.queries.isEmpty())
+    }
+
+    @Test
+    fun `autocomplete starts after two characters and uses map center bias`() = runTest {
+        val suggestion = PlaceSuggestion("one", "台北車站", "台北市", "台北車站 台北市")
+        val autocompleteService = FakePlaceAutocompleteService(suggestions = listOf(suggestion))
+        val mapCenter = LatLng(25.04, 121.52)
+        val viewModel = createViewModel(
+            buildRepository(),
+            placeAutocompleteService = autocompleteService
+        )
+        viewModel.onAction(AlarmEditAction.StartInAppSearch(mapCenter))
+
+        viewModel.onAction(AlarmEditAction.InAppSearchQueryChanged("台"))
+        advanceUntilIdle()
+        assertTrue(autocompleteService.queries.isEmpty())
+
+        viewModel.onAction(AlarmEditAction.InAppSearchQueryChanged("台北"))
+        advanceUntilIdle()
+
+        assertEquals(listOf("台北"), autocompleteService.queries)
+        assertEquals(listOf(mapCenter), autocompleteService.locationBiasCenters)
+        assertEquals(listOf(suggestion), viewModel.uiState.value.placeSuggestions)
+    }
+
+    @Test
+    fun `selecting second autocomplete suggestion opens carousel at second result`() = runTest {
+        val suggestions = listOf(
+            PlaceSuggestion("one", "First", "First address", "First full"),
+            PlaceSuggestion("two", "Second", "Second address", "Second full"),
+            PlaceSuggestion("three", "Third", "Third address", "Third full")
+        )
+        val candidates = listOf(
+            placeCandidate("one", "First", 25.0, 121.5),
+            placeCandidate("two", "Second", 25.1, 121.6),
+            placeCandidate("three", "Third", 25.2, 121.7)
+        )
+        val autocompleteService = FakePlaceAutocompleteService(suggestions, candidates)
+        val viewModel = createViewModel(
+            buildRepository(),
+            placeAutocompleteService = autocompleteService
+        )
+        viewModel.onAction(AlarmEditAction.StartInAppSearch(LatLng(25.04, 121.52)))
+        viewModel.onAction(AlarmEditAction.InAppSearchQueryChanged("Place"))
+        advanceUntilIdle()
+
+        viewModel.onAction(AlarmEditAction.PlaceSuggestionSelected(1))
+        advanceUntilIdle()
+
+        val state = viewModel.uiState.value
+        assertEquals(AlarmEditControlMode.Candidates, state.controlMode)
+        assertEquals(PlaceCandidateSource.InAppAutocomplete, state.candidateSource)
+        assertEquals(candidates, state.placeCandidates)
+        assertEquals(1, state.currentCandidateIndex)
+        assertEquals(listOf("two"), autocompleteService.selectedPlaceIds)
+
+        viewModel.onAction(AlarmEditAction.CandidateSelectionCancelled)
+        assertEquals(AlarmEditControlMode.SearchInput, viewModel.uiState.value.controlMode)
+        assertEquals(suggestions, viewModel.uiState.value.placeSuggestions)
+        assertEquals("Place", viewModel.uiState.value.inAppSearchQuery)
+    }
+
+    @Test
+    fun `cancelled in app search ignores delayed result`() = runTest {
+        val deferredResult = CompletableDeferred<List<PlaceCandidate>>()
+        val placeSearchService = object : PlaceSearchService {
+            override suspend fun search(
+                query: String,
+                locationBiasCenter: LatLng?
+            ): List<PlaceCandidate> = deferredResult.await()
+        }
+        val originalPosition = LatLng(24.9, 121.1)
+        val viewModel = createViewModel(buildRepository(), placeSearchService = placeSearchService)
+        viewModel.onAction(AlarmEditAction.PositionSelected(originalPosition))
+        viewModel.onAction(AlarmEditAction.StartInAppSearch(LatLng(25.0, 121.5)))
+        viewModel.onAction(AlarmEditAction.InAppSearchQueryChanged("Delayed"))
+        viewModel.onAction(AlarmEditAction.SubmitInAppSearch)
+
+        assertEquals(AlarmEditControlMode.SearchLoading, viewModel.uiState.value.controlMode)
+        assertEquals("Delayed", viewModel.uiState.value.inAppSearchQuery)
+
+        viewModel.onAction(AlarmEditAction.CancelInAppSearch)
+
+        deferredResult.complete(listOf(placeCandidate("late", "Late result", 25.1, 121.6)))
+        advanceUntilIdle()
+
+        val state = viewModel.uiState.value
+        assertEquals(AlarmEditControlMode.Radius, state.controlMode)
+        assertEquals(originalPosition, state.selectedPosition)
+        assertTrue(state.placeCandidates.isEmpty())
+    }
+
+    @Test
     fun `new alarm receives cached current location`() = runTest {
         val currentLocationRepository = FakeCurrentLocationRepository(
             initialLocation = LatLng(25.2, 121.6)
@@ -322,8 +652,23 @@ class AlarmEditViewModelTest {
     private fun createViewModel(
         repository: AlarmRepository,
         widgetUpdater: WidgetUpdater = FakeWidgetUpdater(),
-        currentLocationRepository: CurrentLocationRepository = FakeCurrentLocationRepository()
-    ): AlarmEditViewModel = AlarmEditViewModel(repository, widgetUpdater, currentLocationRepository)
+        currentLocationRepository: CurrentLocationRepository = FakeCurrentLocationRepository(),
+        placeSearchService: PlaceSearchService = FakePlaceSearchService(),
+        placeAutocompleteService: PlaceAutocompleteService = FakePlaceAutocompleteService()
+    ): AlarmEditViewModel = AlarmEditViewModel(
+        repository,
+        widgetUpdater,
+        currentLocationRepository,
+        placeSearchService,
+        placeAutocompleteService
+    )
+
+    private fun placeCandidate(
+        id: String,
+        name: String,
+        latitude: Double,
+        longitude: Double
+    ) = PlaceCandidate(id, name, "$name address", LatLng(latitude, longitude))
 }
 
 @OptIn(ExperimentalCoroutinesApi::class)
@@ -357,6 +702,53 @@ private class FakeCurrentLocationRepository(
 
     fun emit(location: LatLng?) {
         locations.value = location
+    }
+}
+
+private class FakePlaceSearchService(
+    private val results: List<PlaceCandidate> = emptyList(),
+    private val error: Throwable? = null
+) : PlaceSearchService {
+    val queries = mutableListOf<String>()
+    val locationBiasCenters = mutableListOf<LatLng?>()
+
+    override suspend fun search(query: String, locationBiasCenter: LatLng?): List<PlaceCandidate> {
+        queries += query
+        locationBiasCenters += locationBiasCenter
+        error?.let { throw it }
+        return results
+    }
+}
+
+private class FakePlaceAutocompleteService(
+    private val suggestions: List<PlaceSuggestion> = emptyList(),
+    private val candidates: List<PlaceCandidate> = emptyList()
+) : PlaceAutocompleteService {
+    val queries = mutableListOf<String>()
+    val locationBiasCenters = mutableListOf<LatLng?>()
+    val selectedPlaceIds = mutableListOf<String>()
+    private var sessionCount = 0
+
+    override fun startSession(): String = "session-${++sessionCount}"
+    override fun endSession(sessionId: String) = Unit
+
+    override suspend fun suggestions(
+        query: String,
+        locationBiasCenter: LatLng?,
+        sessionId: String
+    ): List<PlaceSuggestion> {
+        queries += query
+        locationBiasCenters += locationBiasCenter
+        return suggestions
+    }
+
+    override suspend fun resolveCandidates(
+        suggestions: List<PlaceSuggestion>,
+        selectedPlaceId: String,
+        sessionId: String
+    ): List<PlaceCandidate> {
+        selectedPlaceIds += selectedPlaceId
+        return candidates
     }
 }
 

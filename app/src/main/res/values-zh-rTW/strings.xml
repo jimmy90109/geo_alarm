@@ -85,6 +85,13 @@
     
     <!-- 搜尋字串 -->
     <string name="search_location">搜尋地點</string>
+    <string name="search">搜尋</string>
+    <string name="searching_location">正在搜尋地點…</string>
+    <string name="location_search_failed_inline">找不到地點，請修改關鍵字後再試一次。</string>
+    <string name="invalid_shared_place">分享內容不包含支援的 Google Maps 地點。</string>
+    <string name="shared_place_search_failed">找不到分享的地點，請在地圖上選擇或重新搜尋。</string>
+    <string name="select_shared_place">選擇地點</string>
+    <string name="confirm">確認</string>
     <string name="getting_current_location">正在取得你的位置…</string>
 
     <!-- 通知字串 -->

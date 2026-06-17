@@ -16,7 +16,10 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.platform.LocalContext
@@ -84,7 +87,22 @@ fun AppNavHost(
     modifier: Modifier = Modifier,
     navController: NavHostController,
     startDestination: AppRoutes = AppRoutes.Main,
+    requestedDestination: AppRoutes? = null,
 ) {
+    var pendingRequestedDestination by remember(requestedDestination) {
+        mutableStateOf(requestedDestination)
+    }
+
+    LaunchedEffect(startDestination, pendingRequestedDestination) {
+        val pendingDestination = pendingRequestedDestination
+        if (startDestination == AppRoutes.Main && pendingDestination != null) {
+            pendingRequestedDestination = null
+            navController.navigate(pendingDestination) {
+                launchSingleTop = true
+            }
+        }
+    }
+
     NavHost(
         navController = navController, startDestination = startDestination, modifier = modifier,
         // Global default animations for all routes
@@ -173,7 +191,17 @@ fun AppNavHost(
                     viewModel = onboardingViewModel,
                     showAnalyticsOptIn = route.showAnalyticsOptIn,
                     onFinished = {
-                        if (navController.previousBackStackEntry != null) {
+                        val pendingDestination = pendingRequestedDestination
+                        if (pendingDestination != null) {
+                            pendingRequestedDestination = null
+                            navController.navigate(AppRoutes.Main) {
+                                popUpTo(AppRoutes.Onboarding()) { inclusive = true }
+                                launchSingleTop = true
+                            }
+                            navController.navigate(pendingDestination) {
+                                launchSingleTop = true
+                            }
+                        } else if (navController.previousBackStackEntry != null) {
                             navController.popBackStack()
                         } else {
                             navController.navigate(AppRoutes.Main) {
@@ -193,6 +221,8 @@ fun AppNavHost(
                 AlarmEditScreen(
                     viewModel = viewModel,
                     alarmId = route.alarmId,
+                    sharedPlaceQuery = route.sharedPlaceQuery,
+                    sharedPlaceSource = route.sharedPlaceSource,
                     onNavigateBack = {
                         val state = viewModel.uiState.value
                         if (state.isSaved && state.savedAlarmId != null) {

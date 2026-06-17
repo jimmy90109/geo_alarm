@@ -85,6 +85,13 @@
     
     <!-- Search strings -->
     <string name="search_location">Search location</string>
+    <string name="search">Search</string>
+    <string name="searching_location">Searching for places…</string>
+    <string name="location_search_failed_inline">No places found. Edit your search and try again.</string>
+    <string name="invalid_shared_place">This share does not contain a supported Google Maps place.</string>
+    <string name="shared_place_search_failed">Could not find that shared place. You can select it on the map or search again.</string>
+    <string name="select_shared_place">Select place</string>
+    <string name="confirm">Confirm</string>
     <string name="getting_current_location">Getting your current location…</string>
     
     <!-- Notification strings -->

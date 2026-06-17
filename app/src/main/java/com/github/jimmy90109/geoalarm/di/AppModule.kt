@@ -28,6 +28,10 @@ import com.github.jimmy90109.geoalarm.data.location.DefaultCurrentLocationReposi
 import com.github.jimmy90109.geoalarm.data.location.ElapsedRealtimeNanosProvider
 import com.github.jimmy90109.geoalarm.data.location.LocationPermissionChecker
 import com.github.jimmy90109.geoalarm.data.location.SystemElapsedRealtimeNanosProvider
+import com.github.jimmy90109.geoalarm.data.places.AndroidPlaceSearchService
+import com.github.jimmy90109.geoalarm.data.places.AndroidPlaceAutocompleteService
+import com.github.jimmy90109.geoalarm.data.places.PlaceAutocompleteService
+import com.github.jimmy90109.geoalarm.data.places.PlaceSearchService
 import com.github.jimmy90109.geoalarm.widget.AppWidgetUpdater
 import com.github.jimmy90109.geoalarm.widget.WidgetUpdater
 import dagger.Binds
@@ -134,4 +138,16 @@ abstract class RepositoryModule {
     abstract fun bindElapsedRealtimeNanosProvider(
         provider: SystemElapsedRealtimeNanosProvider
     ): ElapsedRealtimeNanosProvider
+
+    @Binds
+    @Singleton
+    abstract fun bindPlaceSearchService(
+        service: AndroidPlaceSearchService
+    ): PlaceSearchService
+
+    @Binds
+    @Singleton
+    abstract fun bindPlaceAutocompleteService(
+        service: AndroidPlaceAutocompleteService
+    ): PlaceAutocompleteService
 }
