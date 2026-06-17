@@ -54,7 +54,7 @@
 
         <receiver
             android:name=".service.GeofenceBroadcastReceiver"
-            android:exported="true" />
+            android:exported="false" />
 
         <receiver
             android:name=".receiver.ScheduleReceiver"
