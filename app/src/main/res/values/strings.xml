@@ -82,6 +82,8 @@
     <string name="retry">Retry</string>
     <string name="preview">Preview</string>
     <string name="battery_optimization_banner_message">Strongly recommended: turn off battery optimization for reliable alarms.</string>
+    <string name="battery_optimization_allow_now">Allow now</string>
+    <string name="battery_optimization_success_message">Battery optimization turned off</string>
     
     <!-- Search strings -->
     <string name="search_location">Search location</string>

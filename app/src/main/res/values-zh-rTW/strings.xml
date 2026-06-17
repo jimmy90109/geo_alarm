@@ -82,6 +82,8 @@
     <string name="retry">重試</string>
     <string name="preview">預覽</string>
     <string name="battery_optimization_banner_message">強烈建議關閉電池最佳化，確保鬧鐘可靠運作。</string>
+    <string name="battery_optimization_allow_now">立即允許</string>
+    <string name="battery_optimization_success_message">已關閉電池最佳化</string>
     
     <!-- 搜尋字串 -->
     <string name="search_location">搜尋地點</string>

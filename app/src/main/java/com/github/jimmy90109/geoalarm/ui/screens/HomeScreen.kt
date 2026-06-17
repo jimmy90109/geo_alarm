@@ -7,6 +7,7 @@ import android.content.ComponentName
 import android.content.Context
 import android.content.ContextWrapper
 import android.content.Intent
+import android.net.Uri
 import android.os.PowerManager
 import android.provider.Settings
 import android.widget.Toast
@@ -112,13 +113,23 @@ fun HomeScreen(
     val lifecycleOwner = LocalLifecycleOwner.current
     val haptic = LocalHapticFeedback.current
     val scrollBehavior = TopAppBarDefaults.exitUntilCollapsedScrollBehavior()
-    var showBatteryOptimizationWarning by remember { mutableStateOf(false) }
+    var batteryOptimizationBannerState by remember {
+        mutableStateOf(BatteryOptimizationBannerState.Hidden)
+    }
 
-    fun refreshBatteryOptimizationWarning() {
+    fun refreshBatteryOptimizationBannerState() {
         val powerManager = context.getSystemService(Context.POWER_SERVICE) as PowerManager
-        showBatteryOptimizationWarning =
-            alarms.any { it.isEnabled } &&
-                !powerManager.isIgnoringBatteryOptimizations(context.packageName)
+        val hasActiveAlarm = alarms.any { it.isEnabled }
+        val isIgnoringOptimization =
+            powerManager.isIgnoringBatteryOptimizations(context.packageName)
+
+        batteryOptimizationBannerState = when {
+            !hasActiveAlarm -> BatteryOptimizationBannerState.Hidden
+            !isIgnoringOptimization -> BatteryOptimizationBannerState.Warning
+            batteryOptimizationBannerState == BatteryOptimizationBannerState.Warning ->
+                BatteryOptimizationBannerState.Success
+            else -> BatteryOptimizationBannerState.Hidden
+        }
     }
 
     DisposableEffect(lifecycleOwner, alarms) {
@@ -126,7 +137,7 @@ fun HomeScreen(
             if (event == Lifecycle.Event.ON_RESUME) {
                 viewModel.onAction(HomeAction.ExactAlarmSettingsReturned)
                 viewModel.onAction(HomeAction.ActivationPermissionSettingsReturned)
-                refreshBatteryOptimizationWarning()
+                refreshBatteryOptimizationBannerState()
             }
         }
         lifecycleOwner.lifecycle.addObserver(observer)
@@ -334,11 +345,29 @@ fun HomeScreen(
                         alarm = targetAlarm,
                         progress = uiState.monitoringProgress,
                         distanceMeters = uiState.monitoringDistance,
-                        showBatteryOptimizationWarning = showBatteryOptimizationWarning,
+                        batteryOptimizationBannerState = batteryOptimizationBannerState,
                         onBatteryOptimizationClick = {
-                            context.startActivity(
-                                Intent(Settings.ACTION_IGNORE_BATTERY_OPTIMIZATION_SETTINGS)
-                            )
+                            val powerManager =
+                                context.getSystemService(Context.POWER_SERVICE) as PowerManager
+                            if (powerManager.isIgnoringBatteryOptimizations(context.packageName)) {
+                                refreshBatteryOptimizationBannerState()
+                            } else {
+                                val requestIntent = Intent(
+                                    Settings.ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS,
+                                ).apply {
+                                    data = Uri.parse("package:${context.packageName}")
+                                }
+                                runCatching {
+                                    context.startActivity(requestIntent)
+                                }.onFailure {
+                                    context.startActivity(
+                                        Intent(Settings.ACTION_IGNORE_BATTERY_OPTIMIZATION_SETTINGS)
+                                    )
+                                }
+                            }
+                        },
+                        onBatteryOptimizationSuccessShown = {
+                            batteryOptimizationBannerState = BatteryOptimizationBannerState.Hidden
                         },
                         paymentShortcut = paymentShortcut,
                         onPaymentShortcutClick = { showPaymentShortcutSheet = true },
@@ -441,7 +470,7 @@ fun HomeScreen(
     }
 
     LaunchedEffect(alarms) {
-        refreshBatteryOptimizationWarning()
+        refreshBatteryOptimizationBannerState()
     }
 }
 

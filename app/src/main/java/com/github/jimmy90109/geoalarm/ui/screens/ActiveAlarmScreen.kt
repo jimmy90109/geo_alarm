@@ -1,6 +1,10 @@
 package com.github.jimmy90109.geoalarm.ui.screens
 
 import android.content.res.Configuration.ORIENTATION_LANDSCAPE
+import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.animateContentSize
 import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.RepeatMode
 import androidx.compose.animation.core.animateFloat
@@ -8,8 +12,13 @@ import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.infiniteRepeatable
 import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.tween
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.shrinkVertically
+import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
+import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -24,6 +33,7 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowForward
 import androidx.compose.material.icons.filled.BatteryAlert
+import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.outlined.Info
 import androidx.compose.material3.Button
 import androidx.compose.material3.Icon
@@ -39,6 +49,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
@@ -53,14 +64,22 @@ import com.github.jimmy90109.geoalarm.utils.DistanceFormatter
 import kotlinx.coroutines.delay
 import kotlin.math.sqrt
 
+enum class BatteryOptimizationBannerState {
+    Hidden,
+    Warning,
+    Success,
+}
+
 @Composable
 fun ActiveAlarmScreen(
     modifier: Modifier = Modifier,
     alarm: Alarm,
     progress: Int,
     distanceMeters: Int?,
-    showBatteryOptimizationWarning: Boolean = false,
+    batteryOptimizationBannerState: BatteryOptimizationBannerState =
+        BatteryOptimizationBannerState.Hidden,
     onBatteryOptimizationClick: () -> Unit = {},
+    onBatteryOptimizationSuccessShown: () -> Unit = {},
     paymentShortcut: PaymentShortcut? = null,
     onPaymentShortcutClick: () -> Unit = {},
     onStopAlarm: (Boolean) -> Unit,
@@ -303,12 +322,24 @@ fun ActiveAlarmScreen(
             }
         }
 
-        if (showBatteryOptimizationWarning) {
+        LaunchedEffect(batteryOptimizationBannerState) {
+            if (batteryOptimizationBannerState == BatteryOptimizationBannerState.Success) {
+                delay(900)
+                onBatteryOptimizationSuccessShown()
+            }
+        }
+
+        AnimatedVisibility(
+            visible = batteryOptimizationBannerState != BatteryOptimizationBannerState.Hidden,
+            enter = fadeIn(animationSpec = tween(220)),
+            exit = fadeOut(animationSpec = tween(350)),
+            modifier = Modifier
+                .align(Alignment.TopCenter)
+                .padding(horizontal = 24.dp, vertical = 24.dp),
+        ) {
             BatteryOptimizationBanner(
+                state = batteryOptimizationBannerState,
                 onClick = onBatteryOptimizationClick,
-                modifier = Modifier
-                    .align(Alignment.TopCenter)
-                    .padding(horizontal = 24.dp, vertical = 24.dp),
             )
         }
     }
@@ -316,40 +347,102 @@ fun ActiveAlarmScreen(
 
 @Composable
 private fun BatteryOptimizationBanner(
+    state: BatteryOptimizationBannerState,
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
+    val darkTheme = isSystemInDarkTheme()
+    val targetContainerColor = when (state) {
+        BatteryOptimizationBannerState.Warning -> MaterialTheme.colorScheme.errorContainer
+        else ->
+            if (darkTheme) Color(0xFF1B5E20) else Color(0xFFC8E6C9)
+    }
+    val targetContentColor = when (state) {
+        BatteryOptimizationBannerState.Warning -> MaterialTheme.colorScheme.onErrorContainer
+        else ->
+            if (darkTheme) Color(0xFFC8E6C9) else Color(0xFF0B3D16)
+    }
+    val containerColor by animateColorAsState(
+        targetValue = targetContainerColor,
+        animationSpec = tween(300),
+        label = "batteryBannerContainerColor",
+    )
+    val contentColor by animateColorAsState(
+        targetValue = targetContentColor,
+        animationSpec = tween(300),
+        label = "batteryBannerContentColor",
+    )
+
     Surface(
         onClick = onClick,
-        modifier = modifier.fillMaxWidth(),
+        modifier = modifier
+            .fillMaxWidth()
+            .animateContentSize(
+                animationSpec = tween(
+                    durationMillis = 300,
+                    easing = FastOutSlowInEasing,
+                ),
+            ),
         shape = MaterialTheme.shapes.large,
-        color = MaterialTheme.colorScheme.errorContainer,
-        contentColor = MaterialTheme.colorScheme.onErrorContainer,
+        color = containerColor,
+        contentColor = contentColor,
         tonalElevation = 6.dp,
     ) {
         Row(
             modifier = Modifier.padding(horizontal = 16.dp, vertical = 14.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            Icon(
-                imageVector = Icons.Default.BatteryAlert,
-                contentDescription = null,
-                modifier = Modifier.size(24.dp),
-            )
+            AnimatedContent(
+                targetState = state,
+                transitionSpec = {
+                    fadeIn(animationSpec = tween(180)).togetherWith(
+                        fadeOut(animationSpec = tween(120))
+                    )
+                },
+                label = "batteryBannerIcon",
+            ) { targetState ->
+                Icon(
+                    imageVector = if (targetState == BatteryOptimizationBannerState.Warning) {
+                        Icons.Default.BatteryAlert
+                    } else {
+                        Icons.Default.CheckCircle
+                    },
+                    contentDescription = null,
+                    modifier = Modifier.size(24.dp),
+                )
+            }
             Column(
                 modifier = Modifier.padding(start = 12.dp),
             ) {
                 Text(
-                    text = stringResource(R.string.battery_optimization_banner_message),
+                    text = stringResource(
+                        if (state == BatteryOptimizationBannerState.Warning) {
+                            R.string.battery_optimization_banner_message
+                        } else {
+                            R.string.battery_optimization_success_message
+                        }
+                    ),
                     style = MaterialTheme.typography.bodyMedium,
                     fontWeight = FontWeight.SemiBold,
                 )
-                Text(
-                    text = stringResource(R.string.go_to_settings),
-                    modifier = Modifier.padding(top = 10.dp),
-                    style = MaterialTheme.typography.labelLarge,
-                    fontWeight = FontWeight.Bold,
-                )
+                AnimatedVisibility(
+                    visible = state == BatteryOptimizationBannerState.Warning,
+                    enter = fadeIn(animationSpec = tween(180)),
+                    exit = fadeOut(animationSpec = tween(140)) + shrinkVertically(
+                        animationSpec = tween(
+                            durationMillis = 300,
+                            easing = FastOutSlowInEasing,
+                        ),
+                        shrinkTowards = Alignment.Top,
+                    ),
+                ) {
+                    Text(
+                        text = stringResource(R.string.battery_optimization_allow_now),
+                        modifier = Modifier.padding(top = 10.dp),
+                        style = MaterialTheme.typography.labelLarge,
+                        fontWeight = FontWeight.Bold,
+                    )
+                }
             }
         }
     }
@@ -412,7 +505,7 @@ fun ActiveAlarmScreenPreview() {
             alarm = mockAlarm,
             progress = progressState.intValue,
             distanceMeters = if (progressState.intValue == 10) 5000 else 250,
-            showBatteryOptimizationWarning = true,
+            batteryOptimizationBannerState = BatteryOptimizationBannerState.Warning,
             onStopAlarm = {},
         )
     }
