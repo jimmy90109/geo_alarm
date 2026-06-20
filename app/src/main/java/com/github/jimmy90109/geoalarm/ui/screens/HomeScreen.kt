@@ -76,6 +76,7 @@ import com.github.jimmy90109.geoalarm.ui.components.NotificationRationaleDialog
 import com.github.jimmy90109.geoalarm.ui.components.PreciseLocationPermissionDialog
 import com.github.jimmy90109.geoalarm.ui.components.ScheduleConflictDialog
 import com.github.jimmy90109.geoalarm.ui.components.SingleAlarmDialog
+import com.github.jimmy90109.geoalarm.util.FullScreenIntentPermissionHelper
 import com.github.jimmy90109.geoalarm.ui.viewmodel.HomeAction
 import com.github.jimmy90109.geoalarm.ui.viewmodel.HomeUiState
 import com.github.jimmy90109.geoalarm.ui.viewmodel.HomeViewModel
@@ -109,12 +110,16 @@ fun HomeScreen(
     val schedules by viewModel.schedules.collectAsStateWithLifecycle(initialValue = emptyList())
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val paymentShortcut by viewModel.paymentShortcut.collectAsStateWithLifecycle()
+    val fullscreenIntentPromptHandled by viewModel.fullscreenIntentPromptHandled.collectAsStateWithLifecycle()
     val context = LocalContext.current
     val lifecycleOwner = LocalLifecycleOwner.current
     val haptic = LocalHapticFeedback.current
     val scrollBehavior = TopAppBarDefaults.exitUntilCollapsedScrollBehavior()
     var batteryOptimizationBannerState by remember {
-        mutableStateOf(BatteryOptimizationBannerState.Hidden)
+        mutableStateOf(ReliabilityBannerState.Hidden)
+    }
+    var canUseFullScreenIntent by remember {
+        mutableStateOf(FullScreenIntentPermissionHelper.canUseFullScreenIntent(context))
     }
 
     fun refreshBatteryOptimizationBannerState() {
@@ -124,11 +129,25 @@ fun HomeScreen(
             powerManager.isIgnoringBatteryOptimizations(context.packageName)
 
         batteryOptimizationBannerState = when {
-            !hasActiveAlarm -> BatteryOptimizationBannerState.Hidden
-            !isIgnoringOptimization -> BatteryOptimizationBannerState.Warning
-            batteryOptimizationBannerState == BatteryOptimizationBannerState.Warning ->
-                BatteryOptimizationBannerState.Success
-            else -> BatteryOptimizationBannerState.Hidden
+            !hasActiveAlarm -> ReliabilityBannerState.Hidden
+            !isIgnoringOptimization -> ReliabilityBannerState.BatteryOptimizationWarning
+            batteryOptimizationBannerState == ReliabilityBannerState.BatteryOptimizationWarning ->
+                ReliabilityBannerState.BatteryOptimizationSuccess
+            else -> ReliabilityBannerState.Hidden
+        }
+    }
+
+    fun refreshFullScreenIntentState() {
+        canUseFullScreenIntent = FullScreenIntentPermissionHelper.canUseFullScreenIntent(context)
+    }
+
+    fun openFullScreenIntentSettings() {
+        viewModel.onAction(HomeAction.FullScreenIntentPromptHandled)
+        val intent = FullScreenIntentPermissionHelper.createSettingsIntent(context)
+        runCatching {
+            context.startActivity(intent)
+        }.onFailure {
+            context.startActivity(FullScreenIntentPermissionHelper.createAppDetailsIntent(context))
         }
     }
 
@@ -138,6 +157,7 @@ fun HomeScreen(
                 viewModel.onAction(HomeAction.ExactAlarmSettingsReturned)
                 viewModel.onAction(HomeAction.ActivationPermissionSettingsReturned)
                 refreshBatteryOptimizationBannerState()
+                refreshFullScreenIntentState()
             }
         }
         lifecycleOwner.lifecycle.addObserver(observer)
@@ -340,12 +360,21 @@ fun HomeScreen(
                 label = "ActiveAlarmTransition",
             ) { targetAlarm ->
                 if (targetAlarm != null) {
+                    val reliabilityBannerState = when {
+                        batteryOptimizationBannerState != ReliabilityBannerState.Hidden ->
+                            batteryOptimizationBannerState
+                        FullScreenIntentPermissionHelper.isRequired() &&
+                            !canUseFullScreenIntent &&
+                            !fullscreenIntentPromptHandled ->
+                            ReliabilityBannerState.FullScreenIntentWarning
+                        else -> ReliabilityBannerState.Hidden
+                    }
                     ActiveAlarmScreen(
                         modifier = Modifier.padding(top = innerPadding.calculateTopPadding()),
                         alarm = targetAlarm,
                         progress = uiState.monitoringProgress,
                         distanceMeters = uiState.monitoringDistance,
-                        batteryOptimizationBannerState = batteryOptimizationBannerState,
+                        reliabilityBannerState = reliabilityBannerState,
                         onBatteryOptimizationClick = {
                             val powerManager =
                                 context.getSystemService(Context.POWER_SERVICE) as PowerManager
@@ -367,7 +396,13 @@ fun HomeScreen(
                             }
                         },
                         onBatteryOptimizationSuccessShown = {
-                            batteryOptimizationBannerState = BatteryOptimizationBannerState.Hidden
+                            batteryOptimizationBannerState = ReliabilityBannerState.Hidden
+                        },
+                        onFullScreenIntentAllowClick = {
+                            openFullScreenIntentSettings()
+                        },
+                        onFullScreenIntentSkipClick = {
+                            viewModel.onAction(HomeAction.FullScreenIntentPromptHandled)
                         },
                         paymentShortcut = paymentShortcut,
                         onPaymentShortcutClick = { showPaymentShortcutSheet = true },
@@ -471,6 +506,7 @@ fun HomeScreen(
 
     LaunchedEffect(alarms) {
         refreshBatteryOptimizationBannerState()
+        refreshFullScreenIntentState()
     }
 }
 

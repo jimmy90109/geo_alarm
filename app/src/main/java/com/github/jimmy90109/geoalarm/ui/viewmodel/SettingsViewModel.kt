@@ -29,6 +29,7 @@ data class SettingsUiState(
     val showRingtoneSheet: Boolean = false,
     val showPaymentShortcutSheet: Boolean = false,
     val showAnalyticsSheet: Boolean = false,
+    val showFullScreenIntentSheet: Boolean = false,
     val anyAlarmEnabled: Boolean = false,
     val isPreviewPlaying: Boolean = false,
     val previewingUri: String? = null, // null = default ringtone, or custom URI
@@ -45,6 +46,8 @@ sealed interface SettingsAction {
     data object PaymentShortcutSheetDismissed : SettingsAction
     data object AnalyticsSheetRequested : SettingsAction
     data object AnalyticsSheetDismissed : SettingsAction
+    data object FullScreenIntentSheetRequested : SettingsAction
+    data object FullScreenIntentSheetDismissed : SettingsAction
     data class RingtoneEnabledChanged(val enabled: Boolean) : SettingsAction
     data class RingtoneSelected(val uri: String?, val name: String?) : SettingsAction
     data class PaymentShortcutSelected(val shortcut: PaymentShortcut?) : SettingsAction
@@ -125,6 +128,8 @@ class SettingsViewModel @Inject constructor(
             SettingsAction.PaymentShortcutSheetDismissed -> dismissPaymentShortcutSheet()
             SettingsAction.AnalyticsSheetRequested -> showAnalyticsSheet()
             SettingsAction.AnalyticsSheetDismissed -> dismissAnalyticsSheet()
+            SettingsAction.FullScreenIntentSheetRequested -> showFullScreenIntentSheet()
+            SettingsAction.FullScreenIntentSheetDismissed -> dismissFullScreenIntentSheet()
             is SettingsAction.RingtoneEnabledChanged -> setRingtoneEnabled(action.enabled)
             is SettingsAction.RingtoneSelected -> setRingtone(action.uri, action.name)
             is SettingsAction.PaymentShortcutSelected -> setPaymentShortcut(action.shortcut)
@@ -177,6 +182,14 @@ class SettingsViewModel @Inject constructor(
 
     private fun dismissAnalyticsSheet() {
         _uiState.value = _uiState.value.copy(showAnalyticsSheet = false)
+    }
+
+    private fun showFullScreenIntentSheet() {
+        _uiState.value = _uiState.value.copy(showFullScreenIntentSheet = true)
+    }
+
+    private fun dismissFullScreenIntentSheet() {
+        _uiState.value = _uiState.value.copy(showFullScreenIntentSheet = false)
     }
 
     private fun setRingtoneEnabled(enabled: Boolean) {

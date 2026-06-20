@@ -38,12 +38,11 @@ object HyperIslandHelper {
      * Apply HyperIsland extras to a notification builder for progress tracking
      *
      * SmallIslandArea: Circular progress ring with AppIcon inside
-     * BigIslandArea: Left side = AppIcon + destination name, Right side = percentage
+     * BigIslandArea: Left side = AppIcon + app name, Right side = percentage
      * Actions: Cancel button
      *
      * @param context Application context
      * @param builder NotificationCompat.Builder to modify
-     * @param alarmName Alarm name to display
      * @param progress Current progress (0-100), 0 for FAR zone
      * @param remainingDistance Remaining distance in meters
      * @param zone Current monitoring zone (FAR/MID/NEAR)
@@ -53,7 +52,6 @@ object HyperIslandHelper {
     fun applyProgressExtras(
         context: Context,
         builder: NotificationCompat.Builder,
-        alarmName: String,
         progress: Int,
         remainingDistance: Int,
         zone: MonitoringZone,
@@ -82,13 +80,13 @@ object HyperIslandHelper {
             }
 
             val hyperBuilder = HyperIslandNotification.Builder(
-                context, BUSINESS_ID, context.getString(R.string.notification_title, alarmName)
+                context, BUSINESS_ID, context.getString(R.string.notification_title)
             ).setSmallWindowTarget("${context.packageName}.MainActivity")
                 // Register icon resources
                 .addPicture(HyperPicture(ICON_KEY, context, R.drawable.ic_notification))
                 // Set base info content (fallback for card expansion)
                 .setBaseInfo(
-                    title = context.getString(R.string.notification_title, alarmName),
+                    title = context.getString(R.string.notification_title),
                     content = when (zone) {
                         MonitoringZone.FAR -> context.getString(R.string.notification_power_saving)
                         MonitoringZone.MID, MonitoringZone.NEAR -> context.getString(
@@ -114,7 +112,7 @@ object HyperIslandHelper {
                     left = ImageTextInfoLeft(
                         type = 1,
                         picInfo = PicInfo(type = 1, pic = ICON_KEY),
-                        textInfo = TextInfo(title = alarmName, content = null)
+                        textInfo = TextInfo(title = context.getString(R.string.app_name), content = null)
                     ),
                     centerText = TextInfo(title = rightText),// TextInfo (center)
                 )
@@ -161,14 +159,12 @@ object HyperIslandHelper {
      *
      * @param context Application context
      * @param builder NotificationCompat.Builder to modify
-     * @param alarmName Alarm name to display
      * @param turnOffPendingIntent PendingIntent to turn off the alarm
      * @return Modified NotificationCompat.Builder
      */
     fun applyArrivalExtras(
         context: Context,
         builder: NotificationCompat.Builder,
-        alarmName: String,
         turnOffPendingIntent: PendingIntent
     ): NotificationCompat.Builder {
         if (!isSupported(context)) {
@@ -179,13 +175,13 @@ object HyperIslandHelper {
             val hyperBuilder = HyperIslandNotification.Builder(
                 context,
                 BUSINESS_ID,
-                context.getString(R.string.notification_arrived_title, alarmName),
+                context.getString(R.string.notification_arrived_title),
             ).setSmallWindowTarget("${context.packageName}.MainActivity")
                 // Register icon resources
                 .addPicture(HyperPicture(ICON_KEY, context, R.drawable.ic_notification))
                 // Set base info content for arrival
                 .setBaseInfo(
-                    title = context.getString(R.string.notification_arrived_title, alarmName),
+                    title = context.getString(R.string.notification_arrived_title),
                     content = context.getString(R.string.notification_arrived_text),
                     pictureKey = ICON_KEY
                 )
@@ -202,7 +198,7 @@ object HyperIslandHelper {
                     left = ImageTextInfoLeft(
                         type = 1,
                         picInfo = PicInfo(type = 1, pic = ICON_KEY),
-                        textInfo = TextInfo(title = alarmName, content = null)
+                        textInfo = TextInfo(title = context.getString(R.string.app_name), content = null)
                     ),
                     centerText = TextInfo(title = "100%"),
                 )

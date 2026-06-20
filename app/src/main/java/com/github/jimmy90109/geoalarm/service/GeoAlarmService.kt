@@ -76,7 +76,7 @@ class GeoAlarmService : Service() {
         const val EXTRA_CANCEL_SOURCE = "EXTRA_CANCEL_SOURCE"
         const val CANCEL_SOURCE_ARRIVAL_TURN_OFF = "CANCEL_SOURCE_ARRIVAL_TURN_OFF"
 
-        private const val NOTIFICATION_ID = 1
+        private const val LIVE_UPDATE_NOTIFICATION_ID = 1
         private const val CHANNEL_ID = "geo_alarm_channel"
 
         // Distance thresholds for adaptive monitoring
@@ -136,7 +136,7 @@ class GeoAlarmService : Service() {
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
-        if (GeoAlarmServiceStartPolicy.requiresImmediateForeground(intent?.action)) {
+        if (GeoAlarmServiceStartPolicy.requiresImmediateForeground(intent?.action) && !isServiceRunning) {
             startForegroundService()
         }
 
@@ -174,9 +174,7 @@ class GeoAlarmService : Service() {
                 if (isServiceRunning) {
                     if (isArrived) {
                         // Arrival notification dismissed, re-push it so user can turn off vibration/ringtone
-                        val notification = buildArrivalNotification()
-                        val manager = getSystemService(NotificationManager::class.java)
-                        manager.notify(NOTIFICATION_ID, notification)
+                        updateForegroundNotification(buildArrivalNotification())
                     } else {
                         // Zone notification dismissed, restore foreground service
                         startForegroundService()
@@ -209,6 +207,11 @@ class GeoAlarmService : Service() {
                             delay(1000)
                             val progress = i * 10
                             val remaining = ((10 - i) * 100)
+                            if (remaining <= 0) {
+                                isArrived = true
+                                triggerArrival()
+                                return@launch
+                            }
                             broadcastProgress(progress, remaining)
                             
                             // Update notification with progress
@@ -219,9 +222,8 @@ class GeoAlarmService : Service() {
                             }
                             val notification = buildZoneNotification(zone, progress, remaining)
                             val manager = getSystemService(NotificationManager::class.java)
-                            manager.notify(NOTIFICATION_ID, notification)
+                            manager.notify(LIVE_UPDATE_NOTIFICATION_ID, notification)
                         }
-                        triggerArrival()
                     }
                 }
             }
@@ -512,6 +514,7 @@ class GeoAlarmService : Service() {
     private fun onLocationChanged(location: Location) {
         val distanceToDest = calculateDistanceToDestination(location)
         val remainingDist = distanceToDest - radius.toFloat()
+        val remainingMeters = remainingDist.toInt()
 
         if (remainingDist <= 0) {
             // Arrived!
@@ -531,27 +534,32 @@ class GeoAlarmService : Service() {
 
             Log.d(
                 "GeoAlarmService",
-                "Zone: $currentZone, Distance: ${distanceToDest.toInt()}m, Remaining: ${remainingDist.toInt()}m, Progress: $progressPercent%"
+                "Zone: $currentZone, Distance: ${distanceToDest.toInt()}m, Remaining: ${remainingMeters}m, Progress: $progressPercent%"
             )
 
             // Update zone based on current distance
             updateLocationRequest(remainingDist)
 
             // Update notification with progress
-            updateNotificationForZone(currentZone, progressPercent, remainingDist.toInt())
+            updateNotificationForZone(currentZone, progressPercent, remainingMeters)
 
             // Broadcast to UI
-            broadcastProgress(progressPercent, remainingDist.toInt())
+            broadcastProgress(progressPercent, remainingMeters)
         }
     }
 
     @SuppressLint("MissingPermission")
     private fun startForegroundService() {
         val notification = buildZoneNotification(currentZone, 0, 0)
+        updateForegroundNotification(notification)
+    }
+
+    @SuppressLint("MissingPermission")
+    private fun updateForegroundNotification(notification: Notification) {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-            startForeground(NOTIFICATION_ID, notification, FOREGROUND_SERVICE_TYPE_LOCATION)
+            startForeground(LIVE_UPDATE_NOTIFICATION_ID, notification, FOREGROUND_SERVICE_TYPE_LOCATION)
         } else {
-            startForeground(NOTIFICATION_ID, notification)
+            startForeground(LIVE_UPDATE_NOTIFICATION_ID, notification)
         }
     }
 
@@ -562,7 +570,7 @@ class GeoAlarmService : Service() {
 
         val notification = buildZoneNotification(zone, progress, remainingDistance)
         val manager = getSystemService(NotificationManager::class.java)
-        manager.notify(NOTIFICATION_ID, notification)
+        manager.notify(LIVE_UPDATE_NOTIFICATION_ID, notification)
     }
 
     private fun triggerArrival() {
@@ -597,9 +605,7 @@ class GeoAlarmService : Service() {
             // When disabled: vibration only (already triggered above)
         }
 
-        val notification = buildArrivalNotification()
-        val manager = getSystemService(NotificationManager::class.java)
-        manager.notify(NOTIFICATION_ID, notification)
+        updateForegroundNotification(buildArrivalNotification())
 
         // Use WakeLock to turn screen on if possible
         WakeLocker.acquire(this)
@@ -641,6 +647,7 @@ class GeoAlarmService : Service() {
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
         )
 
+        val progressStyle = NotificationCompat.ProgressStyle()
         val builder =
             NotificationCompat.Builder(this, CHANNEL_ID).setSmallIcon(R.drawable.ic_notification)
                 .setOnlyAlertOnce(true).setOngoing(true)
@@ -661,13 +668,17 @@ class GeoAlarmService : Service() {
 
         when (zone) {
             MonitoringZone.FAR -> {
-                builder.setContentTitle(getString(R.string.notification_title, alarmName))
+                progressStyle.setProgressIndeterminate(true)
+                builder.setProgress(0, 0, true)
+                    .setContentTitle(getString(R.string.notification_title))
                     .setContentText(getString(R.string.notification_power_saving))
-                    .setShortCriticalText(alarmName)
+                    .setShortCriticalText(getString(R.string.notification_distance_over_five_km))
             }
 
             MonitoringZone.MID -> {
-                builder.setContentTitle(getString(R.string.notification_title, alarmName))
+                progressStyle.setProgress(progress)
+                builder.setProgress(100, progress, false)
+                    .setContentTitle(getString(R.string.notification_title))
                     .setContentText(
                         getString(
                             R.string.notification_distance,
@@ -675,11 +686,13 @@ class GeoAlarmService : Service() {
                             progress,
                         )
                     ).setSubText(getString(R.string.notification_balanced))
-                    .setProgress(100, progress, false).setShortCriticalText("$progress%")
+                    .setShortCriticalText("$progress%")
             }
 
             MonitoringZone.NEAR -> {
-                builder.setContentTitle(getString(R.string.notification_title, alarmName))
+                progressStyle.setProgress(progress)
+                builder.setProgress(100, progress, false)
+                    .setContentTitle(getString(R.string.notification_title))
                     .setContentText(
                         getString(
                             R.string.notification_distance,
@@ -687,22 +700,24 @@ class GeoAlarmService : Service() {
                             progress,
                         )
                     ).setSubText(getString(R.string.notification_high_accuracy))
-                    .setProgress(100, progress, false).setShortCriticalText("$progress%")
+                    .setShortCriticalText("$progress%")
             }
         }
+        builder.setStyle(progressStyle)
 
         // Apply Xiaomi HyperOS Dynamic Island extras if supported
         HyperIslandHelper.applyProgressExtras(
             this,
             builder,
-            alarmName,
             progress,
             remainingDistance,
             zone,
             cancelPendingIntent,
         )
 
-        return builder.build()
+        val notification = builder.build()
+        logPromotedOngoingEligibility(notification)
+        return notification
     }
 
     private fun buildArrivalNotification(): Notification {
@@ -722,7 +737,6 @@ class GeoAlarmService : Service() {
         val showArrivalIntent = Intent(this, ArrivalAlarmActivity::class.java).apply {
             flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_SINGLE_TOP
             putExtra(EXTRA_ALARM_ID, alarmId)
-            putExtra(EXTRA_NAME, alarmName)
         }
         val showArrivalPendingIntent = PendingIntent.getActivity(
             this,
@@ -748,9 +762,10 @@ class GeoAlarmService : Service() {
         } else {
             true
         }
+        Log.d("GeoAlarmService", "Arrival canUseFullScreenIntent=$canUseFullScreenIntent")
 
         val builder = NotificationCompat.Builder(this, CHANNEL_ID)
-            .setContentTitle(getString(R.string.notification_arrived_title, alarmName))
+            .setContentTitle(getString(R.string.notification_arrived_title))
             .setContentText(getString(R.string.notification_arrived_text))
             .setSmallIcon(R.drawable.ic_notification).setPriority(NotificationCompat.PRIORITY_HIGH)
             .setCategory(NotificationCompat.CATEGORY_ALARM).addAction(
@@ -766,9 +781,19 @@ class GeoAlarmService : Service() {
         }
 
         // Apply Xiaomi HyperOS Dynamic Island extras if supported
-        HyperIslandHelper.applyArrivalExtras(this, builder, alarmName, turnOffPendingIntent)
+        HyperIslandHelper.applyArrivalExtras(this, builder, turnOffPendingIntent)
 
         return builder.build()
+    }
+
+    private fun logPromotedOngoingEligibility(notification: Notification) {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.BAKLAVA) {
+            val notificationManager = getSystemService(NotificationManager::class.java)
+            Log.d(
+                "GeoAlarmService",
+                "Live Update promotable=${notification.hasPromotableCharacteristics()}, canPostPromoted=${notificationManager.canPostPromotedNotifications()}",
+            )
+        }
     }
 
     private fun broadcastProgress(progress: Int, remainingDistance: Int) {

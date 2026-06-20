@@ -98,6 +98,7 @@ sealed interface HomeAction {
     data object ScheduleConflictDialogDismissed : HomeAction
     data object ScheduleConflictConfirmed : HomeAction
     data class TestAlarmStarted(val context: Context) : HomeAction
+    data object FullScreenIntentPromptHandled : HomeAction
 }
 
 /**
@@ -168,6 +169,13 @@ class HomeViewModel @Inject constructor(
     private val _uiState = MutableStateFlow(HomeUiState())
     val uiState: StateFlow<HomeUiState> = _uiState.asStateFlow()
 
+    val fullscreenIntentPromptHandled: StateFlow<Boolean> =
+        settingsRepository.fullscreenIntentPromptHandledFlow.stateIn(
+            scope = viewModelScope,
+            started = SharingStarted.WhileSubscribed(5000),
+            initialValue = false,
+        )
+
     val alarms = repository.allAlarms.stateIn(
         viewModelScope,
         SharingStarted.WhileSubscribed(5000),
@@ -220,6 +228,7 @@ class HomeViewModel @Inject constructor(
             HomeAction.ScheduleConflictDialogDismissed -> dismissScheduleConflictDialog()
             HomeAction.ScheduleConflictConfirmed -> confirmScheduleConflict()
             is HomeAction.TestAlarmStarted -> startTestAlarm(action.context)
+            HomeAction.FullScreenIntentPromptHandled -> setFullScreenIntentPromptHandled()
         }
     }
 
@@ -501,6 +510,12 @@ class HomeViewModel @Inject constructor(
     private fun setPaymentShortcut(shortcut: PaymentShortcut?) {
         viewModelScope.launch {
             settingsRepository.setPaymentShortcut(shortcut)
+        }
+    }
+
+    private fun setFullScreenIntentPromptHandled() {
+        viewModelScope.launch {
+            settingsRepository.setFullscreenIntentPromptHandled(true)
         }
     }
 

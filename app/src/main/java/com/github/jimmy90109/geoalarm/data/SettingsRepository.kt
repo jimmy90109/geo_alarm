@@ -21,6 +21,8 @@ class SettingsRepository @Inject constructor(
         private val RINGTONE_URI_KEY = stringPreferencesKey("ringtone_uri")
         private val RINGTONE_NAME_KEY = stringPreferencesKey("ringtone_name")
         private val PAYMENT_SHORTCUT_KEY = stringPreferencesKey("payment_shortcut")
+        private val FULLSCREEN_INTENT_PROMPT_HANDLED_KEY =
+            booleanPreferencesKey("fullscreen_intent_prompt_handled")
     }
 
     val ringtoneSettingsFlow: Flow<RingtoneSettings> = context.dataStore.data.map { preferences ->
@@ -33,6 +35,10 @@ class SettingsRepository @Inject constructor(
 
     val paymentShortcutFlow: Flow<PaymentShortcut?> = context.dataStore.data.map { preferences ->
         PaymentShortcut.fromId(preferences[PAYMENT_SHORTCUT_KEY])
+    }
+
+    val fullscreenIntentPromptHandledFlow: Flow<Boolean> = context.dataStore.data.map { preferences ->
+        preferences[FULLSCREEN_INTENT_PROMPT_HANDLED_KEY] ?: false
     }
 
     suspend fun setRingtoneEnabled(enabled: Boolean) {
@@ -63,6 +69,12 @@ class SettingsRepository @Inject constructor(
             } else {
                 preferences.remove(PAYMENT_SHORTCUT_KEY)
             }
+        }
+    }
+
+    suspend fun setFullscreenIntentPromptHandled(handled: Boolean) {
+        context.dataStore.edit { preferences ->
+            preferences[FULLSCREEN_INTENT_PROMPT_HANDLED_KEY] = handled
         }
     }
 }

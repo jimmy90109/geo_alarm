@@ -84,6 +84,9 @@
     <string name="battery_optimization_banner_message">Strongly recommended: turn off battery optimization for reliable alarms.</string>
     <string name="battery_optimization_allow_now">Allow now</string>
     <string name="battery_optimization_success_message">Battery optimization turned off</string>
+    <string name="fullscreen_intent_banner_message">When the screen is off, show the arrival screen over the lock screen so the Turn Off button is easier to reach.</string>
+    <string name="fullscreen_intent_allow_now">Allow now</string>
+    <string name="fullscreen_intent_skip">Not now</string>
     
     <!-- Search strings -->
     <string name="search_location">Search location</string>
@@ -97,17 +100,18 @@
     <string name="getting_current_location">Getting your current location…</string>
     
     <!-- Notification strings -->
-    <string name="notification_title">Heading to %s</string>
+    <string name="notification_title">Relax. We\'ll alert you when you arrive.</string>
     <string name="notification_distance">%1$sm left • %2$d%%</string>
+    <string name="notification_distance_over_five_km">&gt;5 km</string>
     <string name="notification_cancel">Cancel</string>
-    <string name="notification_arrived_title">Arrived at %s!</string>
+    <string name="notification_arrived_title">You have arrived!</string>
     <string name="notification_arrived_text">You have reached your destination.</string>
     <string name="notification_turn_off">Turn Off</string>
     <string name="notification_monitoring_geofence">Monitoring your location</string>
     <string name="notification_power_saving">Monitoring in background</string>
     <string name="notification_balanced">Tracking your journey</string>
     <string name="notification_high_accuracy">Almost there!</string>
-    <string name="notification_schedule_title">Heading to %s?</string>
+    <string name="notification_schedule_title">Start your scheduled alarm?</string>
     <string name="notification_schedule_message">Click to enable alarm</string>
     <string name="payment_shortcut_channel_name">Payment shortcut</string>
     <string name="payment_shortcut_channel_description">Shows your selected payment app after arrival</string>
@@ -128,6 +132,11 @@
     <string name="settings_section_general">General</string>
     <string name="settings_section_alarm">Alarm</string>
     <string name="settings_section_privacy_improvement">Privacy &amp; Improvements</string>
+    <string name="fullscreen_intent_settings_title">Full-screen arrival alert</string>
+    <string name="fullscreen_intent_settings_on">Enabled</string>
+    <string name="fullscreen_intent_settings_off">Not enabled</string>
+    <string name="fullscreen_intent_sheet_message">Allow full-screen alerts to show the arrival screen as soon as you reach your destination. When your phone is locked, the Turn Off button is easier to find so you can stop vibration and sound quickly.</string>
+    <string name="fullscreen_intent_open_settings">Open settings</string>
     <string name="settings_ringtone">Ringtone</string>
     <string name="settings_payment_shortcut">Payment app shortcut</string>
     <string name="payment_shortcut_off">Off</string>
