@@ -18,7 +18,7 @@
     <string name="onboarding_intro_privacy_item_3">不會上傳到任何伺服器</string>
     <string name="onboarding_intro_privacy_item_4">請放心開啟權限，讓提醒在最佳時機發生</string>
     <string name="onboarding_location_permission_title">允許精準定位</string>
-    <string name="onboarding_location_permission_body">Geo Alarm 會使用精準定位設定目的地。啟用鬧鐘後，即使 app 已關閉或未使用，Geo Alarm 仍會取得定位來判斷你是否進入鬧鐘範圍；背景定位將只在你啟用鬧鐘時要求。</string>
+    <string name="onboarding_location_permission_body">Geo Alarm 會取得精準定位資料，讓你設定目的地並啟用目的地鬧鐘；即使 app 已關閉或未使用，也會使用定位資料。定位資料會在此裝置上用於判斷你是否進入鬧鐘範圍，不會傳送至 Geo Alarm 伺服器或用於廣告。只有在你啟用鬧鐘時，才會要求背景定位權限。</string>
     <string name="onboarding_notification_permission_title">需要通知權限</string>
     <string name="onboarding_notification_permission_body">到達提醒範圍時會立即發送通知提醒你。</string>
     <string name="onboarding_notification_retry_message">尚未允許通知權限，請再試一次。</string>
@@ -69,7 +69,7 @@
     <string name="already_at_destination_title">已在目的地</string>
     <string name="already_at_destination_message">您已在鬧鐘範圍內，啟用後會立即觸發。</string>
     <string name="background_location_title">需要背景定位權限</string>
-    <string name="background_location_message">若要啟用此鬧鐘，即使 app 已關閉或未使用，Geo Alarm 仍需取得定位來判斷你是否進入鬧鐘範圍。請前往設定並選擇「一律允許」。</string>
+    <string name="background_location_message">Geo Alarm 會取得定位資料，以啟用此目的地鬧鐘；即使 app 已關閉或未使用，也會使用定位資料。定位資料會在此裝置上用於判斷你是否進入鬧鐘範圍，不會傳送至 Geo Alarm 伺服器或用於廣告。若要繼續，請前往設定並選擇「一律允許」。</string>
     <string name="precise_location_title">需要精準定位</string>
     <string name="precise_location_message">精準定位是可靠判斷鬧鐘範圍的必要條件。請前往設定允許定位並開啟精準定位，再啟用此鬧鐘。</string>
     <string name="go_to_settings">前往設定</string>
