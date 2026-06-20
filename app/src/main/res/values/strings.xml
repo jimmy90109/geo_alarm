@@ -81,9 +81,9 @@
     <string name="notification_retry_message">Notifications are essential for alerts. Please allow access.</string>
     <string name="retry">Retry</string>
     <string name="preview">Preview</string>
-    <string name="battery_optimization_banner_message">Strongly recommended: turn off battery optimization for reliable alarms.</string>
-    <string name="battery_optimization_allow_now">Allow now</string>
-    <string name="battery_optimization_success_message">Battery optimization turned off</string>
+    <string name="battery_optimization_banner_message">Alarms still work with battery optimization on. On some devices, allowing unrestricted battery use may improve background location reliability.</string>
+    <string name="battery_optimization_allow_now">Improve reliability</string>
+    <string name="battery_optimization_success_message">Unrestricted battery use enabled</string>
     <string name="fullscreen_intent_banner_message">When the screen is off, show the arrival screen over the lock screen so the Turn Off button is easier to reach.</string>
     <string name="fullscreen_intent_allow_now">Allow now</string>
     <string name="fullscreen_intent_skip">Not now</string>
