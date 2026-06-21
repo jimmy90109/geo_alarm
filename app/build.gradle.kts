@@ -23,8 +23,8 @@ android {
         applicationId = "com.github.jimmy90109.geoalarm"
         minSdk = 31
         targetSdk = 36
-        versionCode = 2606050
-        versionName = "1.2.0"
+        versionCode = 2606210
+        versionName = "1.3.0"
         
         manifestPlaceholders["GOOGLE_MAPS_API_KEY"] = localProperties.getProperty("maps.apiKey") ?: ""
         manifestPlaceholders["appName"] = "@string/app_name"
