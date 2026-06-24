@@ -1,6 +1,7 @@
 package com.github.jimmy90109.geoalarm.appactions
 
 import com.github.jimmy90109.geoalarm.data.Alarm
+import com.github.jimmy90109.geoalarm.data.location.AlarmActivationPermissionChecker
 import kotlinx.coroutines.runBlocking
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
@@ -22,7 +23,7 @@ class StartAlarmUseCaseTest {
             )
         )
         val serviceStarter = FakeAlarmServiceStarter()
-        val useCase = StartAlarmUseCase(repository, serviceStarter)
+        val useCase = StartAlarmUseCase(repository, serviceStarter, FakeAlarmActivationPermissionChecker())
 
         val result = useCase(StartAlarmUseCase.Request(alarmName = "Office"))
 
@@ -35,7 +36,7 @@ class StartAlarmUseCaseTest {
     fun `start alarm fails when target not found`() = runBlocking {
         val repository = InMemoryAlarmDataRepository()
         val serviceStarter = FakeAlarmServiceStarter()
-        val useCase = StartAlarmUseCase(repository, serviceStarter)
+        val useCase = StartAlarmUseCase(repository, serviceStarter, FakeAlarmActivationPermissionChecker())
 
         val result = useCase(StartAlarmUseCase.Request(alarmName = "Missing"))
 
@@ -68,7 +69,7 @@ class StartAlarmUseCaseTest {
             )
         )
         val serviceStarter = FakeAlarmServiceStarter()
-        val useCase = StartAlarmUseCase(repository, serviceStarter)
+        val useCase = StartAlarmUseCase(repository, serviceStarter, FakeAlarmActivationPermissionChecker())
 
         val result = useCase(StartAlarmUseCase.Request(alarmName = "Office"))
 
@@ -101,7 +102,7 @@ class StartAlarmUseCaseTest {
             )
         )
         val serviceStarter = FakeAlarmServiceStarter()
-        val useCase = StartAlarmUseCase(repository, serviceStarter)
+        val useCase = StartAlarmUseCase(repository, serviceStarter, FakeAlarmActivationPermissionChecker())
 
         val result = useCase(StartAlarmUseCase.Request(alarmName = "Office"))
 
@@ -109,6 +110,59 @@ class StartAlarmUseCaseTest {
         assertEquals(1, serviceStarter.stopCount)
         assertEquals("alarm-target", serviceStarter.started.single().id)
     }
+
+    @Test
+    fun `start alarm fails without precise location permission`() = runBlocking {
+        val repository = InMemoryAlarmDataRepository()
+        repository.insert(testAlarm())
+        val serviceStarter = FakeAlarmServiceStarter()
+        val useCase = StartAlarmUseCase(
+            repository,
+            serviceStarter,
+            FakeAlarmActivationPermissionChecker(preciseGranted = false)
+        )
+
+        val result = useCase(StartAlarmUseCase.Request(alarmName = "Office"))
+
+        assertTrue(result is AppActionResult.Error)
+        assertEquals("ERR_PRECISE_LOCATION_PERMISSION_REQUIRED", (result as AppActionResult.Error).code)
+        assertTrue(serviceStarter.started.isEmpty())
+    }
+
+    @Test
+    fun `start alarm fails without background location permission`() = runBlocking {
+        val repository = InMemoryAlarmDataRepository()
+        repository.insert(testAlarm())
+        val serviceStarter = FakeAlarmServiceStarter()
+        val useCase = StartAlarmUseCase(
+            repository,
+            serviceStarter,
+            FakeAlarmActivationPermissionChecker(backgroundGranted = false)
+        )
+
+        val result = useCase(StartAlarmUseCase.Request(alarmName = "Office"))
+
+        assertTrue(result is AppActionResult.Error)
+        assertEquals("ERR_BACKGROUND_LOCATION_PERMISSION_REQUIRED", (result as AppActionResult.Error).code)
+        assertTrue(serviceStarter.started.isEmpty())
+    }
+
+    private fun testAlarm() = Alarm(
+        id = "alarm-permission",
+        name = "Office",
+        latitude = 1.0,
+        longitude = 2.0,
+        radius = 500.0,
+        isEnabled = false
+    )
+}
+
+private class FakeAlarmActivationPermissionChecker(
+    private val preciseGranted: Boolean = true,
+    private val backgroundGranted: Boolean = true,
+) : AlarmActivationPermissionChecker {
+    override fun hasPreciseForegroundLocation(): Boolean = preciseGranted
+    override fun hasBackgroundLocation(): Boolean = backgroundGranted
 }
 
 private class FakeAlarmServiceStarter : AlarmServiceStarter {

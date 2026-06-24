@@ -9,7 +9,8 @@ import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.viewModels
 import androidx.appcompat.app.AppCompatActivity
-import com.github.jimmy90109.geoalarm.analytics.TelemetryTracker
+import androidx.lifecycle.lifecycleScope
+import com.github.jimmy90109.geoalarm.appactions.AlarmTurnOffUseCase
 import com.github.jimmy90109.geoalarm.appactions.AppActionContract
 import com.github.jimmy90109.geoalarm.appactions.AppActionParsers
 import com.github.jimmy90109.geoalarm.appactions.AppActionResult
@@ -18,19 +19,17 @@ import com.github.jimmy90109.geoalarm.appactions.CreateScheduleUseCase
 import com.github.jimmy90109.geoalarm.appactions.StartAlarmUseCase
 import com.github.jimmy90109.geoalarm.navigation.AppRoutes
 import androidx.navigation.compose.rememberNavController
-import com.github.jimmy90109.geoalarm.data.AlarmDataRepository
 import com.github.jimmy90109.geoalarm.data.OnboardingRepository
-import com.github.jimmy90109.geoalarm.data.SettingsRepository
+import com.github.jimmy90109.geoalarm.data.location.CurrentLocationRepository
 import com.github.jimmy90109.geoalarm.navigation.AppNavHost
 import com.github.jimmy90109.geoalarm.service.GeoAlarmService
+import com.github.jimmy90109.geoalarm.share.SharedPlaceParser
 import com.github.jimmy90109.geoalarm.ui.theme.GeoAlarmTheme
 import com.github.jimmy90109.geoalarm.ui.viewmodel.HomeAction
 import com.github.jimmy90109.geoalarm.ui.viewmodel.HomeViewModel
-import com.github.jimmy90109.geoalarm.utils.PaymentShortcutNotifier
 import com.github.jimmy90109.geoalarm.widget.GeoAlarmGlanceWidget
 import androidx.glance.appwidget.updateAll
 import dagger.hilt.android.AndroidEntryPoint
-import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
@@ -45,13 +44,10 @@ class MainActivity : AppCompatActivity() {
     }
 
     @Inject
-    lateinit var alarmRepository: AlarmDataRepository
-
-    @Inject
     lateinit var onboardingRepository: OnboardingRepository
 
     @Inject
-    lateinit var settingsRepository: SettingsRepository
+    lateinit var alarmTurnOffUseCase: AlarmTurnOffUseCase
 
     @Inject
     lateinit var createGeoAlarmUseCase: CreateGeoAlarmUseCase
@@ -63,21 +59,20 @@ class MainActivity : AppCompatActivity() {
     lateinit var startAlarmUseCase: StartAlarmUseCase
 
     @Inject
-    lateinit var telemetryTracker: TelemetryTracker
+    lateinit var currentLocationRepository: CurrentLocationRepository
 
     private val homeViewModel: HomeViewModel by viewModels()
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
+        logSharedText(intent)
 
         val hasSeenOnboarding = runBlocking {
             onboardingRepository.hasSeenLocationOnboarding()
         }
-        runBlocking {
-            telemetryTracker.trackAppFirstOpenIfNeeded(isNewOnboardingUser = !hasSeenOnboarding)
-        }
-        val startDestination = resolveStartDestination(intent, hasSeenOnboarding)
+        val requestedRoute = resolveRequestedRoute(intent)
+        val startDestination = resolveStartDestination(hasSeenOnboarding)
 
         setContent {
             GeoAlarmTheme {
@@ -85,6 +80,7 @@ class MainActivity : AppCompatActivity() {
                 AppNavHost(
                     navController = navController,
                     startDestination = startDestination,
+                    requestedDestination = requestedRoute,
                 )
 
             }
@@ -93,12 +89,17 @@ class MainActivity : AppCompatActivity() {
         if (savedInstanceState == null) {
             handleIntent(intent)
         }
+
+        lifecycleScope.launch {
+            currentLocationRepository.warmUp()
+        }
     }
 
     override fun onNewIntent(intent: Intent) {
         super.onNewIntent(intent)
         setIntent(intent)
-        if (resolveShortcutRoute(intent) != null) {
+        logSharedText(intent)
+        if (resolveRequestedRoute(intent) != null) {
             recreate()
             return
         }
@@ -111,25 +112,8 @@ class MainActivity : AppCompatActivity() {
             val isArrivedTurnOff = intent.getStringExtra(GeoAlarmService.EXTRA_CANCEL_SOURCE) ==
                 GeoAlarmService.CANCEL_SOURCE_ARRIVAL_TURN_OFF
             if (!alarmId.isNullOrEmpty()) {
-                // Find and disable the alarm
-                CoroutineScope(kotlinx.coroutines.Dispatchers.IO).launch {
-                    val alarm = alarmRepository.getAlarm(alarmId)
-                    if (alarm != null) {
-                        if (isArrivedTurnOff) {
-                            telemetryTracker.trackArrivedTurnOff()
-                            settingsRepository.paymentShortcutFlow.first()
-                                ?.let { PaymentShortcutNotifier.show(this@MainActivity, it) }
-                        }
-                        alarmRepository.update(alarm.copy(isEnabled = false))
-                        // Also stop the service explicitly just in case
-                        val stopIntent = Intent(
-                            this@MainActivity,
-                            GeoAlarmService::class.java,
-                        )
-                        stopIntent.action = GeoAlarmService.ACTION_STOP
-                        startService(stopIntent)
-                        CoroutineScope(kotlinx.coroutines.Dispatchers.IO).launch { GeoAlarmGlanceWidget().updateAll(this@MainActivity) }
-                    }
+                lifecycleScope.launch {
+                    alarmTurnOffUseCase(alarmId, isArrivedTurnOff)
                 }
             }
         } else if (intent.action == AppActionContract.ACTION_CREATE_GEO_ALARM) {
@@ -149,6 +133,11 @@ class MainActivity : AppCompatActivity() {
                 homeViewModel.onAction(HomeAction.ScheduleIntentHandled(alarmId))
                 CoroutineScope(kotlinx.coroutines.Dispatchers.IO).launch { GeoAlarmGlanceWidget().updateAll(this@MainActivity) }
             }
+        } else if (intent.action == Intent.ACTION_SEND &&
+            intent.type?.startsWith("text/plain") == true &&
+            parseSharedPlace(intent) == null
+        ) {
+            logAndNotify("INVALID_SHARED_PLACE", getString(R.string.invalid_shared_place))
         }
     }
 
@@ -239,12 +228,14 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
-    private fun resolveStartDestination(intent: Intent, hasSeenOnboarding: Boolean): AppRoutes {
+    private fun resolveStartDestination(hasSeenOnboarding: Boolean): AppRoutes {
         if (!hasSeenOnboarding) return AppRoutes.Onboarding()
-        return resolveShortcutRoute(intent) ?: AppRoutes.Main
+        return AppRoutes.Main
     }
 
-    private fun resolveShortcutRoute(intent: Intent): AppRoutes? {
+    private fun resolveRequestedRoute(intent: Intent): AppRoutes? {
+        resolveSharedPlaceRoute(intent)?.let { return it }
+
         val data = intent.data ?: return null
         if (!isShortcutDeepLink(data)) return null
 
@@ -252,6 +243,49 @@ class MainActivity : AppCompatActivity() {
             "/add-alarm" -> AppRoutes.AlarmEdit()
             "/add-schedule" -> AppRoutes.ScheduleEdit()
             else -> null
+        }
+    }
+
+    private fun resolveSharedPlaceRoute(intent: Intent): AppRoutes.AlarmEdit? {
+        if (intent.action != Intent.ACTION_SEND || intent.type?.startsWith("text/plain") != true) {
+            return null
+        }
+        val sharedPlace = parseSharedPlace(intent) ?: return null
+        return AppRoutes.AlarmEdit(
+            sharedPlaceQuery = sharedPlace.query,
+            sharedPlaceSource = sharedPlace.source
+        )
+    }
+
+    private fun parseSharedPlace(intent: Intent) =
+        SharedPlaceParser.parse(sharedTextCandidates(intent))
+
+    private fun sharedTextCandidates(intent: Intent): List<String> = buildList {
+        intent.getCharSequenceExtra(Intent.EXTRA_TEXT)?.toString()?.let(::add)
+        intent.getCharSequenceExtra(Intent.EXTRA_TITLE)?.toString()?.let(::add)
+        intent.getCharSequenceExtra(Intent.EXTRA_SUBJECT)?.toString()?.let(::add)
+        intent.clipData?.let { clipData ->
+            for (index in 0 until clipData.itemCount) {
+                clipData.getItemAt(index).text?.toString()?.let(::add)
+            }
+        }
+    }.map(String::trim).filter(String::isNotEmpty).distinct()
+
+    private fun logSharedText(intent: Intent) {
+        if (
+            BuildConfig.DEBUG &&
+            intent.action == Intent.ACTION_SEND &&
+            intent.type?.startsWith("text/plain") == true
+        ) {
+            Log.d(
+                TAG,
+                "Received share: type=${intent.type}, " +
+                    "text=${intent.getCharSequenceExtra(Intent.EXTRA_TEXT)}, " +
+                    "title=${intent.getCharSequenceExtra(Intent.EXTRA_TITLE)}, " +
+                    "subject=${intent.getCharSequenceExtra(Intent.EXTRA_SUBJECT)}, " +
+                    "clipItems=${intent.clipData?.itemCount ?: 0}, " +
+                    "allText=${sharedTextCandidates(intent)}"
+            )
         }
     }
 

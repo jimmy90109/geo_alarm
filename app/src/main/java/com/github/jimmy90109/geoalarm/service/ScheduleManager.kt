@@ -171,7 +171,7 @@ class ScheduleManager(private val context: Context) {
 
         val notification = NotificationCompat.Builder(context, CHANNEL_ID_SCHEDULE)
             .setSmallIcon(R.drawable.ic_notification) // Replace with proper icon
-            .setContentTitle(context.getString(R.string.notification_schedule_title, alarm.name))
+            .setContentTitle(context.getString(R.string.notification_schedule_title))
             .setContentText(context.getString(R.string.notification_schedule_message))
             .setPriority(NotificationCompat.PRIORITY_HIGH)
             .setContentIntent(pendingIntent)

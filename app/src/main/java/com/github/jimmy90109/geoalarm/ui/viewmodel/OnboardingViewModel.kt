@@ -12,15 +12,14 @@ import javax.inject.Inject
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharedFlow
-import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.asStateFlow
-import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 
 data class OnboardingUiState(
     val currentLanguage: String = "en",
+    val analyticsEnabled: Boolean = false,
 )
 
 sealed interface OnboardingAction {
@@ -46,13 +45,6 @@ class OnboardingViewModel @Inject constructor(
     private val _effects = MutableSharedFlow<OnboardingEffect>()
     val effects: SharedFlow<OnboardingEffect> = _effects.asSharedFlow()
 
-    val analyticsEnabled: StateFlow<Boolean> = analyticsPreferencesStore.analyticsEnabledFlow
-        .stateIn(
-            scope = viewModelScope,
-            started = SharingStarted.WhileSubscribed(5000),
-            initialValue = true
-        )
-
     fun onAction(action: OnboardingAction) {
         when (action) {
             is OnboardingAction.AnalyticsEnabledChanged -> setAnalyticsEnabled(action.enabled)
@@ -62,9 +54,7 @@ class OnboardingViewModel @Inject constructor(
     }
 
     private fun setAnalyticsEnabled(enabled: Boolean) {
-        viewModelScope.launch {
-            analyticsPreferencesStore.setAnalyticsEnabled(enabled)
-        }
+        _uiState.value = _uiState.value.copy(analyticsEnabled = enabled)
     }
 
     private fun resolveCurrentLanguage(): String {
@@ -85,6 +75,7 @@ class OnboardingViewModel @Inject constructor(
     private fun completeOnboarding(trackAnalyticsOptIn: Boolean) {
         viewModelScope.launch {
             if (trackAnalyticsOptIn) {
+                analyticsPreferencesStore.setAnalyticsEnabled(_uiState.value.analyticsEnabled)
                 telemetryTracker.trackAnalyticsOptInIfNeeded()
             }
             onboardingRepository.setSeenLocationOnboarding(true)

@@ -1,7 +1,5 @@
 package com.github.jimmy90109.geoalarm.ui.viewmodel
 
-import android.Manifest.permission.ACCESS_COARSE_LOCATION
-import android.Manifest.permission.ACCESS_FINE_LOCATION
 import android.Manifest.permission.POST_NOTIFICATIONS
 import android.app.Application
 import android.content.BroadcastReceiver
@@ -17,16 +15,17 @@ import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.github.jimmy90109.geoalarm.BuildConfig
 import com.github.jimmy90109.geoalarm.R
-import com.github.jimmy90109.geoalarm.analytics.TelemetryTracker
+import com.github.jimmy90109.geoalarm.appactions.AlarmTurnOffUseCase
 import com.github.jimmy90109.geoalarm.data.Alarm
 import com.github.jimmy90109.geoalarm.data.AlarmDataRepository
 import com.github.jimmy90109.geoalarm.data.AlarmSchedule
 import com.github.jimmy90109.geoalarm.data.PaymentShortcut
 import com.github.jimmy90109.geoalarm.data.SettingsRepository
+import com.github.jimmy90109.geoalarm.data.location.AlarmActivationPermissionChecker
 import com.github.jimmy90109.geoalarm.service.GeoAlarmService
+import com.github.jimmy90109.geoalarm.service.GeoAlarmContract
 import com.github.jimmy90109.geoalarm.service.ScheduleManager
 import com.github.jimmy90109.geoalarm.util.ExactAlarmPermissionHelper
-import com.github.jimmy90109.geoalarm.utils.PaymentShortcutNotifier
 import com.github.jimmy90109.geoalarm.widget.GeoAlarmGlanceWidget
 import com.google.android.gms.location.LocationServices
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -44,6 +43,7 @@ data class HomeUiState(
     val showEditDisabledDialog: Boolean = false,
     val showSingleAlarmDialog: Boolean = false,
     val showBackgroundPermissionDialog: Boolean = false,
+    val showPreciseLocationPermissionDialog: Boolean = false,
     val showNotificationPermissionDialog: Boolean = false,
     val showExactAlarmPermissionDialog: Boolean = false,
     val showNotificationRationaleDialog: Boolean = false,
@@ -67,6 +67,10 @@ sealed interface HomeAction {
     data object SingleAlarmDialogDismissed : HomeAction
     data object BackgroundPermissionDialogRequested : HomeAction
     data object BackgroundPermissionDialogDismissed : HomeAction
+    data object BackgroundPermissionSettingsRequested : HomeAction
+    data object PreciseLocationPermissionDialogDismissed : HomeAction
+    data object PreciseLocationPermissionSettingsRequested : HomeAction
+    data object ActivationPermissionSettingsReturned : HomeAction
     data object NotificationPermissionDialogRequested : HomeAction
     data object NotificationPermissionDialogDismissed : HomeAction
     data object ExactAlarmPermissionDialogDismissed : HomeAction
@@ -87,7 +91,6 @@ sealed interface HomeAction {
     ) : HomeAction
     data class AlarmDisableRequested(
         val alarm: Alarm,
-        val context: Context,
         val trackArrivedTurnOff: Boolean = false
     ) : HomeAction
     data class PaymentShortcutSelected(val shortcut: PaymentShortcut?) : HomeAction
@@ -95,6 +98,7 @@ sealed interface HomeAction {
     data object ScheduleConflictDialogDismissed : HomeAction
     data object ScheduleConflictConfirmed : HomeAction
     data class TestAlarmStarted(val context: Context) : HomeAction
+    data object FullScreenIntentPromptHandled : HomeAction
 }
 
 /**
@@ -105,16 +109,21 @@ sealed interface HomeAction {
 class HomeViewModel @Inject constructor(
     application: Application,
     private val repository: AlarmDataRepository,
-    private val telemetryTracker: TelemetryTracker,
+    private val alarmTurnOffUseCase: AlarmTurnOffUseCase,
     private val settingsRepository: SettingsRepository,
+    private val activationPermissionChecker: AlarmActivationPermissionChecker,
 ) : AndroidViewModel(application) {
-    private companion object {
-        const val TEST_ALARM_ID = "debug_test_alarm"
+    private enum class ActivationSettingsKind {
+        PRECISE,
+        BACKGROUND
     }
 
     private val fusedLocationClient = LocationServices.getFusedLocationProviderClient(application)
     private val scheduleManager = ScheduleManager(application)
     private var pendingScheduleToEnable: AlarmSchedule? = null
+    private var pendingAlarmToEnable: Alarm? = null
+    private var pendingAlarmList: List<Alarm> = emptyList()
+    private var pendingActivationSettingsKind: ActivationSettingsKind? = null
 
     private val progressReceiver = object : BroadcastReceiver() {
         override fun onReceive(context: Context?, intent: Intent?) {
@@ -125,12 +134,24 @@ class HomeViewModel @Inject constructor(
                 _uiState.value = _uiState.value.copy(
                     monitoringProgress = progress, monitoringDistance = distance
                 )
+            } else if (intent?.action == GeoAlarmContract.ACTION_ALARM_STOPPED) {
+                val stoppedAlarmId = intent.getStringExtra(GeoAlarmService.EXTRA_ALARM_ID)
+                if (stoppedAlarmId == GeoAlarmContract.TEST_ALARM_ID) {
+                    _uiState.value = _uiState.value.copy(
+                        testActiveAlarm = null,
+                        monitoringProgress = 0,
+                        monitoringDistance = null,
+                    )
+                }
             }
         }
     }
 
     init {
-        val filter = IntentFilter(GeoAlarmService.ACTION_PROGRESS_UPDATE)
+        val filter = IntentFilter().apply {
+            addAction(GeoAlarmService.ACTION_PROGRESS_UPDATE)
+            addAction(GeoAlarmContract.ACTION_ALARM_STOPPED)
+        }
         ContextCompat.registerReceiver(
             application, progressReceiver, filter, ContextCompat.RECEIVER_NOT_EXPORTED
         )
@@ -147,6 +168,13 @@ class HomeViewModel @Inject constructor(
 
     private val _uiState = MutableStateFlow(HomeUiState())
     val uiState: StateFlow<HomeUiState> = _uiState.asStateFlow()
+
+    val fullscreenIntentPromptHandled: StateFlow<Boolean> =
+        settingsRepository.fullscreenIntentPromptHandledFlow.stateIn(
+            scope = viewModelScope,
+            started = SharingStarted.WhileSubscribed(5000),
+            initialValue = false,
+        )
 
     val alarms = repository.allAlarms.stateIn(
         viewModelScope,
@@ -173,6 +201,10 @@ class HomeViewModel @Inject constructor(
             HomeAction.SingleAlarmDialogDismissed -> dismissSingleAlarmDialog()
             HomeAction.BackgroundPermissionDialogRequested -> showBackgroundPermissionDialog()
             HomeAction.BackgroundPermissionDialogDismissed -> dismissBackgroundPermissionDialog()
+            HomeAction.BackgroundPermissionSettingsRequested -> hideBackgroundPermissionDialog()
+            HomeAction.PreciseLocationPermissionDialogDismissed -> dismissPreciseLocationPermissionDialog()
+            HomeAction.PreciseLocationPermissionSettingsRequested -> hidePreciseLocationPermissionDialog()
+            HomeAction.ActivationPermissionSettingsReturned -> handleActivationPermissionSettingsReturned()
             HomeAction.NotificationPermissionDialogRequested -> showNotificationPermissionDialog()
             HomeAction.NotificationPermissionDialogDismissed -> dismissNotificationPermissionDialog()
             HomeAction.ExactAlarmPermissionDialogDismissed -> dismissExactAlarmPermissionDialog()
@@ -189,7 +221,6 @@ class HomeViewModel @Inject constructor(
             is HomeAction.AlarmEnableRequested -> enableAlarm(action.alarm, action.alarms, action.context)
             is HomeAction.AlarmDisableRequested -> disableAlarm(
                 action.alarm,
-                action.context,
                 action.trackArrivedTurnOff
             )
             is HomeAction.PaymentShortcutSelected -> setPaymentShortcut(action.shortcut)
@@ -197,6 +228,7 @@ class HomeViewModel @Inject constructor(
             HomeAction.ScheduleConflictDialogDismissed -> dismissScheduleConflictDialog()
             HomeAction.ScheduleConflictConfirmed -> confirmScheduleConflict()
             is HomeAction.TestAlarmStarted -> startTestAlarm(action.context)
+            HomeAction.FullScreenIntentPromptHandled -> setFullScreenIntentPromptHandled()
         }
     }
 
@@ -240,7 +272,55 @@ class HomeViewModel @Inject constructor(
     }
 
     private fun dismissBackgroundPermissionDialog() {
+        clearPendingAlarmActivation()
         _uiState.value = _uiState.value.copy(showBackgroundPermissionDialog = false)
+    }
+
+    private fun hideBackgroundPermissionDialog() {
+        pendingActivationSettingsKind = ActivationSettingsKind.BACKGROUND
+        _uiState.value = _uiState.value.copy(showBackgroundPermissionDialog = false)
+    }
+
+    private fun dismissPreciseLocationPermissionDialog() {
+        clearPendingAlarmActivation()
+        _uiState.value = _uiState.value.copy(showPreciseLocationPermissionDialog = false)
+    }
+
+    private fun hidePreciseLocationPermissionDialog() {
+        pendingActivationSettingsKind = ActivationSettingsKind.PRECISE
+        _uiState.value = _uiState.value.copy(showPreciseLocationPermissionDialog = false)
+    }
+
+    private fun handleActivationPermissionSettingsReturned() {
+        val alarm = pendingAlarmToEnable ?: return
+        val alarms = pendingAlarmList
+        val settingsKind = pendingActivationSettingsKind ?: return
+        val canContinue = when (settingsKind) {
+            ActivationSettingsKind.PRECISE ->
+                activationPermissionChecker.hasPreciseForegroundLocation()
+            ActivationSettingsKind.BACKGROUND ->
+                activationPermissionChecker.hasPreciseForegroundLocation() &&
+                    activationPermissionChecker.hasBackgroundLocation()
+        }
+        clearPendingAlarmActivation()
+        _uiState.value = _uiState.value.copy(
+            showPreciseLocationPermissionDialog = false,
+            showBackgroundPermissionDialog = false
+        )
+        if (canContinue) {
+            enableAlarm(alarm, alarms, getApplication())
+        }
+    }
+
+    private fun savePendingAlarmActivation(alarm: Alarm, alarms: List<Alarm>) {
+        pendingAlarmToEnable = alarm
+        pendingAlarmList = alarms
+    }
+
+    private fun clearPendingAlarmActivation() {
+        pendingAlarmToEnable = null
+        pendingAlarmList = emptyList()
+        pendingActivationSettingsKind = null
     }
 
     private fun showNotificationPermissionDialog() {
@@ -329,6 +409,12 @@ class HomeViewModel @Inject constructor(
             return
         }
 
+        if (!activationPermissionChecker.hasPreciseForegroundLocation()) {
+            savePendingAlarmActivation(alarm, alarms)
+            _uiState.value = _uiState.value.copy(showPreciseLocationPermissionDialog = true)
+            return
+        }
+
         // Check notification permission (Android 13+) for non-UI entry points (widget/schedule).
         if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.TIRAMISU) {
             val hasNotificationPermission = ContextCompat.checkSelfPermission(
@@ -341,15 +427,8 @@ class HomeViewModel @Inject constructor(
             }
         }
 
-        // Check location to see if already at destination
-        if (ContextCompat.checkSelfPermission(
-                context, ACCESS_FINE_LOCATION
-            ) != PackageManager.PERMISSION_GRANTED && ContextCompat.checkSelfPermission(
-                context, ACCESS_COARSE_LOCATION
-            ) != PackageManager.PERMISSION_GRANTED
-        ) {
-            // Do not start location foreground service without runtime location permission.
-            // This path can be reached from non-UI triggers (e.g. widget/schedule intent).
+        if (!activationPermissionChecker.hasBackgroundLocation()) {
+            savePendingAlarmActivation(alarm, alarms)
             showBackgroundPermissionDialog()
             return
         }
@@ -414,35 +493,29 @@ class HomeViewModel @Inject constructor(
      * Disables the alarm and stops the monitoring service.
      *
      * @param alarm The alarm to disable.
-     * @param context Context used to stop the service.
      */
-    private fun disableAlarm(alarm: Alarm, context: Context, trackArrivedTurnOff: Boolean = false) {
+    private fun disableAlarm(alarm: Alarm, trackArrivedTurnOff: Boolean = false) {
         viewModelScope.launch {
-            if (trackArrivedTurnOff) {
-                telemetryTracker.trackArrivedTurnOff()
-                settingsRepository.paymentShortcutFlow.first()
-                    ?.let { PaymentShortcutNotifier.show(context, it) }
-            }
-            if (alarm.id == TEST_ALARM_ID) {
+            alarmTurnOffUseCase(alarm.id, trackArrivedTurnOff)
+            if (alarm.id == GeoAlarmContract.TEST_ALARM_ID) {
                 _uiState.value = _uiState.value.copy(
                     testActiveAlarm = null,
                     monitoringProgress = 0,
                     monitoringDistance = null,
                 )
-                stopMonitoringService(context)
-                GeoAlarmGlanceWidget().updateAll(context)
-                return@launch
             }
-            repository.update(alarm.copy(isEnabled = false))
-            // Stop Service after DB state is persisted to avoid widget refresh races.
-            stopMonitoringService(context)
-            GeoAlarmGlanceWidget().updateAll(context)
         }
     }
 
     private fun setPaymentShortcut(shortcut: PaymentShortcut?) {
         viewModelScope.launch {
             settingsRepository.setPaymentShortcut(shortcut)
+        }
+    }
+
+    private fun setFullScreenIntentPromptHandled() {
+        viewModelScope.launch {
+            settingsRepository.setFullscreenIntentPromptHandled(true)
         }
     }
 
@@ -523,7 +596,7 @@ class HomeViewModel @Inject constructor(
         if (!BuildConfig.DEBUG || alarms.value.any { it.isEnabled }) return
 
         val testAlarm = Alarm(
-            id = TEST_ALARM_ID,
+            id = GeoAlarmContract.TEST_ALARM_ID,
             name = context.getString(R.string.test_alarm_name),
             latitude = 0.0,
             longitude = 0.0,
@@ -538,7 +611,7 @@ class HomeViewModel @Inject constructor(
 
         val serviceIntent = Intent(context, GeoAlarmService::class.java).apply {
             action = GeoAlarmService.ACTION_TEST
-            putExtra(GeoAlarmService.EXTRA_ALARM_ID, TEST_ALARM_ID)
+            putExtra(GeoAlarmService.EXTRA_ALARM_ID, GeoAlarmContract.TEST_ALARM_ID)
             putExtra(GeoAlarmService.EXTRA_NAME, testAlarm.name)
         }
         if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.O) {
@@ -548,10 +621,4 @@ class HomeViewModel @Inject constructor(
         }
     }
 
-    private fun stopMonitoringService(context: Context) {
-        val serviceIntent = Intent(context, GeoAlarmService::class.java).apply {
-            action = GeoAlarmService.ACTION_STOP
-        }
-        context.startService(serviceIntent)
-    }
 }

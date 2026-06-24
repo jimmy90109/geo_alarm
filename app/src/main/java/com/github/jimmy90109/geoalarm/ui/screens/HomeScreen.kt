@@ -6,7 +6,10 @@ import android.appwidget.AppWidgetManager
 import android.content.ComponentName
 import android.content.Context
 import android.content.ContextWrapper
+import android.content.Intent
+import android.net.Uri
 import android.os.PowerManager
+import android.provider.Settings
 import android.widget.Toast
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
@@ -70,22 +73,19 @@ import com.github.jimmy90109.geoalarm.ui.components.ExactAlarmPermissionDialog
 import com.github.jimmy90109.geoalarm.ui.components.HomeFabMenu
 import com.github.jimmy90109.geoalarm.ui.components.NotificationPermissionDialog
 import com.github.jimmy90109.geoalarm.ui.components.NotificationRationaleDialog
+import com.github.jimmy90109.geoalarm.ui.components.PreciseLocationPermissionDialog
 import com.github.jimmy90109.geoalarm.ui.components.ScheduleConflictDialog
 import com.github.jimmy90109.geoalarm.ui.components.SingleAlarmDialog
+import com.github.jimmy90109.geoalarm.util.FullScreenIntentPermissionHelper
 import com.github.jimmy90109.geoalarm.ui.viewmodel.HomeAction
 import com.github.jimmy90109.geoalarm.ui.viewmodel.HomeUiState
 import com.github.jimmy90109.geoalarm.ui.viewmodel.HomeViewModel
 import com.github.jimmy90109.geoalarm.utils.PaymentShortcutNotifier
 import com.github.jimmy90109.geoalarm.widget.GeoAlarmGlanceWidgetReceiver
 import androidx.lifecycle.compose.LocalLifecycleOwner
-import com.google.accompanist.permissions.ExperimentalPermissionsApi
-import com.google.accompanist.permissions.isGranted
-import com.google.accompanist.permissions.rememberMultiplePermissionsState
-import com.google.accompanist.permissions.rememberPermissionState
 
 @OptIn(
     ExperimentalMaterial3Api::class,
-    ExperimentalPermissionsApi::class,
     ExperimentalMaterial3ExpressiveApi::class,
     ExperimentalFoundationApi::class,
 )
@@ -96,7 +96,6 @@ import com.google.accompanist.permissions.rememberPermissionState
  * @param viewModel The ViewModel capable of managing home screen state.
  * @param onAddAlarm Callback to navigate to 'Add Alarm' screen.
  * @param onAlarmClick Callback to navigate to 'Edit Alarm' screen.
- * @param onNavigateToBatteryOptimization Callback to navigate to battery optimization warning screen.
  */
 @Composable
 fun HomeScreen(
@@ -105,22 +104,60 @@ fun HomeScreen(
     onAlarmClick: (Alarm) -> Unit,
     onAddSchedule: () -> Unit,
     onScheduleClick: (ScheduleWithAlarm) -> Unit,
-    onNavigateToBatteryOptimization: () -> Unit,
     onOpenOnboarding: () -> Unit
 ) {
     val alarms by viewModel.alarms.collectAsStateWithLifecycle(initialValue = emptyList())
     val schedules by viewModel.schedules.collectAsStateWithLifecycle(initialValue = emptyList())
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val paymentShortcut by viewModel.paymentShortcut.collectAsStateWithLifecycle()
+    val fullscreenIntentPromptHandled by viewModel.fullscreenIntentPromptHandled.collectAsStateWithLifecycle()
     val context = LocalContext.current
     val lifecycleOwner = LocalLifecycleOwner.current
     val haptic = LocalHapticFeedback.current
     val scrollBehavior = TopAppBarDefaults.exitUntilCollapsedScrollBehavior()
+    var batteryOptimizationBannerState by remember {
+        mutableStateOf(ReliabilityBannerState.Hidden)
+    }
+    var canUseFullScreenIntent by remember {
+        mutableStateOf(FullScreenIntentPermissionHelper.canUseFullScreenIntent(context))
+    }
 
-    DisposableEffect(lifecycleOwner) {
+    fun refreshBatteryOptimizationBannerState() {
+        val powerManager = context.getSystemService(Context.POWER_SERVICE) as PowerManager
+        val hasActiveAlarm = alarms.any { it.isEnabled }
+        val isIgnoringOptimization =
+            powerManager.isIgnoringBatteryOptimizations(context.packageName)
+
+        batteryOptimizationBannerState = when {
+            !hasActiveAlarm -> ReliabilityBannerState.Hidden
+            !isIgnoringOptimization -> ReliabilityBannerState.BatteryOptimizationWarning
+            batteryOptimizationBannerState == ReliabilityBannerState.BatteryOptimizationWarning ->
+                ReliabilityBannerState.BatteryOptimizationSuccess
+            else -> ReliabilityBannerState.Hidden
+        }
+    }
+
+    fun refreshFullScreenIntentState() {
+        canUseFullScreenIntent = FullScreenIntentPermissionHelper.canUseFullScreenIntent(context)
+    }
+
+    fun openFullScreenIntentSettings() {
+        viewModel.onAction(HomeAction.FullScreenIntentPromptHandled)
+        val intent = FullScreenIntentPermissionHelper.createSettingsIntent(context)
+        runCatching {
+            context.startActivity(intent)
+        }.onFailure {
+            context.startActivity(FullScreenIntentPermissionHelper.createAppDetailsIntent(context))
+        }
+    }
+
+    DisposableEffect(lifecycleOwner, alarms) {
         val observer = LifecycleEventObserver { _, event ->
             if (event == Lifecycle.Event.ON_RESUME) {
                 viewModel.onAction(HomeAction.ExactAlarmSettingsReturned)
+                viewModel.onAction(HomeAction.ActivationPermissionSettingsReturned)
+                refreshBatteryOptimizationBannerState()
+                refreshFullScreenIntentState()
             }
         }
         lifecycleOwner.lifecycle.addObserver(observer)
@@ -129,17 +166,11 @@ fun HomeScreen(
         }
     }
 
-    // Permissions
-    val locationPermissionState = rememberMultiplePermissionsState(
-        listOf(Manifest.permission.ACCESS_FINE_LOCATION, Manifest.permission.ACCESS_COARSE_LOCATION)
-    )
-    val backgroundLocationPermissionState =
-        rememberPermissionState(Manifest.permission.ACCESS_BACKGROUND_LOCATION)
-
     // Notification Logic
     var notificationPermissionLaunchTime by remember { mutableLongStateOf(0L) }
     var preRationale by remember { mutableStateOf(false) }
     var pendingAlarm by remember { mutableStateOf<Alarm?>(null) }
+    lateinit var continueAlarmEnable: (Alarm) -> Unit
 
     // FAB Menu State
     var showFabMenu by remember { mutableStateOf(false) }
@@ -147,18 +178,20 @@ fun HomeScreen(
 
     // Helper: Check location permission -> Enable Alarm
     val checkLocationAndEnableAlarm = { alarm: Alarm ->
-        val hasLocationPermission =
-            if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.Q) {
-                backgroundLocationPermissionState.status.isGranted
-            } else {
-                locationPermissionState.allPermissionsGranted
-        }
+        viewModel.onAction(HomeAction.AlarmEnableRequested(alarm, alarms, context))
+    }
 
-        if (hasLocationPermission) {
-            viewModel.onAction(HomeAction.AlarmEnableRequested(alarm, alarms, context))
-        } else {
-            viewModel.onAction(HomeAction.BackgroundPermissionDialogRequested)
+    val locationPermissionLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.RequestMultiplePermissions()
+    ) { permissions ->
+        pendingAlarm?.let { alarm ->
+            if (permissions[Manifest.permission.ACCESS_FINE_LOCATION] == true) {
+                continueAlarmEnable(alarm)
+            } else {
+                viewModel.onAction(HomeAction.AlarmEnableRequested(alarm, alarms, context))
+            }
         }
+        pendingAlarm = null
     }
 
     // Permission Launcher
@@ -183,34 +216,51 @@ fun HomeScreen(
         }
     }
 
-    // Unified Toggle Logic
-    val handleAlarmToggle = { alarm: Alarm, isChecked: Boolean ->
-        if (isChecked) {
-            // 1. Check Notification Permission (Android 13+)
-            if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.TIRAMISU) {
-                val permission = Manifest.permission.POST_NOTIFICATIONS
-                val isGranted = androidx.core.content.ContextCompat.checkSelfPermission(
-                    context, permission
-                ) == android.content.pm.PackageManager.PERMISSION_GRANTED
+    continueAlarmEnable = { alarm ->
+        // Check Notification Permission (Android 13+)
+        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.TIRAMISU) {
+            val permission = Manifest.permission.POST_NOTIFICATIONS
+            val isGranted = androidx.core.content.ContextCompat.checkSelfPermission(
+                context, permission
+            ) == android.content.pm.PackageManager.PERMISSION_GRANTED
 
-                if (!isGranted) {
-                    val activity = context.findActivity()
-                    if (activity != null) {
-                        pendingAlarm = alarm
-                        preRationale = activity.shouldShowRequestPermissionRationale(permission)
-                        notificationPermissionLaunchTime = System.currentTimeMillis()
-                        notificationPermissionLauncher.launch(permission)
-                    }
-                } else {
-                    // 2. Check Location -> Enable
-                    checkLocationAndEnableAlarm(alarm)
+            if (!isGranted) {
+                val activity = context.findActivity()
+                if (activity != null) {
+                    pendingAlarm = alarm
+                    preRationale = activity.shouldShowRequestPermissionRationale(permission)
+                    notificationPermissionLaunchTime = System.currentTimeMillis()
+                    notificationPermissionLauncher.launch(permission)
                 }
             } else {
-                // < Android 13: Directly Check Location -> Enable
                 checkLocationAndEnableAlarm(alarm)
             }
         } else {
-            viewModel.onAction(HomeAction.AlarmDisableRequested(alarm, context))
+            checkLocationAndEnableAlarm(alarm)
+        }
+    }
+
+    // Unified Toggle Logic
+    val handleAlarmToggle = { alarm: Alarm, isChecked: Boolean ->
+        if (isChecked) {
+            val hasPreciseLocation = androidx.core.content.ContextCompat.checkSelfPermission(
+                context,
+                Manifest.permission.ACCESS_FINE_LOCATION
+            ) == android.content.pm.PackageManager.PERMISSION_GRANTED
+
+            if (!hasPreciseLocation) {
+                pendingAlarm = alarm
+                locationPermissionLauncher.launch(
+                    arrayOf(
+                        Manifest.permission.ACCESS_FINE_LOCATION,
+                        Manifest.permission.ACCESS_COARSE_LOCATION
+                    )
+                )
+            } else {
+                continueAlarmEnable(alarm)
+            }
+        } else {
+            viewModel.onAction(HomeAction.AlarmDisableRequested(alarm))
         }
     }
 
@@ -274,19 +324,7 @@ fun HomeScreen(
                     },
                     onAddAlarm = {
                         showFabMenu = false
-                        // Add Alarm Permission Check Logic
-                        val hasLocationPermission =
-                            if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.Q) {
-                                backgroundLocationPermissionState.status.isGranted
-                            } else {
-                                locationPermissionState.allPermissionsGranted
-                            }
-
-                        if (hasLocationPermission) {
-                            onAddAlarm()
-                        } else {
-                            viewModel.onAction(HomeAction.BackgroundPermissionDialogRequested)
-                        }
+                        onAddAlarm()
                     })
             }
         },
@@ -322,11 +360,50 @@ fun HomeScreen(
                 label = "ActiveAlarmTransition",
             ) { targetAlarm ->
                 if (targetAlarm != null) {
+                    val reliabilityBannerState = when {
+                        batteryOptimizationBannerState != ReliabilityBannerState.Hidden ->
+                            batteryOptimizationBannerState
+                        FullScreenIntentPermissionHelper.isRequired() &&
+                            !canUseFullScreenIntent &&
+                            !fullscreenIntentPromptHandled ->
+                            ReliabilityBannerState.FullScreenIntentWarning
+                        else -> ReliabilityBannerState.Hidden
+                    }
                     ActiveAlarmScreen(
                         modifier = Modifier.padding(top = innerPadding.calculateTopPadding()),
                         alarm = targetAlarm,
                         progress = uiState.monitoringProgress,
                         distanceMeters = uiState.monitoringDistance,
+                        reliabilityBannerState = reliabilityBannerState,
+                        onBatteryOptimizationClick = {
+                            val powerManager =
+                                context.getSystemService(Context.POWER_SERVICE) as PowerManager
+                            if (powerManager.isIgnoringBatteryOptimizations(context.packageName)) {
+                                refreshBatteryOptimizationBannerState()
+                            } else {
+                                val requestIntent = Intent(
+                                    Settings.ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS,
+                                ).apply {
+                                    data = Uri.parse("package:${context.packageName}")
+                                }
+                                runCatching {
+                                    context.startActivity(requestIntent)
+                                }.onFailure {
+                                    context.startActivity(
+                                        Intent(Settings.ACTION_IGNORE_BATTERY_OPTIMIZATION_SETTINGS)
+                                    )
+                                }
+                            }
+                        },
+                        onBatteryOptimizationSuccessShown = {
+                            batteryOptimizationBannerState = ReliabilityBannerState.Hidden
+                        },
+                        onFullScreenIntentAllowClick = {
+                            openFullScreenIntentSettings()
+                        },
+                        onFullScreenIntentSkipClick = {
+                            viewModel.onAction(HomeAction.FullScreenIntentPromptHandled)
+                        },
                         paymentShortcut = paymentShortcut,
                         onPaymentShortcutClick = { showPaymentShortcutSheet = true },
                         onStopAlarm = { isArrived ->
@@ -334,7 +411,6 @@ fun HomeScreen(
                             viewModel.onAction(
                                 HomeAction.AlarmDisableRequested(
                                     alarm = targetAlarm,
-                                    context = context,
                                     trackArrivedTurnOff = isArrived
                                 )
                             )
@@ -428,15 +504,9 @@ fun HomeScreen(
         )
     }
 
-    // Battery Optimization Check
     LaunchedEffect(alarms) {
-        val anyEnabled = alarms.any { it.isEnabled }
-        if (anyEnabled) {
-            val powerManager = context.getSystemService(Context.POWER_SERVICE) as PowerManager
-            if (!powerManager.isIgnoringBatteryOptimizations(context.packageName)) {
-                onNavigateToBatteryOptimization()
-            }
-        }
+        refreshBatteryOptimizationBannerState()
+        refreshFullScreenIntentState()
     }
 }
 
@@ -474,7 +544,18 @@ private fun HomeDialogsContainer(
 
     if (uiState.showBackgroundPermissionDialog) {
         BackgroundLocationPermissionDialog(
-            context = context, onDismiss = { viewModel.onAction(HomeAction.BackgroundPermissionDialogDismissed) })
+            context = context,
+            onDismiss = { viewModel.onAction(HomeAction.BackgroundPermissionDialogDismissed) },
+            onOpenSettings = { viewModel.onAction(HomeAction.BackgroundPermissionSettingsRequested) },
+        )
+    }
+
+    if (uiState.showPreciseLocationPermissionDialog) {
+        PreciseLocationPermissionDialog(
+            context = context,
+            onDismiss = { viewModel.onAction(HomeAction.PreciseLocationPermissionDialogDismissed) },
+            onOpenSettings = { viewModel.onAction(HomeAction.PreciseLocationPermissionSettingsRequested) },
+        )
     }
 
     if (uiState.showNotificationPermissionDialog) {

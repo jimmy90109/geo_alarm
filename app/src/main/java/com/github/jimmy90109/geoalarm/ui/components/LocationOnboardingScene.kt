@@ -260,6 +260,11 @@ fun LocationOnboardingScene(
         animationState = AnimationState.MarkerEntering
     }
 
+    val locationPermissionLauncher =
+        rememberLauncherForActivityResult(ActivityResultContracts.RequestMultiplePermissions()) {
+            locationGranted = hasPreciseForegroundLocation(appContext)
+        }
+
     val notificationPermissionLauncher =
         rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
             if (granted) {
@@ -500,7 +505,7 @@ fun LocationOnboardingScene(
     DisposableEffect(lifecycleOwner, animationState) {
         val observer = LifecycleEventObserver { _, event ->
             if (event != Lifecycle.Event.ON_RESUME) return@LifecycleEventObserver
-            if (animationState is AnimationState.LocationPermission && hasRequiredLocationPermission(appContext)) {
+            if (animationState is AnimationState.LocationPermission && hasPreciseForegroundLocation(appContext)) {
                 locationGranted = true
             }
             if (animationState is AnimationState.NotificationPermission && hasNotificationPermission(appContext)) {
@@ -520,7 +525,7 @@ fun LocationOnboardingScene(
             }
         }
         if (animationState is AnimationState.LocationPermission) {
-            locationGranted = hasRequiredLocationPermission(appContext)
+            locationGranted = hasPreciseForegroundLocation(appContext)
         }
         if (animationState is AnimationState.NotificationPermission) {
             notificationGranted = hasNotificationPermission(appContext)
@@ -655,8 +660,15 @@ fun LocationOnboardingScene(
                     body = stringResource(R.string.onboarding_location_permission_body),
                     isGranted = locationGranted,
                     motionConfig = motionConfig,
-                    primaryActionLabel = stringResource(R.string.go_to_settings),
-                    onPrimary = { appContext.openAppSettings() },
+                    primaryActionLabel = stringResource(R.string.onboarding_allow),
+                    onPrimary = {
+                        locationPermissionLauncher.launch(
+                            arrayOf(
+                                Manifest.permission.ACCESS_FINE_LOCATION,
+                                Manifest.permission.ACCESS_COARSE_LOCATION
+                            )
+                        )
+                    },
                     onSecondary = {
                         animationState = AnimationState.GeofenceEntering
                     },
@@ -823,24 +835,11 @@ fun LocationOnboardingScene(
     }
 }
 
-private fun hasRequiredLocationPermission(context: Context): Boolean {
-    return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-        ContextCompat.checkSelfPermission(
-            context,
-            Manifest.permission.ACCESS_BACKGROUND_LOCATION
-        ) == android.content.pm.PackageManager.PERMISSION_GRANTED
-    } else {
-        val fineGranted = ContextCompat.checkSelfPermission(
-            context,
-            Manifest.permission.ACCESS_FINE_LOCATION
-        ) == android.content.pm.PackageManager.PERMISSION_GRANTED
-        val coarseGranted = ContextCompat.checkSelfPermission(
-            context,
-            Manifest.permission.ACCESS_COARSE_LOCATION
-        ) == android.content.pm.PackageManager.PERMISSION_GRANTED
-        fineGranted && coarseGranted
-    }
-}
+private fun hasPreciseForegroundLocation(context: Context): Boolean =
+    ContextCompat.checkSelfPermission(
+        context,
+        Manifest.permission.ACCESS_FINE_LOCATION
+    ) == android.content.pm.PackageManager.PERMISSION_GRANTED
 
 private fun hasNotificationPermission(context: Context): Boolean {
     return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {

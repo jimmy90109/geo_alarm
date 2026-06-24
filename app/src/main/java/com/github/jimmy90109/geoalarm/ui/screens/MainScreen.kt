@@ -23,7 +23,6 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.safeDrawing
 import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.compose.ui.Alignment
@@ -41,9 +40,7 @@ import com.github.jimmy90109.geoalarm.navigation.MainRoutes
 import com.github.jimmy90109.geoalarm.ui.components.AppNavigationRail
 import com.github.jimmy90109.geoalarm.ui.components.BottomNavBar
 import com.github.jimmy90109.geoalarm.ui.components.NavTab
-import com.github.jimmy90109.geoalarm.data.UpdateStatus
 import com.github.jimmy90109.geoalarm.ui.viewmodel.HomeViewModel
-import com.github.jimmy90109.geoalarm.ui.viewmodel.SettingsAction
 import com.github.jimmy90109.geoalarm.ui.viewmodel.SettingsViewModel
 
 @Composable
@@ -53,7 +50,6 @@ fun MainScreen(
     onAlarmClick: (String) -> Unit,
     onAddSchedule: () -> Unit,
     onScheduleClick: (String) -> Unit,
-    onNavigateToBatteryOptimization: () -> Unit,
     onOpenOnboarding: () -> Unit,
 ) {
     val navController = rememberNavController()
@@ -67,8 +63,7 @@ fun MainScreen(
     val isSettings = navBackStackEntry?.destination?.hasRoute<MainRoutes.Settings>() == true
 
     val settingsViewModel: SettingsViewModel = hiltViewModel()
-    val updateStatus by settingsViewModel.updateStatus.collectAsStateWithLifecycle()
-    val showSettingsUpdateDot = updateStatus is UpdateStatus.Available
+    val showSettingsUpdateDot = false
 
     // Navigation Actions
     val onHomeClick: () -> Unit = {
@@ -106,12 +101,6 @@ fun MainScreen(
         }
     }
 
-    LaunchedEffect(isSettings) {
-        if (!isSettings) {
-            settingsViewModel.onAction(SettingsAction.HomeEntryUpdateCheckRequested)
-        }
-    }
-
     if (isLandscape) {
         // Landscape Layout: Navigation Rail + Content
         Row(
@@ -136,7 +125,6 @@ fun MainScreen(
                     onAlarmClick = onAlarmClick,
                     onAddSchedule = onAddSchedule,
                     onScheduleClick = onScheduleClick,
-                    onNavigateToBatteryOptimization = onNavigateToBatteryOptimization,
                     onOpenOnboarding = onOpenOnboarding,
                     isLandscape = true
                 )
@@ -165,7 +153,6 @@ fun MainScreen(
                 onAlarmClick = onAlarmClick,
                 onAddSchedule = onAddSchedule,
                 onScheduleClick = onScheduleClick,
-                onNavigateToBatteryOptimization = onNavigateToBatteryOptimization,
                 onOpenOnboarding = onOpenOnboarding,
                 isLandscape = false
             )
@@ -196,7 +183,6 @@ fun MainNavHost(
     onAlarmClick: (String) -> Unit,
     onAddSchedule: () -> Unit,
     onScheduleClick: (String) -> Unit,
-    onNavigateToBatteryOptimization: () -> Unit,
     onOpenOnboarding: () -> Unit,
     isLandscape: Boolean
 ) {
@@ -255,7 +241,6 @@ fun MainNavHost(
                 onAlarmClick = { alarm -> onAlarmClick(alarm.id) },
                 onAddSchedule = onAddSchedule,
                 onScheduleClick = { schedule -> onScheduleClick(schedule.schedule.id) },
-                onNavigateToBatteryOptimization = onNavigateToBatteryOptimization,
                 onOpenOnboarding = onOpenOnboarding
             )
         }

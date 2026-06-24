@@ -18,7 +18,6 @@ fun OnboardingScreen(
     onFinished: () -> Unit,
 ) {
     val uiState = viewModel.uiState.collectAsStateWithLifecycle()
-    val analyticsEnabled = viewModel.analyticsEnabled.collectAsStateWithLifecycle()
 
     LaunchedEffect(viewModel) {
         viewModel.effects.collect { effect ->
@@ -34,7 +33,7 @@ fun OnboardingScreen(
         currentLanguage = uiState.value.currentLanguage,
         onToggleLanguage = { viewModel.onAction(OnboardingAction.LanguageToggled) },
         showAnalyticsOptIn = showAnalyticsOptIn,
-        analyticsEnabled = analyticsEnabled.value,
+        analyticsEnabled = uiState.value.analyticsEnabled,
         onAnalyticsEnabledChange = {
             viewModel.onAction(OnboardingAction.AnalyticsEnabledChanged(it))
         },

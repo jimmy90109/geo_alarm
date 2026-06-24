@@ -1,6 +1,10 @@
 package com.github.jimmy90109.geoalarm.ui.screens
 
 import android.content.res.Configuration.ORIENTATION_LANDSCAPE
+import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.animateContentSize
 import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.RepeatMode
 import androidx.compose.animation.core.animateFloat
@@ -8,24 +12,34 @@ import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.infiniteRepeatable
 import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.tween
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.shrinkVertically
+import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
+import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowForward
+import androidx.compose.material.icons.filled.BatteryAlert
+import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.outlined.Info
 import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -36,6 +50,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
@@ -46,8 +61,16 @@ import androidx.compose.ui.unit.sp
 import com.github.jimmy90109.geoalarm.R
 import com.github.jimmy90109.geoalarm.data.Alarm
 import com.github.jimmy90109.geoalarm.data.PaymentShortcut
+import com.github.jimmy90109.geoalarm.utils.DistanceFormatter
 import kotlinx.coroutines.delay
 import kotlin.math.sqrt
+
+enum class ReliabilityBannerState {
+    Hidden,
+    BatteryOptimizationWarning,
+    BatteryOptimizationSuccess,
+    FullScreenIntentWarning,
+}
 
 @Composable
 fun ActiveAlarmScreen(
@@ -55,6 +78,11 @@ fun ActiveAlarmScreen(
     alarm: Alarm,
     progress: Int,
     distanceMeters: Int?,
+    reliabilityBannerState: ReliabilityBannerState = ReliabilityBannerState.Hidden,
+    onBatteryOptimizationClick: () -> Unit = {},
+    onBatteryOptimizationSuccessShown: () -> Unit = {},
+    onFullScreenIntentAllowClick: () -> Unit = {},
+    onFullScreenIntentSkipClick: () -> Unit = {},
     paymentShortcut: PaymentShortcut? = null,
     onPaymentShortcutClick: () -> Unit = {},
     onStopAlarm: (Boolean) -> Unit,
@@ -112,6 +140,7 @@ fun ActiveAlarmScreen(
     )
 
     val configuration = LocalConfiguration.current
+    val distanceLocale = configuration.locales[0]
     val isLandscape = configuration.orientation == ORIENTATION_LANDSCAPE
 
     Box(
@@ -188,7 +217,7 @@ fun ActiveAlarmScreen(
                         Text(
                             text = if (distanceMeters != null) stringResource(
                                 R.string.distance_meters,
-                                distanceMeters
+                                DistanceFormatter.formatMeters(distanceMeters, distanceLocale)
                             ) else "--", style = MaterialTheme.typography.displayLarge.copy(
                                 fontWeight = FontWeight.Bold,
                                 fontSize = 64.sp, // Slightly smaller for landscape
@@ -256,7 +285,8 @@ fun ActiveAlarmScreen(
                 } else {
                     Text(
                         text = if (distanceMeters != null) stringResource(
-                            R.string.distance_meters, distanceMeters
+                            R.string.distance_meters,
+                            DistanceFormatter.formatMeters(distanceMeters, distanceLocale),
                         ) else "--", style = MaterialTheme.typography.displayMedium.copy(
                             fontWeight = FontWeight.Bold,
                         )
@@ -292,6 +322,191 @@ fun ActiveAlarmScreen(
                     paymentShortcut = paymentShortcut,
                     onClick = onPaymentShortcutClick,
                 )
+            }
+        }
+
+        LaunchedEffect(reliabilityBannerState) {
+            if (reliabilityBannerState == ReliabilityBannerState.BatteryOptimizationSuccess) {
+                delay(900)
+                onBatteryOptimizationSuccessShown()
+            }
+        }
+
+        AnimatedVisibility(
+            visible = reliabilityBannerState != ReliabilityBannerState.Hidden,
+            enter = fadeIn(animationSpec = tween(220)),
+            exit = fadeOut(animationSpec = tween(350)),
+            modifier = Modifier
+                .align(Alignment.TopCenter)
+                .padding(horizontal = 24.dp, vertical = 24.dp),
+        ) {
+            ReliabilityBanner(
+                state = reliabilityBannerState,
+                onBatteryOptimizationClick = onBatteryOptimizationClick,
+                onFullScreenIntentAllowClick = onFullScreenIntentAllowClick,
+                onFullScreenIntentSkipClick = onFullScreenIntentSkipClick,
+            )
+        }
+    }
+}
+
+@Composable
+private fun ReliabilityBanner(
+    state: ReliabilityBannerState,
+    onBatteryOptimizationClick: () -> Unit,
+    onFullScreenIntentAllowClick: () -> Unit,
+    onFullScreenIntentSkipClick: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    val darkTheme = isSystemInDarkTheme()
+    val targetContainerColor = when (state) {
+        ReliabilityBannerState.BatteryOptimizationWarning -> MaterialTheme.colorScheme.errorContainer
+        ReliabilityBannerState.FullScreenIntentWarning -> MaterialTheme.colorScheme.secondaryContainer
+        ReliabilityBannerState.BatteryOptimizationSuccess ->
+            if (darkTheme) Color(0xFF1B5E20) else Color(0xFFC8E6C9)
+        ReliabilityBannerState.Hidden -> MaterialTheme.colorScheme.surfaceContainer
+    }
+    val targetContentColor = when (state) {
+        ReliabilityBannerState.BatteryOptimizationWarning -> MaterialTheme.colorScheme.onErrorContainer
+        ReliabilityBannerState.FullScreenIntentWarning -> MaterialTheme.colorScheme.onSecondaryContainer
+        ReliabilityBannerState.BatteryOptimizationSuccess ->
+            if (darkTheme) Color(0xFFC8E6C9) else Color(0xFF0B3D16)
+        ReliabilityBannerState.Hidden -> MaterialTheme.colorScheme.onSurface
+    }
+    val containerColor by animateColorAsState(
+        targetValue = targetContainerColor,
+        animationSpec = tween(300),
+        label = "batteryBannerContainerColor",
+    )
+    val contentColor by animateColorAsState(
+        targetValue = targetContentColor,
+        animationSpec = tween(300),
+        label = "batteryBannerContentColor",
+    )
+    val buttonColors = ButtonDefaults.buttonColors(
+        containerColor = MaterialTheme.colorScheme.surfaceContainerHighest.copy(alpha = 0.62f),
+        contentColor = MaterialTheme.colorScheme.onSurface,
+    )
+
+    Surface(
+        modifier = modifier
+            .fillMaxWidth()
+            .animateContentSize(
+                animationSpec = tween(
+                    durationMillis = 300,
+                    easing = FastOutSlowInEasing,
+                ),
+            ),
+        shape = MaterialTheme.shapes.large,
+        color = containerColor,
+        contentColor = contentColor,
+        tonalElevation = 6.dp,
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 16.dp, vertical = 14.dp),
+        ) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                AnimatedContent(
+                    targetState = state,
+                    transitionSpec = {
+                        fadeIn(animationSpec = tween(180)).togetherWith(
+                            fadeOut(animationSpec = tween(120))
+                        )
+                    },
+                    label = "batteryBannerIcon",
+                ) { targetState ->
+                    Icon(
+                        imageVector = when (targetState) {
+                            ReliabilityBannerState.BatteryOptimizationWarning -> Icons.Default.BatteryAlert
+                            ReliabilityBannerState.FullScreenIntentWarning -> Icons.Outlined.Info
+                            else -> Icons.Default.CheckCircle
+                        },
+                        contentDescription = null,
+                        modifier = Modifier.size(24.dp),
+                    )
+                }
+                Text(
+                    text = stringResource(
+                        when (state) {
+                            ReliabilityBannerState.BatteryOptimizationWarning ->
+                                R.string.battery_optimization_banner_message
+                            ReliabilityBannerState.FullScreenIntentWarning ->
+                                R.string.fullscreen_intent_banner_message
+                            ReliabilityBannerState.BatteryOptimizationSuccess ->
+                                R.string.battery_optimization_success_message
+                            ReliabilityBannerState.Hidden ->
+                                R.string.battery_optimization_success_message
+                        }
+                    ),
+                    style = MaterialTheme.typography.bodyMedium,
+                    fontWeight = FontWeight.SemiBold,
+                    modifier = Modifier
+                        .padding(start = 12.dp)
+                        .weight(1f),
+                )
+            }
+            AnimatedVisibility(
+                visible = state == ReliabilityBannerState.BatteryOptimizationWarning ||
+                    state == ReliabilityBannerState.FullScreenIntentWarning,
+                enter = fadeIn(animationSpec = tween(180)),
+                exit = fadeOut(animationSpec = tween(140)) + shrinkVertically(
+                    animationSpec = tween(
+                        durationMillis = 300,
+                        easing = FastOutSlowInEasing,
+                    ),
+                    shrinkTowards = Alignment.Top,
+                )
+            ) {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(top = 12.dp),
+                    horizontalArrangement = Arrangement.spacedBy(12.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    if (state == ReliabilityBannerState.FullScreenIntentWarning) {
+                        Button(
+                            onClick = onFullScreenIntentSkipClick,
+                            modifier = Modifier
+                                .weight(1f)
+                                .height(48.dp),
+                            colors = buttonColors,
+                        ) {
+                            Text(
+                                text = stringResource(R.string.fullscreen_intent_skip),
+                                textAlign = TextAlign.Center,
+                            )
+                        }
+                    }
+                    Button(
+                        onClick = if (state == ReliabilityBannerState.BatteryOptimizationWarning) {
+                            onBatteryOptimizationClick
+                        } else {
+                            onFullScreenIntentAllowClick
+                        },
+                        modifier = Modifier
+                            .weight(1f)
+                            .height(48.dp),
+                        colors = buttonColors,
+                    ) {
+                        Text(
+                            text = stringResource(
+                                if (state == ReliabilityBannerState.BatteryOptimizationWarning) {
+                                    R.string.battery_optimization_allow_now
+                                } else {
+                                    R.string.fullscreen_intent_allow_now
+                                }
+                            ),
+                            fontWeight = FontWeight.Bold,
+                            textAlign = TextAlign.Center,
+                        )
+                    }
+                }
             }
         }
     }
@@ -354,6 +569,7 @@ fun ActiveAlarmScreenPreview() {
             alarm = mockAlarm,
             progress = progressState.intValue,
             distanceMeters = if (progressState.intValue == 10) 5000 else 250,
+            reliabilityBannerState = ReliabilityBannerState.BatteryOptimizationWarning,
             onStopAlarm = {},
         )
     }

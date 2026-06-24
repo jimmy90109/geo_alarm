@@ -16,34 +16,23 @@ class AnalyticsPreferencesRepository @Inject constructor(
 
     companion object {
         private val ANALYTICS_ENABLED_KEY = booleanPreferencesKey("analytics_enabled")
-        private val APP_FIRST_OPEN_SENT_KEY = booleanPreferencesKey("analytics_app_first_open_sent")
         private val ANALYTICS_OPT_IN_SENT_KEY = booleanPreferencesKey("analytics_opt_in_sent")
+
+        internal fun analyticsEnabled(preferences: Preferences): Boolean =
+            preferences[ANALYTICS_ENABLED_KEY] ?: false
     }
 
     override val analyticsEnabledFlow: Flow<Boolean> =
-        context.dataStore.data.map { preferences ->
-            preferences[ANALYTICS_ENABLED_KEY] ?: true
-        }
+        context.dataStore.data.map(::analyticsEnabled)
 
     override suspend fun isAnalyticsEnabled(): Boolean {
         val prefs: Preferences = context.dataStore.data.first()
-        return prefs[ANALYTICS_ENABLED_KEY] ?: true
+        return analyticsEnabled(prefs)
     }
 
     override suspend fun setAnalyticsEnabled(enabled: Boolean) {
         context.dataStore.edit { preferences ->
             preferences[ANALYTICS_ENABLED_KEY] = enabled
-        }
-    }
-
-    override suspend fun hasSentAppFirstOpen(): Boolean {
-        val prefs: Preferences = context.dataStore.data.first()
-        return prefs[APP_FIRST_OPEN_SENT_KEY] ?: false
-    }
-
-    override suspend fun setAppFirstOpenSent(sent: Boolean) {
-        context.dataStore.edit { preferences ->
-            preferences[APP_FIRST_OPEN_SENT_KEY] = sent
         }
     }
 

@@ -4,11 +4,19 @@ import android.app.Activity
 import android.content.Intent
 import android.content.res.Configuration
 import android.media.RingtoneManager
+import android.os.Build
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.animation.core.LinearEasing
+import androidx.compose.animation.core.RepeatMode
+import androidx.compose.animation.core.animateFloat
+import androidx.compose.animation.core.infiniteRepeatable
+import androidx.compose.animation.core.rememberInfiniteTransition
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -29,9 +37,9 @@ import androidx.core.graphics.drawable.toBitmap
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.AccountBalanceWallet
 import androidx.compose.material.icons.filled.Check
+import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.Stop
-import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
@@ -46,7 +54,6 @@ import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
@@ -61,31 +68,37 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.asImageBitmap
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalHapticFeedback
+import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
-import androidx.lifecycle.Lifecycle
-import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import androidx.lifecycle.compose.LocalLifecycleOwner
 import com.github.jimmy90109.geoalarm.R
 import com.github.jimmy90109.geoalarm.data.PaymentShortcut
 import com.github.jimmy90109.geoalarm.data.RingtoneSettings
-import com.github.jimmy90109.geoalarm.data.UpdateStatus
+import com.github.jimmy90109.geoalarm.util.FullScreenIntentPermissionHelper
 import com.github.jimmy90109.geoalarm.ui.viewmodel.SettingsAction
-import com.github.jimmy90109.geoalarm.ui.viewmodel.SettingsEffect
 import com.github.jimmy90109.geoalarm.ui.viewmodel.SettingsViewModel
 import com.github.jimmy90109.geoalarm.utils.AudioUtils
 import com.github.jimmy90109.geoalarm.utils.PaymentShortcutNotifier
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleEventObserver
+import androidx.lifecycle.compose.LocalLifecycleOwner
+import kotlin.math.PI
+import kotlin.math.sin
+
+private const val PRIVACY_POLICY_URL = "https://jimmy90109.github.io/geo_alarm/privacy-policy.html"
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalMaterial3ExpressiveApi::class)
 @Composable
@@ -100,24 +113,35 @@ fun SettingsScreen(
     val currentLanguage = viewModel.currentLanguage
     val context = LocalContext.current
     val lifecycleOwner = LocalLifecycleOwner.current
+    val uriHandler = LocalUriHandler.current
     val ringtonePickerTitle = stringResource(R.string.ringtone_select)
+    var canUseFullScreenIntent by remember {
+        mutableStateOf(FullScreenIntentPermissionHelper.canUseFullScreenIntent(context))
+    }
 
-    LaunchedEffect(viewModel) {
-        viewModel.effects.collect { effect ->
-            when (effect) {
-                is SettingsEffect.OpenIntent -> context.startActivity(effect.intent)
-            }
+    fun refreshFullScreenIntentState() {
+        canUseFullScreenIntent = FullScreenIntentPermissionHelper.canUseFullScreenIntent(context)
+    }
+
+    fun openFullScreenIntentSettings() {
+        val intent = FullScreenIntentPermissionHelper.createSettingsIntent(context)
+        runCatching {
+            context.startActivity(intent)
+        }.onFailure {
+            context.startActivity(FullScreenIntentPermissionHelper.createAppDetailsIntent(context))
         }
     }
 
-    DisposableEffect(lifecycleOwner, context) {
+    DisposableEffect(lifecycleOwner) {
         val observer = LifecycleEventObserver { _, event ->
             if (event == Lifecycle.Event.ON_RESUME) {
-                viewModel.onAction(SettingsAction.PendingInstallRetryRequested(context))
+                refreshFullScreenIntentState()
             }
         }
         lifecycleOwner.lifecycle.addObserver(observer)
-        onDispose { lifecycleOwner.lifecycle.removeObserver(observer) }
+        onDispose {
+            lifecycleOwner.lifecycle.removeObserver(observer)
+        }
     }
 
     // Ringtone picker launcher
@@ -155,71 +179,6 @@ fun SettingsScreen(
             val configuration = LocalConfiguration.current
             val isLandscape = configuration.orientation == Configuration.ORIENTATION_LANDSCAPE
 
-            // Shared Logic for About Section
-            val updateStatus by viewModel.updateStatus.collectAsStateWithLifecycle()
-            var showUpdateDialog by remember { mutableStateOf(false) }
-
-            // Handle status changes (e.g. show dialog when Available detected)
-            LaunchedEffect(updateStatus) {
-                if (updateStatus is UpdateStatus.Available) {
-                    showUpdateDialog = true
-                }
-                if (updateStatus is UpdateStatus.Error) {
-                    android.widget.Toast.makeText(
-                        context,
-                        (updateStatus as UpdateStatus.Error).message,
-                        android.widget.Toast.LENGTH_SHORT
-                    ).show()
-                    viewModel.onAction(SettingsAction.UpdateStateReset)
-                }
-            }
-
-            if (showUpdateDialog) {
-                val status = updateStatus
-                if (status is UpdateStatus.Available) {
-                    AlertDialog(
-                        onDismissRequest = {
-                            showUpdateDialog = false
-                            viewModel.onAction(SettingsAction.UpdateStateReset)
-                        },
-                        title = { Text(stringResource(R.string.update_available_title)) },
-                        text = {
-                            Text(
-                                stringResource(
-                                    R.string.update_available_message,
-                                    status.version,
-                                )
-                            )
-                        },
-                        confirmButton = {
-                            TextButton(
-                                onClick = {
-                                    viewModel.onAction(
-                                        SettingsAction.UpdateDownloadRequested(
-                                            status.downloadUrl,
-                                            status.sha256
-                                        )
-                                    )
-                                    showUpdateDialog = false
-                                },
-                            ) {
-                                Text(stringResource(R.string.download))
-                            }
-                        },
-                        dismissButton = {
-                            TextButton(
-                                onClick = {
-                                    showUpdateDialog = false
-                                    viewModel.onAction(SettingsAction.UpdateStateReset)
-                                },
-                            ) {
-                                Text(stringResource(R.string.cancel))
-                            }
-                        },
-                    )
-                }
-            }
-
             if (isLandscape) {
                 // LANDSCAPE: Two Columns
                 Row(
@@ -242,9 +201,14 @@ fun SettingsScreen(
                         SettingsAlarmSection(
                             ringtoneSettings = ringtoneSettings,
                             paymentShortcut = paymentShortcut,
+                            showFullScreenIntentSetting = FullScreenIntentPermissionHelper.isRequired(),
+                            canUseFullScreenIntent = canUseFullScreenIntent,
                             onRingtoneClick = { viewModel.onAction(SettingsAction.RingtoneSheetRequested) },
                             onPaymentShortcutClick = {
                                 viewModel.onAction(SettingsAction.PaymentShortcutSheetRequested)
+                            },
+                            onFullScreenIntentClick = {
+                                viewModel.onAction(SettingsAction.FullScreenIntentSheetRequested)
                             },
                         )
                     }
@@ -258,25 +222,12 @@ fun SettingsScreen(
                     ) {
                         SettingsPrivacySection(
                             analyticsEnabled = analyticsEnabled,
-                            onPrivacyClick = { viewModel.onAction(SettingsAction.AnalyticsSheetRequested) }
+                            onPrivacyClick = { viewModel.onAction(SettingsAction.AnalyticsSheetRequested) },
+                            onPrivacyPolicyClick = { uriHandler.openUri(PRIVACY_POLICY_URL) },
                         )
                         Spacer(modifier = Modifier.height(16.dp))
                         SettingsAboutSection(
-                            updateStatus = updateStatus,
                             currentVersion = viewModel.currentVersion,
-                            onUpdateClick = { status ->
-                                when (status) {
-                                    is UpdateStatus.Idle, is UpdateStatus.Error -> viewModel.onAction(SettingsAction.UpdateCheckRequested)
-                                    is UpdateStatus.Available -> showUpdateDialog = true
-                                    is UpdateStatus.ReadyToInstall -> viewModel.onAction(
-                                        SettingsAction.UpdateInstallRequested(status.apkUri, context)
-                                    )
-                                    is UpdateStatus.Downloading -> {
-                                        android.widget.Toast.makeText(context, R.string.update_downloading, android.widget.Toast.LENGTH_SHORT).show()
-                                    }
-                                    else -> {}
-                                }
-                            },
                         )
                     }
                 }
@@ -298,33 +249,25 @@ fun SettingsScreen(
                     SettingsAlarmSection(
                         ringtoneSettings = ringtoneSettings,
                         paymentShortcut = paymentShortcut,
+                        showFullScreenIntentSetting = FullScreenIntentPermissionHelper.isRequired(),
+                        canUseFullScreenIntent = canUseFullScreenIntent,
                         onRingtoneClick = { viewModel.onAction(SettingsAction.RingtoneSheetRequested) },
                         onPaymentShortcutClick = {
                             viewModel.onAction(SettingsAction.PaymentShortcutSheetRequested)
+                        },
+                        onFullScreenIntentClick = {
+                            viewModel.onAction(SettingsAction.FullScreenIntentSheetRequested)
                         },
                     )
                     Spacer(modifier = Modifier.height(16.dp))
                     SettingsPrivacySection(
                         analyticsEnabled = analyticsEnabled,
-                        onPrivacyClick = { viewModel.onAction(SettingsAction.AnalyticsSheetRequested) }
+                        onPrivacyClick = { viewModel.onAction(SettingsAction.AnalyticsSheetRequested) },
+                        onPrivacyPolicyClick = { uriHandler.openUri(PRIVACY_POLICY_URL) },
                     )
                     Spacer(modifier = Modifier.height(24.dp))
                     SettingsAboutSection(
-                        updateStatus = updateStatus,
                         currentVersion = viewModel.currentVersion,
-                        onUpdateClick = { status ->
-                            when (status) {
-                                is UpdateStatus.Idle, is UpdateStatus.Error -> viewModel.onAction(SettingsAction.UpdateCheckRequested)
-                                is UpdateStatus.Available -> showUpdateDialog = true
-                                is UpdateStatus.ReadyToInstall -> viewModel.onAction(
-                                    SettingsAction.UpdateInstallRequested(status.apkUri, context)
-                                )
-                                is UpdateStatus.Downloading -> {
-                                    android.widget.Toast.makeText(context, R.string.update_downloading, android.widget.Toast.LENGTH_SHORT).show()
-                                }
-                                else -> {}
-                            }
-                        },
                     )
                 }
             }
@@ -471,6 +414,16 @@ fun SettingsScreen(
         )
     }
 
+    if (uiState.showFullScreenIntentSheet) {
+        FullScreenIntentExplanationSheet(
+            isEnabled = canUseFullScreenIntent,
+            onDismissRequest = { viewModel.onAction(SettingsAction.FullScreenIntentSheetDismissed) },
+            onOpenSettings = {
+                openFullScreenIntentSettings()
+            },
+        )
+    }
+
     // Analytics Settings Bottom Sheet
     if (uiState.showAnalyticsSheet) {
         ModalBottomSheet(
@@ -522,8 +475,11 @@ private fun SettingsGeneralSection(
 private fun SettingsAlarmSection(
     ringtoneSettings: RingtoneSettings,
     paymentShortcut: PaymentShortcut?,
+    showFullScreenIntentSetting: Boolean,
+    canUseFullScreenIntent: Boolean,
     onRingtoneClick: () -> Unit,
     onPaymentShortcutClick: () -> Unit,
+    onFullScreenIntentClick: () -> Unit,
 ) {
     SettingsSectionHeader(title = stringResource(R.string.settings_section_alarm))
     
@@ -543,6 +499,20 @@ private fun SettingsAlarmSection(
         value = paymentShortcut?.displayName ?: stringResource(R.string.payment_shortcut_off),
         onClick = onPaymentShortcutClick,
     )
+    if (showFullScreenIntentSetting) {
+        Spacer(modifier = Modifier.height(8.dp))
+        SettingsCard(
+            title = stringResource(R.string.fullscreen_intent_settings_title),
+            value = stringResource(
+                if (canUseFullScreenIntent) {
+                    R.string.fullscreen_intent_settings_on
+                } else {
+                    R.string.fullscreen_intent_settings_off
+                }
+            ),
+            onClick = onFullScreenIntentClick,
+        )
+    }
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -679,6 +649,183 @@ fun PaymentShortcutBottomSheet(
     }
 }
 
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun FullScreenIntentExplanationSheet(
+    isEnabled: Boolean,
+    onDismissRequest: () -> Unit,
+    onOpenSettings: () -> Unit,
+) {
+    val haptic = LocalHapticFeedback.current
+    val configuration = LocalConfiguration.current
+    val useSideBySideLayout =
+        configuration.orientation == Configuration.ORIENTATION_LANDSCAPE ||
+            configuration.screenHeightDp < 600
+    ModalBottomSheet(
+        onDismissRequest = onDismissRequest,
+        sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true),
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(start = 24.dp, end = 24.dp, bottom = 8.dp),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Text(
+                text = stringResource(R.string.fullscreen_intent_settings_title),
+                style = MaterialTheme.typography.titleLarge,
+                modifier = Modifier.weight(1f),
+            )
+            Text(
+                text = stringResource(
+                    if (isEnabled) {
+                        R.string.fullscreen_intent_settings_on
+                    } else {
+                        R.string.fullscreen_intent_settings_off
+                    }
+                ),
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.primary,
+                fontWeight = FontWeight.SemiBold,
+            )
+        }
+        val details: @Composable (Modifier) -> Unit = { modifier ->
+            Column(modifier = modifier) {
+                Text(
+                    text = stringResource(R.string.fullscreen_intent_sheet_message),
+                    style = MaterialTheme.typography.bodyMedium,
+                    modifier = Modifier.padding(bottom = 24.dp),
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+                Button(
+                    onClick = {
+                        haptic.performHapticFeedback(HapticFeedbackType.Confirm)
+                        onOpenSettings()
+                    },
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(bottom = 16.dp)
+                        .height(52.dp),
+                    shape = RoundedCornerShape(percent = 50),
+                ) {
+                    Text(stringResource(R.string.fullscreen_intent_open_settings))
+                }
+            }
+        }
+
+        if (useSideBySideLayout) {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 24.dp),
+                horizontalArrangement = Arrangement.spacedBy(24.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                FullScreenIntentAnimation(
+                    modifier = Modifier.weight(0.42f),
+                    containerHeight = 176.dp,
+                    phoneWidth = 92.dp,
+                    phoneHeight = 166.dp,
+                    phoneCornerRadius = 18.dp,
+                )
+                details(Modifier.weight(0.58f))
+            }
+        } else {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 24.dp),
+                horizontalAlignment = Alignment.CenterHorizontally,
+            ) {
+                FullScreenIntentAnimation(
+                    modifier = Modifier.padding(bottom = 20.dp),
+                )
+                details(Modifier.fillMaxWidth())
+            }
+        }
+    }
+}
+
+@Composable
+private fun FullScreenIntentAnimation(
+    modifier: Modifier = Modifier,
+    containerHeight: Dp = 230.dp,
+    phoneWidth: Dp = 116.dp,
+    phoneHeight: Dp = 210.dp,
+    phoneCornerRadius: Dp = 24.dp,
+) {
+    val transition = rememberInfiniteTransition(label = "fullscreenIntentCycle")
+    val cycle by transition.animateFloat(
+        initialValue = 0f,
+        targetValue = 1f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(durationMillis = 2600, easing = LinearEasing),
+            repeatMode = RepeatMode.Restart,
+        ),
+        label = "fullscreenIntentProgress",
+    )
+    val arrivalAlpha = when {
+        cycle < 0.10f -> 0f
+        cycle < 0.16f -> ((cycle - 0.10f) / 0.06f).coerceIn(0f, 1f)
+        cycle < 0.90f -> 1f
+        cycle < 0.96f -> (1f - ((cycle - 0.90f) / 0.06f)).coerceIn(0f, 1f)
+        else -> 0f
+    }
+    val arrivalProgress = ((cycle - 0.16f) / 0.74f).coerceIn(0f, 1f)
+    val pulse = if (arrivalAlpha > 0f) {
+        ((sin(arrivalProgress * 2.0 * PI * 3.0 - PI / 2.0) + 1.0) / 2.0).toFloat()
+    } else {
+        0f
+    }
+    val phoneScale = 1f + (0.055f * pulse * arrivalAlpha)
+    val buttonScale = (0.90f + (0.10f * arrivalAlpha)) * (1f + 0.10f * pulse * arrivalAlpha)
+
+    Box(
+        modifier = modifier
+            .fillMaxWidth()
+            .height(containerHeight),
+        contentAlignment = Alignment.Center,
+    ) {
+        Box(
+            modifier = Modifier
+                .size(width = phoneWidth, height = phoneHeight)
+                .graphicsLayer {
+                    scaleX = phoneScale
+                    scaleY = phoneScale
+                }
+                .clip(RoundedCornerShape(phoneCornerRadius))
+                .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.08f * arrivalAlpha))
+                .border(
+                    width = 2.dp,
+                    color = MaterialTheme.colorScheme.outlineVariant,
+                    shape = RoundedCornerShape(phoneCornerRadius),
+                ),
+            contentAlignment = Alignment.Center,
+        ) {
+            Box(
+                modifier = Modifier
+                    .graphicsLayer {
+                        alpha = arrivalAlpha
+                        scaleX = buttonScale
+                        scaleY = buttonScale
+                    }
+                    .size(width = 62.dp, height = 44.dp)
+                    .clip(RoundedCornerShape(percent = 50))
+                    .background(MaterialTheme.colorScheme.primary),
+                contentAlignment = Alignment.Center,
+            ) {
+                Icon(
+                    imageVector = Icons.Default.Close,
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.onPrimary,
+                    modifier = Modifier.size(24.dp),
+                )
+            }
+        }
+    }
+}
+
 @Composable
 private fun PaymentShortcutGridCard(
     shortcut: PaymentShortcut,
@@ -780,7 +927,8 @@ private fun PaymentShortcutGridCard(
 @Composable
 private fun SettingsPrivacySection(
     analyticsEnabled: Boolean,
-    onPrivacyClick: () -> Unit
+    onPrivacyClick: () -> Unit,
+    onPrivacyPolicyClick: () -> Unit,
 ) {
     SettingsSectionHeader(title = stringResource(R.string.settings_section_privacy_improvement))
     SettingsCard(
@@ -792,25 +940,25 @@ private fun SettingsPrivacySection(
         },
         onClick = onPrivacyClick
     )
+    Spacer(modifier = Modifier.height(8.dp))
+    SettingsCard(
+        title = stringResource(R.string.privacy_policy),
+        value = stringResource(R.string.view),
+        onClick = onPrivacyPolicyClick,
+    )
 }
 
 @Composable
 private fun SettingsAboutSection(
-    updateStatus: UpdateStatus, currentVersion: String, onUpdateClick: (UpdateStatus) -> Unit
+    currentVersion: String
 ) {
     SettingsSectionHeader(title = stringResource(R.string.section_about))
 
-    val updateValue = when (updateStatus) {
-        is UpdateStatus.Checking -> stringResource(R.string.checking_update)
-        is UpdateStatus.Downloading -> stringResource(R.string.update_downloading)
-        is UpdateStatus.ReadyToInstall -> stringResource(R.string.update_ready_to_install)
-        else -> stringResource(R.string.settings_version_label, currentVersion)
-    }
-
     SettingsCard(
-        title = stringResource(R.string.check_for_updates),
-        value = updateValue,
-        onClick = { onUpdateClick(updateStatus) },
+        title = stringResource(R.string.section_about),
+        value = stringResource(R.string.settings_version_label, currentVersion),
+        onClick = {},
+        enabled = false,
     )
 }
 

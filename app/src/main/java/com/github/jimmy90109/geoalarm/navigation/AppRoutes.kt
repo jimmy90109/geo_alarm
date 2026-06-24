@@ -1,5 +1,6 @@
 package com.github.jimmy90109.geoalarm.navigation
 
+import com.github.jimmy90109.geoalarm.share.SharedPlaceSource
 import kotlinx.serialization.Serializable
 
 /**
@@ -15,11 +16,13 @@ sealed interface AppRoutes {
     data class Onboarding(val showAnalyticsOptIn: Boolean = true) : AppRoutes
 
     @Serializable
-    data class AlarmEdit(val alarmId: String? = null) : AppRoutes
+    data class AlarmEdit(
+        val alarmId: String? = null,
+        val sharedPlaceQuery: String? = null,
+        val sharedPlaceSource: SharedPlaceSource? = null
+    ) : AppRoutes
 
     @Serializable
     data class ScheduleEdit(val scheduleId: String? = null) : AppRoutes
 
-    @Serializable
-    data object BatteryOptimization : AppRoutes
 }
