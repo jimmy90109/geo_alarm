@@ -1,6 +1,8 @@
 package com.github.jimmy90109.geoalarm.ui.screens
 
 import android.app.Activity
+import android.content.Context
+import android.content.ContextWrapper
 import android.content.Intent
 import android.content.res.Configuration
 import android.media.RingtoneManager
@@ -110,6 +112,7 @@ fun SettingsScreen(
     val ringtoneSettings by viewModel.ringtoneSettings.collectAsStateWithLifecycle()
     val paymentShortcut by viewModel.paymentShortcut.collectAsStateWithLifecycle()
     val analyticsEnabled by viewModel.analyticsEnabled.collectAsStateWithLifecycle()
+    val adConsentState by viewModel.adConsentState.collectAsStateWithLifecycle()
     val currentLanguage = viewModel.currentLanguage
     val context = LocalContext.current
     val lifecycleOwner = LocalLifecycleOwner.current
@@ -222,7 +225,13 @@ fun SettingsScreen(
                     ) {
                         SettingsPrivacySection(
                             analyticsEnabled = analyticsEnabled,
+                            showAdPrivacyOptions = adConsentState.isPrivacyOptionsRequired,
                             onPrivacyClick = { viewModel.onAction(SettingsAction.AnalyticsSheetRequested) },
+                            onAdPrivacyOptionsClick = {
+                                context.findActivity()?.let {
+                                    viewModel.onAction(SettingsAction.AdPrivacyOptionsRequested(it))
+                                }
+                            },
                             onPrivacyPolicyClick = { uriHandler.openUri(PRIVACY_POLICY_URL) },
                         )
                         Spacer(modifier = Modifier.height(16.dp))
@@ -262,7 +271,13 @@ fun SettingsScreen(
                     Spacer(modifier = Modifier.height(16.dp))
                     SettingsPrivacySection(
                         analyticsEnabled = analyticsEnabled,
+                        showAdPrivacyOptions = adConsentState.isPrivacyOptionsRequired,
                         onPrivacyClick = { viewModel.onAction(SettingsAction.AnalyticsSheetRequested) },
+                        onAdPrivacyOptionsClick = {
+                            context.findActivity()?.let {
+                                viewModel.onAction(SettingsAction.AdPrivacyOptionsRequested(it))
+                            }
+                        },
                         onPrivacyPolicyClick = { uriHandler.openUri(PRIVACY_POLICY_URL) },
                     )
                     Spacer(modifier = Modifier.height(24.dp))
@@ -927,7 +942,9 @@ private fun PaymentShortcutGridCard(
 @Composable
 private fun SettingsPrivacySection(
     analyticsEnabled: Boolean,
+    showAdPrivacyOptions: Boolean,
     onPrivacyClick: () -> Unit,
+    onAdPrivacyOptionsClick: () -> Unit,
     onPrivacyPolicyClick: () -> Unit,
 ) {
     SettingsSectionHeader(title = stringResource(R.string.settings_section_privacy_improvement))
@@ -940,12 +957,29 @@ private fun SettingsPrivacySection(
         },
         onClick = onPrivacyClick
     )
+    if (showAdPrivacyOptions) {
+        Spacer(modifier = Modifier.height(8.dp))
+        SettingsCard(
+            title = stringResource(R.string.ad_privacy_options),
+            value = stringResource(R.string.manage),
+            onClick = onAdPrivacyOptionsClick,
+        )
+    }
     Spacer(modifier = Modifier.height(8.dp))
     SettingsCard(
         title = stringResource(R.string.privacy_policy),
         value = stringResource(R.string.view),
         onClick = onPrivacyPolicyClick,
     )
+}
+
+private fun Context.findActivity(): Activity? {
+    var context = this
+    while (context is ContextWrapper) {
+        if (context is Activity) return context
+        context = context.baseContext
+    }
+    return null
 }
 
 @Composable

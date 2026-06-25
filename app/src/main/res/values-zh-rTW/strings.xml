@@ -154,6 +154,8 @@
     <string name="analytics_disabled">關閉</string>
     <string name="privacy_policy">隱私權政策</string>
     <string name="view">查看</string>
+    <string name="manage">管理</string>
+    <string name="ad_privacy_options">廣告隱私選項</string>
 
     <!-- About -->
     <string name="section_about">關於</string>
@@ -165,6 +167,7 @@
     <string name="arrived_status">已到站</string>
     <string name="section_all_alarm">所有鬧鐘</string>
     <string name="section_schedules">排程</string>
+    <string name="ad_label">廣告</string>
     <string name="new_alarm">新增鬧鐘</string>
     <string name="new_schedule">新增排程</string>
     <string name="edit_schedule">編輯排程</string>

@@ -15,6 +15,11 @@ import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.github.jimmy90109.geoalarm.BuildConfig
 import com.github.jimmy90109.geoalarm.R
+import com.github.jimmy90109.geoalarm.ads.AdConsentManager
+import com.github.jimmy90109.geoalarm.ads.AdsEligibility
+import com.github.jimmy90109.geoalarm.ads.AdsEntitlementRepository
+import com.github.jimmy90109.geoalarm.ads.HomeNativeAdManager
+import com.github.jimmy90109.geoalarm.ads.HomeNativeAdState
 import com.github.jimmy90109.geoalarm.appactions.AlarmTurnOffUseCase
 import com.github.jimmy90109.geoalarm.data.Alarm
 import com.github.jimmy90109.geoalarm.data.AlarmDataRepository
@@ -34,6 +39,8 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
@@ -112,6 +119,9 @@ class HomeViewModel @Inject constructor(
     private val alarmTurnOffUseCase: AlarmTurnOffUseCase,
     private val settingsRepository: SettingsRepository,
     private val activationPermissionChecker: AlarmActivationPermissionChecker,
+    private val adConsentManager: AdConsentManager,
+    private val adsEntitlementRepository: AdsEntitlementRepository,
+    private val homeNativeAdManager: HomeNativeAdManager,
 ) : AndroidViewModel(application) {
     private enum class ActivationSettingsKind {
         PRECISE,
@@ -164,6 +174,7 @@ class HomeViewModel @Inject constructor(
         } catch (e: Exception) {
             // Receiver might not be registered
         }
+        homeNativeAdManager.clear()
     }
 
     private val _uiState = MutableStateFlow(HomeUiState())
@@ -191,6 +202,25 @@ class HomeViewModel @Inject constructor(
         SharingStarted.WhileSubscribed(5000),
         null
     )
+    val homeNativeAdState: StateFlow<HomeNativeAdState> = homeNativeAdManager.state
+
+    init {
+        viewModelScope.launch {
+            combine(
+                alarms,
+                adConsentManager.state,
+                adsEntitlementRepository.hasAdsRemoved,
+            ) { alarms, consentState, hasAdsRemoved ->
+                AdsEligibility.shouldShowHomeNativeAd(
+                    canRequestAds = consentState.canRequestAds,
+                    hasAdsRemoved = hasAdsRemoved,
+                    hasHomeContent = alarms.isNotEmpty(),
+                )
+            }
+                .distinctUntilChanged()
+                .collect { eligible -> homeNativeAdManager.setEligible(eligible) }
+        }
+    }
 
     fun onAction(action: HomeAction) {
         when (action) {
