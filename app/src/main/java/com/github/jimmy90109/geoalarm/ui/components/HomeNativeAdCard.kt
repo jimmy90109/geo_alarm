@@ -1,7 +1,10 @@
 package com.github.jimmy90109.geoalarm.ui.components
 
+import android.graphics.Outline
+import android.graphics.drawable.GradientDrawable
 import android.view.View
 import android.view.ViewGroup
+import android.view.ViewOutlineProvider
 import android.widget.Button
 import android.widget.ImageView
 import android.widget.LinearLayout
@@ -36,6 +39,7 @@ fun HomeNativeAdCard(
     val contentColor = MaterialTheme.colorScheme.onSurface.toArgb()
     val secondaryColor = MaterialTheme.colorScheme.onSurfaceVariant.toArgb()
     val primaryColor = MaterialTheme.colorScheme.primary.toArgb()
+    val onPrimaryColor = MaterialTheme.colorScheme.onPrimary.toArgb()
     val label = stringResource(R.string.ad_label)
 
     Card(
@@ -53,6 +57,10 @@ fun HomeNativeAdCard(
                 val nativeAdView = NativeAdView(context)
                 val content = LinearLayout(context).apply {
                     setPadding(0, 0, 0, 0)
+                    layoutParams = ViewGroup.LayoutParams(
+                        ViewGroup.LayoutParams.MATCH_PARENT,
+                        ViewGroup.LayoutParams.WRAP_CONTENT,
+                    )
                 }
                 val adLabel = TextView(context).apply {
                     textSize = 12f
@@ -60,7 +68,8 @@ fun HomeNativeAdCard(
                     setTextColor(primaryColor)
                 }
                 val mediaView = MediaView(context).apply {
-                    setBackgroundColor(containerColor)
+                    background = roundedRectangleDrawable(context, containerColor, 16)
+                    clipToRoundedOutline(16)
                 }
                 val headline = TextView(context).apply {
                     textSize = 16f
@@ -83,14 +92,19 @@ fun HomeNativeAdCard(
                 val icon = ImageView(context).apply {
                     adjustViewBounds = true
                     scaleType = ImageView.ScaleType.CENTER_CROP
+                    background = roundedRectangleDrawable(context, containerColor, 8)
+                    clipToRoundedOutline(8)
                 }
                 val callToAction = Button(context).apply {
                     textSize = 13f
+                    isAllCaps = false
                     minHeight = 0
                     minWidth = 0
                     minimumHeight = 0
                     minimumWidth = 0
                     includeFontPadding = false
+                    setTextColor(onPrimaryColor)
+                    background = roundedRectangleDrawable(context, primaryColor, 18)
                     setPadding(
                         12.dpToPx(context),
                         6.dpToPx(context),
@@ -100,6 +114,10 @@ fun HomeNativeAdCard(
                 }
 
                 nativeAdView.addView(content)
+                nativeAdView.layoutParams = ViewGroup.LayoutParams(
+                    ViewGroup.LayoutParams.MATCH_PARENT,
+                    ViewGroup.LayoutParams.WRAP_CONTENT,
+                )
                 nativeAdView.setBackgroundColor(containerColor)
 
                 nativeAdView.headlineView = headline
@@ -122,6 +140,10 @@ fun HomeNativeAdCard(
             },
             update = { nativeAdView ->
                 val holder = nativeAdView.tag as NativeAdViewHolder
+                holder.mediaView.background = roundedRectangleDrawable(nativeAdView.context, containerColor, 16)
+                holder.icon.background = roundedRectangleDrawable(nativeAdView.context, containerColor, 8)
+                holder.callToAction.setTextColor(onPrimaryColor)
+                holder.callToAction.background = roundedRectangleDrawable(nativeAdView.context, primaryColor, 18)
                 holder.content.removeAllViews()
                 holder.detachAssetViews()
                 holder.content.addView(
@@ -171,6 +193,10 @@ private fun buildNativeAdLayout(
                 LinearLayout(context).apply {
                     orientation = LinearLayout.HORIZONTAL
                     gravity = android.view.Gravity.CENTER_VERTICAL
+                    layoutParams = LinearLayout.LayoutParams(
+                        LinearLayout.LayoutParams.MATCH_PARENT,
+                        LinearLayout.LayoutParams.WRAP_CONTENT,
+                    )
                     addView(
                         holder.mediaView,
                         LinearLayout.LayoutParams(
@@ -188,6 +214,10 @@ private fun buildNativeAdLayout(
     } else {
         LinearLayout(context).apply {
             orientation = LinearLayout.VERTICAL
+            layoutParams = LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT,
+                LinearLayout.LayoutParams.WRAP_CONTENT,
+            )
             addView(
                 holder.mediaView,
                 LinearLayout.LayoutParams(
@@ -209,7 +239,17 @@ private fun buildTextColumn(
     val context = holder.content.context
     return LinearLayout(context).apply {
         orientation = LinearLayout.VERTICAL
-        addView(holder.label)
+        layoutParams = LinearLayout.LayoutParams(
+            LinearLayout.LayoutParams.MATCH_PARENT,
+            LinearLayout.LayoutParams.WRAP_CONTENT,
+        )
+        addView(
+            holder.label,
+            LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT,
+                LinearLayout.LayoutParams.WRAP_CONTENT,
+            ),
+        )
         addView(
             holder.headline,
             LinearLayout.LayoutParams(
@@ -248,18 +288,29 @@ private fun buildFooterRow(
     return LinearLayout(context).apply {
         orientation = LinearLayout.HORIZONTAL
         gravity = android.view.Gravity.CENTER_VERTICAL
+        layoutParams = LinearLayout.LayoutParams(
+            LinearLayout.LayoutParams.MATCH_PARENT,
+            LinearLayout.LayoutParams.WRAP_CONTENT,
+        )
+        addView(
+            holder.advertiser,
+            LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.WRAP_CONTENT,
+                LinearLayout.LayoutParams.WRAP_CONTENT,
+            ).apply {
+                marginEnd = 8.dpToPx(context)
+            },
+        )
+        addView(
+            View(context),
+            LinearLayout.LayoutParams(0, 1, 1f),
+        )
         addView(
             holder.icon,
             LinearLayout.LayoutParams(
                 32.dpToPx(context),
                 32.dpToPx(context),
             ).apply {
-                marginEnd = 8.dpToPx(context)
-            },
-        )
-        addView(
-            holder.advertiser,
-            LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f).apply {
                 marginEnd = 8.dpToPx(context)
             },
         )
@@ -276,6 +327,28 @@ private fun buildFooterRow(
 private fun TextView.setOptionalText(value: String?) {
     text = value.orEmpty()
     visibility = if (value.isNullOrBlank()) View.GONE else View.VISIBLE
+}
+
+private fun View.clipToRoundedOutline(radiusDp: Int) {
+    val radiusPx = radiusDp.dpToPx(context).toFloat()
+    clipToOutline = true
+    outlineProvider = object : ViewOutlineProvider() {
+        override fun getOutline(view: View, outline: Outline) {
+            outline.setRoundRect(0, 0, view.width, view.height, radiusPx)
+        }
+    }
+}
+
+private fun roundedRectangleDrawable(
+    context: android.content.Context,
+    color: Int,
+    radiusDp: Int,
+): GradientDrawable {
+    return GradientDrawable().apply {
+        shape = GradientDrawable.RECTANGLE
+        cornerRadius = radiusDp.dpToPx(context).toFloat()
+        setColor(color)
+    }
 }
 
 private fun Int.dpToPx(context: android.content.Context): Int {
