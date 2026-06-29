@@ -1,0 +1,54 @@
+{
+  "runId": "geoalarm-v1",
+  "fileKey": "VtAePa6v7KuPOoQv51tKDe",
+  "fileUrl": "https://www.figma.com/design/VtAePa6v7KuPOoQv51tKDe",
+  "phase": "phase0",
+  "step": "phase0-complete-awaiting-foundations-approval",
+  "source": {
+    "platform": "android-compose",
+    "themeFiles": [
+      "app/src/main/java/com/github/jimmy90109/geoalarm/ui/theme/Color.kt",
+      "app/src/main/java/com/github/jimmy90109/geoalarm/ui/theme/Theme.kt",
+      "app/src/main/java/com/github/jimmy90109/geoalarm/ui/theme/Type.kt"
+    ]
+  },
+  "entities": {
+    "collections": {},
+    "variables": {},
+    "pages": {
+      "Page 1": "0:1"
+    },
+    "components": {}
+  },
+  "completedSteps": [
+    "P0.a",
+    "P0.b",
+    "P0.c",
+    "P0.d",
+    "P0.e",
+    "P0.f"
+  ],
+  "pendingValidations": [],
+  "decisions": [
+    "Use code as source of truth because the Figma file is new and empty.",
+    "Represent Android dynamic color through Material 3 semantic tokens with GeoAlarm fallback palette.",
+    "Use available Figma font fallback for text styles if Google Sans is unavailable, while preserving Google Sans mapping in style descriptions."
+  ],
+  "plannedV1": {
+    "foundations": [
+      "Primitives color collection",
+      "Color semantic collection with Light and Dark modes",
+      "Spacing collection",
+      "Radius collection",
+      "Elevation effect styles",
+      "Material 3 typography text styles mapped from GeoAlarm Typography"
+    ],
+    "components": [
+      "AlarmItem",
+      "ScheduleItem",
+      "BottomNavBar",
+      "AppNavigationRail",
+      "TopAppBar"
+    ]
+  }
+}
