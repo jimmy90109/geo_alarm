@@ -1,5 +1,6 @@
 package com.github.jimmy90109.geoalarm.ui.viewmodel
 
+import android.app.Activity
 import android.app.Application
 import android.content.Context
 import android.media.MediaPlayer
@@ -8,6 +9,8 @@ import androidx.core.os.LocaleListCompat
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.github.jimmy90109.geoalarm.BuildConfig
+import com.github.jimmy90109.geoalarm.ads.AdConsentManager
+import com.github.jimmy90109.geoalarm.ads.AdConsentState
 import com.github.jimmy90109.geoalarm.analytics.TelemetryTracker
 import com.github.jimmy90109.geoalarm.data.AlarmDataRepository
 import com.github.jimmy90109.geoalarm.data.AnalyticsPreferencesStore
@@ -52,6 +55,7 @@ sealed interface SettingsAction {
     data class RingtoneSelected(val uri: String?, val name: String?) : SettingsAction
     data class PaymentShortcutSelected(val shortcut: PaymentShortcut?) : SettingsAction
     data class AnalyticsEnabledChanged(val enabled: Boolean) : SettingsAction
+    data class AdPrivacyOptionsRequested(val activity: Activity) : SettingsAction
     data class PreviewPlayRequested(
         val context: Context,
         val uriString: String? = null,
@@ -67,6 +71,7 @@ class SettingsViewModel @Inject constructor(
     private val analyticsPreferencesStore: AnalyticsPreferencesStore,
     private val alarmRepository: AlarmDataRepository,
     private val telemetryTracker: TelemetryTracker,
+    private val adConsentManager: AdConsentManager,
 ) : AndroidViewModel(application) {
 
     private val _uiState = MutableStateFlow(SettingsUiState())
@@ -95,6 +100,7 @@ class SettingsViewModel @Inject constructor(
             started = SharingStarted.WhileSubscribed(5000),
             initialValue = false
         )
+    val adConsentState: StateFlow<AdConsentState> = adConsentManager.state
 
     // Preview player
     private var previewMediaPlayer: MediaPlayer? = null
@@ -134,6 +140,8 @@ class SettingsViewModel @Inject constructor(
             is SettingsAction.RingtoneSelected -> setRingtone(action.uri, action.name)
             is SettingsAction.PaymentShortcutSelected -> setPaymentShortcut(action.shortcut)
             is SettingsAction.AnalyticsEnabledChanged -> setAnalyticsEnabled(action.enabled)
+            is SettingsAction.AdPrivacyOptionsRequested ->
+                adConsentManager.showPrivacyOptionsForm(action.activity)
             is SettingsAction.PreviewPlayRequested -> playPreview(
                 action.context,
                 action.uriString,

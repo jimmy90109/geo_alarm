@@ -9,11 +9,12 @@ appcompat = "1.7.1"
 material = "1.13.0"
 
 # Compose
-composeBom = "2026.02.00"
+composeBom = "2026.06.00"
 activityCompose = "1.12.4"
 lifecycleRuntimeKtx = "2.10.0"
 material3 = "1.5.0-alpha14"
 glance = "1.2.0-rc01"
+graphicsPath = "1.1.0"
 
 # Navigation
 navigationCompose = "2.9.7"
@@ -30,6 +31,7 @@ ksp = "2.3.2"
 
 # Play Services
 playServicesLocation = "21.3.0"
+playServicesAds = "25.4.0"
 mapsCompose = "4.3.3"
 
 # Permissions
@@ -37,7 +39,7 @@ accompanistPermissions = "0.37.3"
 
 # Places SDK
 placesVersion = "4.1.0"
-datastore = "1.2.0"
+datastore = "1.2.1"
 
 # HyperIsland ToolKit
 hyperisland = "0.4.4"
@@ -53,6 +55,7 @@ junitPlatformLauncher = "1.13.4"
 junitPlatformEngine = "1.13.4"
 journeysJunitEngine = "0.2.1"
 telemetryDeckKotlinSdk = "6.3.0"
+userMessagingPlatform = "4.0.0"
 
 [libraries]
 androidx-core-ktx = { group = "androidx.core", name = "core-ktx", version.ref = "coreKtx" }
@@ -66,6 +69,7 @@ androidx-activity-compose = { group = "androidx.activity", name = "activity-comp
 androidx-compose-bom = { group = "androidx.compose", name = "compose-bom", version.ref = "composeBom" }
 androidx-ui = { group = "androidx.compose.ui", name = "ui" }
 androidx-ui-graphics = { group = "androidx.compose.ui", name = "ui-graphics" }
+androidx-graphics-path = { group = "androidx.graphics", name = "graphics-path", version.ref = "graphicsPath" }
 androidx-ui-tooling = { group = "androidx.compose.ui", name = "ui-tooling" }
 androidx-ui-tooling-preview = { group = "androidx.compose.ui", name = "ui-tooling-preview" }
 androidx-ui-test-manifest = { group = "androidx.compose.ui", name = "ui-test-manifest" }
@@ -80,6 +84,7 @@ androidx-room-runtime = { group = "androidx.room", name = "room-runtime", versio
 androidx-room-ktx = { group = "androidx.room", name = "room-ktx", version.ref = "room" }
 androidx-room-compiler = { group = "androidx.room", name = "room-compiler", version.ref = "room" }
 play-services-location = { group = "com.google.android.gms", name = "play-services-location", version.ref = "playServicesLocation" }
+play-services-ads = { group = "com.google.android.gms", name = "play-services-ads", version.ref = "playServicesAds" }
 maps-compose = { group = "com.google.maps.android", name = "maps-compose", version.ref = "mapsCompose" }
 accompanist-permissions = { group = "com.google.accompanist", name = "accompanist-permissions", version.ref = "accompanistPermissions" }
 kotlinx-serialization-json = { group = "org.jetbrains.kotlinx", name = "kotlinx-serialization-json", version.ref = "kotlinxSerializationJson" }
@@ -98,6 +103,7 @@ junit-platform-launcher = { group = "org.junit.platform", name = "junit-platform
 junit-platform-engine = { group = "org.junit.platform", name = "junit-platform-engine", version.ref = "junitPlatformEngine" }
 journeys-junit-engine = { group = "com.android.tools.journeys", name = "journeys-junit-engine", version.ref = "journeysJunitEngine" }
 telemetrydeck-kotlin-sdk = { group = "com.telemetrydeck", name = "kotlin-sdk", version.ref = "telemetryDeckKotlinSdk" }
+user-messaging-platform = { group = "com.google.android.ump", name = "user-messaging-platform", version.ref = "userMessagingPlatform" }
 
 [plugins]
 android-application = { id = "com.android.application", version.ref = "agp" }

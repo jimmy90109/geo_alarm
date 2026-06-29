@@ -1,7 +1,15 @@
 package com.github.jimmy90109.geoalarm.ui.components
 
 import androidx.compose.animation.Animatable
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.expandVertically
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.tween
+import androidx.compose.animation.shrinkVertically
+import androidx.compose.animation.slideInVertically
+import androidx.compose.animation.slideOutVertically
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -29,7 +37,10 @@ import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.drawBehind
@@ -46,6 +57,7 @@ import com.github.jimmy90109.geoalarm.data.Alarm
 import com.github.jimmy90109.geoalarm.data.AlarmSchedule
 import com.github.jimmy90109.geoalarm.data.ScheduleWithAlarm
 import com.github.jimmy90109.geoalarm.utils.TimeUtils
+import com.google.android.gms.ads.nativead.NativeAd
 
 /**
  * Displays the list of alarms and schedules with sections.
@@ -63,6 +75,7 @@ fun AlarmList(
     contentPadding: PaddingValues = PaddingValues(bottom = 80.dp),
     highlightedAlarmId: String? = null,
     highlightedScheduleId: String? = null,
+    homeNativeAd: NativeAd? = null,
     onHighlightFinished: () -> Unit = {},
 ) {
     val haptic = LocalHapticFeedback.current
@@ -109,6 +122,12 @@ fun AlarmList(
             }
         }
 
+        if (alarms.isNotEmpty() && homeNativeAd != null) {
+            item(key = "home_native_ad", span = { GridItemSpan(maxLineSpan) }) {
+                AnimatedHomeNativeAdCard(nativeAd = homeNativeAd)
+            }
+        }
+
         // All Alarms Section
         if (alarms.isNotEmpty()) {
             item(span = { GridItemSpan(maxLineSpan) }) {
@@ -148,6 +167,32 @@ fun AlarmList(
                 )
             }
         }
+    }
+}
+
+@Composable
+private fun AnimatedHomeNativeAdCard(nativeAd: NativeAd) {
+    var visible by remember(nativeAd) { mutableStateOf(false) }
+
+    LaunchedEffect(nativeAd) {
+        visible = true
+    }
+
+    AnimatedVisibility(
+        visible = visible,
+        enter = fadeIn(animationSpec = tween(durationMillis = 520, delayMillis = 140)) +
+            expandVertically(
+                animationSpec = tween(durationMillis = 820, easing = FastOutSlowInEasing),
+                expandFrom = Alignment.Top,
+            ) +
+            slideInVertically(
+                animationSpec = tween(durationMillis = 720, easing = FastOutSlowInEasing)
+            ) { it / 10 },
+        exit = fadeOut(animationSpec = tween(160)) +
+            shrinkVertically(animationSpec = tween(180)) +
+            slideOutVertically(animationSpec = tween(180)) { it / 5 },
+    ) {
+        HomeNativeAdCard(nativeAd = nativeAd)
     }
 }
 

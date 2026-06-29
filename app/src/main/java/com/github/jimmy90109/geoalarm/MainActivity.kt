@@ -17,6 +17,7 @@ import com.github.jimmy90109.geoalarm.appactions.AppActionResult
 import com.github.jimmy90109.geoalarm.appactions.CreateGeoAlarmUseCase
 import com.github.jimmy90109.geoalarm.appactions.CreateScheduleUseCase
 import com.github.jimmy90109.geoalarm.appactions.StartAlarmUseCase
+import com.github.jimmy90109.geoalarm.ads.AdConsentManager
 import com.github.jimmy90109.geoalarm.navigation.AppRoutes
 import androidx.navigation.compose.rememberNavController
 import com.github.jimmy90109.geoalarm.data.OnboardingRepository
@@ -61,6 +62,9 @@ class MainActivity : AppCompatActivity() {
     @Inject
     lateinit var currentLocationRepository: CurrentLocationRepository
 
+    @Inject
+    lateinit var adConsentManager: AdConsentManager
+
     private val homeViewModel: HomeViewModel by viewModels()
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -93,6 +97,7 @@ class MainActivity : AppCompatActivity() {
         lifecycleScope.launch {
             currentLocationRepository.warmUp()
         }
+        adConsentManager.requestConsentUpdate(this)
     }
 
     override fun onNewIntent(intent: Intent) {

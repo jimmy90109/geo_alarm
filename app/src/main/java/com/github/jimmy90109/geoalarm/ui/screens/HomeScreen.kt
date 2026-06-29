@@ -77,6 +77,7 @@ import com.github.jimmy90109.geoalarm.ui.components.PreciseLocationPermissionDia
 import com.github.jimmy90109.geoalarm.ui.components.ScheduleConflictDialog
 import com.github.jimmy90109.geoalarm.ui.components.SingleAlarmDialog
 import com.github.jimmy90109.geoalarm.util.FullScreenIntentPermissionHelper
+import com.github.jimmy90109.geoalarm.ads.HomeNativeAdState
 import com.github.jimmy90109.geoalarm.ui.viewmodel.HomeAction
 import com.github.jimmy90109.geoalarm.ui.viewmodel.HomeUiState
 import com.github.jimmy90109.geoalarm.ui.viewmodel.HomeViewModel
@@ -110,6 +111,7 @@ fun HomeScreen(
     val schedules by viewModel.schedules.collectAsStateWithLifecycle(initialValue = emptyList())
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val paymentShortcut by viewModel.paymentShortcut.collectAsStateWithLifecycle()
+    val homeNativeAdState by viewModel.homeNativeAdState.collectAsStateWithLifecycle()
     val fullscreenIntentPromptHandled by viewModel.fullscreenIntentPromptHandled.collectAsStateWithLifecycle()
     val context = LocalContext.current
     val lifecycleOwner = LocalLifecycleOwner.current
@@ -468,6 +470,7 @@ fun HomeScreen(
                                 },
                                 highlightedAlarmId = uiState.highlightedAlarmId,
                                 highlightedScheduleId = uiState.highlightedScheduleId,
+                                homeNativeAd = (homeNativeAdState as? HomeNativeAdState.Loaded)?.nativeAd,
                                 onHighlightFinished = { viewModel.onAction(HomeAction.HighlightCleared) },
                             )
                         }

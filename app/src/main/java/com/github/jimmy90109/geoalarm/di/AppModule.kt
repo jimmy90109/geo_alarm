@@ -11,6 +11,8 @@ import com.github.jimmy90109.geoalarm.appactions.GeocodingService
 import com.github.jimmy90109.geoalarm.appactions.ScheduleGateway
 import com.github.jimmy90109.geoalarm.analytics.AppAnalytics
 import com.github.jimmy90109.geoalarm.analytics.TelemetryDeckAppAnalytics
+import com.github.jimmy90109.geoalarm.ads.AdsEntitlementRepository
+import com.github.jimmy90109.geoalarm.ads.DefaultAdsEntitlementRepository
 import com.github.jimmy90109.geoalarm.data.AlarmDao
 import com.github.jimmy90109.geoalarm.data.AlarmDataRepository
 import com.github.jimmy90109.geoalarm.data.AnalyticsPreferencesRepository
@@ -108,6 +110,12 @@ abstract class RepositoryModule {
     abstract fun bindAnalyticsPreferencesStore(
         repository: AnalyticsPreferencesRepository
     ): AnalyticsPreferencesStore
+
+    @Binds
+    @Singleton
+    abstract fun bindAdsEntitlementRepository(
+        repository: DefaultAdsEntitlementRepository
+    ): AdsEntitlementRepository
 
     @Binds
     @Singleton

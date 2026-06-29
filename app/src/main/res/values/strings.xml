@@ -154,6 +154,8 @@
     <string name="analytics_disabled">Off</string>
     <string name="privacy_policy">Privacy Policy</string>
     <string name="view">View</string>
+    <string name="manage">Manage</string>
+    <string name="ad_privacy_options">Ad privacy options</string>
 
     <!-- About -->
     <string name="section_about">About</string>
@@ -165,6 +167,7 @@
     <string name="arrived_status">Arrived</string>
     <string name="section_all_alarm">All alarms</string>
     <string name="section_schedules">Schedules</string>
+    <string name="ad_label">Ad</string>
     <string name="new_alarm">New Alarm</string>
     <string name="new_schedule">New Schedule</string>
     <string name="edit_schedule">Edit Schedule</string>
