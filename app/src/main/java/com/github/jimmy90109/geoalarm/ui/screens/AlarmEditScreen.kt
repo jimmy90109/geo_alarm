@@ -273,6 +273,17 @@ fun AlarmEditScreen(
                 uiState = uiState,
                 cameraPositionState = cameraPositionState,
                 isDetailsStep = isDetailsStep,
+                screenTitle = if (uiState.existingAlarm != null) {
+                    stringResource(R.string.edit_alarm)
+                } else {
+                    stringResource(R.string.add_alarm)
+                },
+                nameLabel = stringResource(R.string.alarm_name),
+                namePlaceholder = stringResource(R.string.enter_alarm_name),
+                iconPickerTitle = stringResource(R.string.select_alarm_icon),
+                radiusRange = 500f..5000f,
+                radiusSteps = 45,
+                disabledNextLabel = stringResource(R.string.tap_map_to_select_place),
                 onBack = ::handleMapStepBack,
                 onSearch = {
                     viewModel.onAction(AlarmEditAction.StartInAppSearch(cameraPositionState.position.target))
@@ -302,6 +313,17 @@ fun AlarmEditScreen(
                 uiState = uiState,
                 cameraPositionState = cameraPositionState,
                 isDetailsStep = isDetailsStep,
+                screenTitle = if (uiState.existingAlarm != null) {
+                    stringResource(R.string.edit_alarm)
+                } else {
+                    stringResource(R.string.add_alarm)
+                },
+                nameLabel = stringResource(R.string.alarm_name),
+                namePlaceholder = stringResource(R.string.enter_alarm_name),
+                iconPickerTitle = stringResource(R.string.select_alarm_icon),
+                radiusRange = 500f..5000f,
+                radiusSteps = 45,
+                disabledNextLabel = stringResource(R.string.tap_map_to_select_place),
                 onBack = ::handleMapStepBack,
                 onSearch = {
                     viewModel.onAction(AlarmEditAction.StartInAppSearch(cameraPositionState.position.target))
@@ -357,10 +379,17 @@ fun AlarmEditScreen(
 }
 
 @Composable
-private fun AlarmEditPortraitLayout(
+fun AlarmEditPortraitLayout(
     uiState: AlarmEditUiState,
     cameraPositionState: CameraPositionState,
     isDetailsStep: Boolean,
+    screenTitle: String,
+    nameLabel: String,
+    namePlaceholder: String,
+    iconPickerTitle: String,
+    radiusRange: ClosedFloatingPointRange<Float>,
+    radiusSteps: Int,
+    disabledNextLabel: String,
     onBack: () -> Unit,
     onSearch: () -> Unit,
     onSearchQueryChange: (String) -> Unit,
@@ -417,6 +446,9 @@ private fun AlarmEditPortraitLayout(
                 selectedIconKey = uiState.selectedIconKey,
                 saveEnabled = uiState.name.isNotBlank() && uiState.selectedPosition != null,
                 isLandscape = false,
+                nameLabel = nameLabel,
+                namePlaceholder = namePlaceholder,
+                iconPickerTitle = iconPickerTitle,
                 onNameChange = onNameChange,
                 onIconSelected = onIconSelected,
                 onBackToMap = {
@@ -436,6 +468,10 @@ private fun AlarmEditPortraitLayout(
             AlarmEditPortraitStepOnePage(
                 uiState = uiState,
                 cameraPositionState = cameraPositionState,
+                screenTitle = screenTitle,
+                radiusRange = radiusRange,
+                radiusSteps = radiusSteps,
+                disabledNextLabel = disabledNextLabel,
                 onBack = onBack,
                 onSearch = onSearch,
                 onSearchQueryChange = onSearchQueryChange,
@@ -469,10 +505,17 @@ private fun AlarmEditPortraitLayout(
 }
 
 @Composable
-private fun AlarmEditLandscapeLayout(
+fun AlarmEditLandscapeLayout(
     uiState: AlarmEditUiState,
     cameraPositionState: CameraPositionState,
     isDetailsStep: Boolean,
+    screenTitle: String,
+    nameLabel: String,
+    namePlaceholder: String,
+    iconPickerTitle: String,
+    radiusRange: ClosedFloatingPointRange<Float>,
+    radiusSteps: Int,
+    disabledNextLabel: String,
     onBack: () -> Unit,
     onSearch: () -> Unit,
     onSearchQueryChange: (String) -> Unit,
@@ -533,6 +576,9 @@ private fun AlarmEditLandscapeLayout(
                 selectedIconKey = uiState.selectedIconKey,
                 saveEnabled = uiState.name.isNotBlank() && uiState.selectedPosition != null,
                 isLandscape = true,
+                nameLabel = nameLabel,
+                namePlaceholder = namePlaceholder,
+                iconPickerTitle = iconPickerTitle,
                 onNameChange = onNameChange,
                 onIconSelected = onIconSelected,
                 onBackToMap = {
@@ -552,6 +598,10 @@ private fun AlarmEditLandscapeLayout(
             AlarmEditLandscapeStepOnePage(
                 uiState = uiState,
                 cameraPositionState = cameraPositionState,
+                screenTitle = screenTitle,
+                radiusRange = radiusRange,
+                radiusSteps = radiusSteps,
+                disabledNextLabel = disabledNextLabel,
                 onBack = onBack,
                 onSearch = onSearch,
                 onSearchQueryChange = onSearchQueryChange,
@@ -588,6 +638,10 @@ private fun AlarmEditLandscapeLayout(
 private fun AlarmEditPortraitStepOnePage(
     uiState: AlarmEditUiState,
     cameraPositionState: CameraPositionState,
+    screenTitle: String,
+    radiusRange: ClosedFloatingPointRange<Float>,
+    radiusSteps: Int,
+    disabledNextLabel: String,
     onBack: () -> Unit,
     onSearch: () -> Unit,
     onSearchQueryChange: (String) -> Unit,
@@ -632,6 +686,7 @@ private fun AlarmEditPortraitStepOnePage(
 
         AlarmEditTopControl(
             uiState = uiState,
+            title = screenTitle,
             onBack = onBack,
             onSearch = onSearch,
             onSearchQueryChange = onSearchQueryChange,
@@ -665,6 +720,9 @@ private fun AlarmEditPortraitStepOnePage(
         ) {
             AlarmEditControlSwitcher(
                 uiState = uiState,
+                radiusRange = radiusRange,
+                radiusSteps = radiusSteps,
+                disabledNextLabel = disabledNextLabel,
                 onRadiusChange = onRadiusChange,
                 onNext = onNext,
                 onDelete = onDelete,
@@ -691,6 +749,10 @@ private fun AlarmEditPortraitStepOnePage(
 private fun AlarmEditLandscapeStepOnePage(
     uiState: AlarmEditUiState,
     cameraPositionState: CameraPositionState,
+    screenTitle: String,
+    radiusRange: ClosedFloatingPointRange<Float>,
+    radiusSteps: Int,
+    disabledNextLabel: String,
     onBack: () -> Unit,
     onSearch: () -> Unit,
     onSearchQueryChange: (String) -> Unit,
@@ -742,6 +804,7 @@ private fun AlarmEditLandscapeStepOnePage(
             ) {
                 AlarmEditTopControl(
                     uiState = uiState,
+                    title = screenTitle,
                     onBack = onBack,
                     onSearch = onSearch,
                     onSearchQueryChange = onSearchQueryChange,
@@ -760,6 +823,9 @@ private fun AlarmEditLandscapeStepOnePage(
                 AnimatedVisibility(visible = uiState.controlMode != AlarmEditControlMode.SearchInput) {
                     AlarmEditControlSwitcher(
                         uiState = uiState,
+                        radiusRange = radiusRange,
+                        radiusSteps = radiusSteps,
+                        disabledNextLabel = disabledNextLabel,
                         onRadiusChange = onRadiusChange,
                         onNext = onNext,
                         onDelete = onDelete,
@@ -791,6 +857,9 @@ private fun AlarmDetailsForm(
     selectedIconKey: String,
     saveEnabled: Boolean,
     isLandscape: Boolean,
+    nameLabel: String,
+    namePlaceholder: String,
+    iconPickerTitle: String,
     onNameChange: (String) -> Unit,
     onIconSelected: (String) -> Unit,
     onBackToMap: () -> Unit,
@@ -831,15 +900,15 @@ private fun AlarmDetailsForm(
                         OutlinedTextField(
                             value = name,
                             onValueChange = onNameChange,
-                            label = { Text(stringResource(R.string.alarm_name)) },
-                            placeholder = { Text(stringResource(R.string.enter_alarm_name)) },
+                            label = { Text(nameLabel) },
+                            placeholder = { Text(namePlaceholder) },
                             singleLine = true,
                             modifier = Modifier.fillMaxWidth()
                         )
                     }
                     item(span = { GridItemSpan(maxLineSpan) }) {
                         Text(
-                            text = stringResource(R.string.select_alarm_icon),
+                            text = iconPickerTitle,
                             style = MaterialTheme.typography.titleMedium,
                             color = MaterialTheme.colorScheme.onSurface
                         )
@@ -874,14 +943,14 @@ private fun AlarmDetailsForm(
                 OutlinedTextField(
                     value = name,
                     onValueChange = onNameChange,
-                    label = { Text(stringResource(R.string.alarm_name)) },
-                    placeholder = { Text(stringResource(R.string.enter_alarm_name)) },
+                    label = { Text(nameLabel) },
+                    placeholder = { Text(namePlaceholder) },
                     singleLine = true,
                     modifier = Modifier.fillMaxWidth()
                 )
 
                 Text(
-                    text = stringResource(R.string.select_alarm_icon),
+                    text = iconPickerTitle,
                     style = MaterialTheme.typography.titleMedium,
                     color = MaterialTheme.colorScheme.onSurface
                 )
@@ -1211,6 +1280,7 @@ private fun AlarmEditSuggestionList(
 @Composable
 private fun AlarmEditTopControl(
     uiState: AlarmEditUiState,
+    title: String,
     onBack: () -> Unit,
     onSearch: () -> Unit,
     onSearchQueryChange: (String) -> Unit,
@@ -1227,10 +1297,7 @@ private fun AlarmEditTopControl(
     com.github.jimmy90109.geoalarm.ui.components.TopAppBar(
         modifier = modifier,
         title = {
-            Text(
-                if (uiState.existingAlarm != null) stringResource(R.string.edit_alarm)
-                else stringResource(R.string.add_alarm)
-            )
+            Text(title)
         },
         showAlternateTitle = showSearchField,
         alternateTitle = {
@@ -1346,6 +1413,9 @@ private fun AlarmEditTopSearchField(
 @Composable
 private fun AlarmEditControlSwitcher(
     uiState: AlarmEditUiState,
+    radiusRange: ClosedFloatingPointRange<Float>,
+    radiusSteps: Int,
+    disabledNextLabel: String,
     onRadiusChange: (Float) -> Unit,
     onNext: () -> Unit,
     onDelete: () -> Unit,
@@ -1369,11 +1439,17 @@ private fun AlarmEditControlSwitcher(
                 radius = uiState.radius,
                 onRadiusChange = onRadiusChange,
                 onPrimaryClick = onNext,
-                primaryButtonLabel = stringResource(R.string.next_step),
                 primaryEnabled = uiState.selectedPosition != null,
+                primaryButtonLabel = if (uiState.selectedPosition == null) {
+                    disabledNextLabel
+                } else {
+                    stringResource(R.string.next_step)
+                },
                 isEditMode = uiState.existingAlarm != null,
                 onDeleteClick = onDelete,
                 elevation = elevation,
+                valueRange = radiusRange,
+                steps = radiusSteps,
             )
 
             AlarmEditControlMode.SearchInput -> Unit
@@ -1432,6 +1508,8 @@ fun AlarmEditRadiusControl(
     isEditMode: Boolean = false,
     onDeleteClick: () -> Unit = {},
     elevation: androidx.compose.ui.unit.Dp = 0.dp,
+    valueRange: ClosedFloatingPointRange<Float> = 500f..5000f,
+    steps: Int = 45,
 ) {
     val view = LocalView.current
     val distanceLocale = LocalConfiguration.current.locales[0]
@@ -1461,8 +1539,8 @@ fun AlarmEditRadiusControl(
                         onRadiusChange(it)
                     }
                 },
-                valueRange = 500f..5000f,
-                steps = 45
+                valueRange = valueRange,
+                steps = steps
             )
             Spacer(modifier = Modifier.height(16.dp))
 

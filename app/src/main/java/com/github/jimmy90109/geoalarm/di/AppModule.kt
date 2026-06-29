@@ -19,6 +19,9 @@ import com.github.jimmy90109.geoalarm.data.AnalyticsPreferencesRepository
 import com.github.jimmy90109.geoalarm.data.AnalyticsPreferencesStore
 import com.github.jimmy90109.geoalarm.data.AlarmRepository
 import com.github.jimmy90109.geoalarm.data.AppDatabase
+import com.github.jimmy90109.geoalarm.data.PlaceReminderDao
+import com.github.jimmy90109.geoalarm.data.PlaceReminderDataRepository
+import com.github.jimmy90109.geoalarm.data.PlaceReminderRepository
 import com.github.jimmy90109.geoalarm.data.ScheduleDao
 import com.github.jimmy90109.geoalarm.data.location.AndroidCurrentLocationClient
 import com.github.jimmy90109.geoalarm.data.location.AndroidAlarmActivationPermissionChecker
@@ -58,6 +61,9 @@ object DatabaseModule {
 
     @Provides
     fun provideScheduleDao(database: AppDatabase): ScheduleDao = database.scheduleDao()
+
+    @Provides
+    fun providePlaceReminderDao(database: AppDatabase): PlaceReminderDao = database.placeReminderDao()
 }
 
 @Module
@@ -68,6 +74,12 @@ abstract class RepositoryModule {
     abstract fun bindAlarmDataRepository(
         repository: AlarmRepository
     ): AlarmDataRepository
+
+    @Binds
+    @Singleton
+    abstract fun bindPlaceReminderDataRepository(
+        repository: PlaceReminderRepository
+    ): PlaceReminderDataRepository
 
     @Binds
     @Singleton

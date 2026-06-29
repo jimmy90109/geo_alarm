@@ -11,6 +11,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Alarm
+import androidx.compose.material.icons.filled.Notifications
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
@@ -38,9 +39,9 @@ import com.github.jimmy90109.geoalarm.ui.theme.GeoAlarmTheme
 enum class NavTab(
     @StringRes val labelRes: Int, val iconVec: ImageVector
 ) {
-    HOME(R.string.tab_alarms, Icons.Filled.Alarm), SETTINGS(
-        R.string.settings, Icons.Filled.Settings
-    )
+    HOME(R.string.tab_alarms, Icons.Filled.Alarm),
+    REMINDERS(R.string.tab_reminders, Icons.Filled.Notifications),
+    SETTINGS(R.string.settings, Icons.Filled.Settings)
 }
 
 @OptIn(ExperimentalMaterial3ExpressiveApi::class)
@@ -49,6 +50,7 @@ fun BottomNavBar(
     modifier: Modifier = Modifier,
     currentTab: NavTab,
     onHomeClick: () -> Unit,
+    onRemindersClick: () -> Unit,
     onSettingsClick: () -> Unit,
     showSettingsUpdateDot: Boolean = false,
 ) {
@@ -62,6 +64,7 @@ fun BottomNavBar(
             val selected = currentTab == tab
             val onClick = when (tab) {
                 NavTab.HOME -> onHomeClick
+                NavTab.REMINDERS -> onRemindersClick
                 NavTab.SETTINGS -> onSettingsClick
             }
 
@@ -129,6 +132,7 @@ fun AppNavigationRail(
     modifier: Modifier = Modifier,
     currentTab: NavTab,
     onHomeClick: () -> Unit,
+    onRemindersClick: () -> Unit,
     onSettingsClick: () -> Unit,
     showSettingsUpdateDot: Boolean = false,
 ) {
@@ -143,6 +147,7 @@ fun AppNavigationRail(
             val selected = currentTab == tab
             val onClick = when (tab) {
                 NavTab.HOME -> onHomeClick
+                NavTab.REMINDERS -> onRemindersClick
                 NavTab.SETTINGS -> onSettingsClick
             }
 
@@ -209,6 +214,7 @@ private fun BottomNavBarPreview() {
             BottomNavBar(
                 currentTab = NavTab.HOME,
                 onHomeClick = {},
+                onRemindersClick = {},
                 onSettingsClick = {},
                 showSettingsUpdateDot = true
             )
@@ -223,6 +229,7 @@ private fun NavigationRailPreview() {
         AppNavigationRail(
             currentTab = NavTab.HOME,
             onHomeClick = {},
+            onRemindersClick = {},
             onSettingsClick = {},
             showSettingsUpdateDot = true
         )

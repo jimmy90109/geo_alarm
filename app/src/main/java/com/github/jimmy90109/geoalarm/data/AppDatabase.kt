@@ -8,18 +8,20 @@ import androidx.room.TypeConverters
 import androidx.room.AutoMigration
 
 @Database(
-    entities = [Alarm::class, AlarmSchedule::class],
-    version = 3,
+    entities = [Alarm::class, AlarmSchedule::class, PlaceReminder::class, PlaceReminderItem::class],
+    version = 4,
     exportSchema = true,
     autoMigrations = [
         AutoMigration(from = 1, to = 2),
-        AutoMigration(from = 2, to = 3)
+        AutoMigration(from = 2, to = 3),
+        AutoMigration(from = 3, to = 4)
     ]
 )
 @TypeConverters(Converters::class)
 abstract class AppDatabase : RoomDatabase() {
     abstract fun alarmDao(): AlarmDao
     abstract fun scheduleDao(): ScheduleDao
+    abstract fun placeReminderDao(): PlaceReminderDao
 
     companion object {
         @Volatile

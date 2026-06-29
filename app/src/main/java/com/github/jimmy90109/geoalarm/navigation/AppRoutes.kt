@@ -25,4 +25,10 @@ sealed interface AppRoutes {
     @Serializable
     data class ScheduleEdit(val scheduleId: String? = null) : AppRoutes
 
+    @Serializable
+    data class PlaceReminderEdit(val reminderId: String? = null) : AppRoutes
+
+    @Serializable
+    data class PlaceReminderDetail(val reminderId: String) : AppRoutes
+
 }

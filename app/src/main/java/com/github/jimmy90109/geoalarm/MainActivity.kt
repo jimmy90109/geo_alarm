@@ -41,7 +41,9 @@ class MainActivity : AppCompatActivity() {
     companion object {
         private const val TAG = "MainActivity"
         const val ACTION_ENABLE_ALARM_FROM_WIDGET = "ENABLE_ALARM_FROM_WIDGET"
+        const val ACTION_OPEN_PLACE_REMINDER = "OPEN_PLACE_REMINDER"
         const val EXTRA_WIDGET_ALARM_ID = "WIDGET_ALARM_ID"
+        const val EXTRA_PLACE_REMINDER_ID = "PLACE_REMINDER_ID"
     }
 
     @Inject
@@ -121,6 +123,9 @@ class MainActivity : AppCompatActivity() {
                     alarmTurnOffUseCase(alarmId, isArrivedTurnOff)
                 }
             }
+        } else if (intent.action == ACTION_OPEN_PLACE_REMINDER) {
+            recreate()
+            return
         } else if (intent.action == AppActionContract.ACTION_CREATE_GEO_ALARM) {
             handleCreateGeoAlarmIntent(intent)
         } else if (intent.action == AppActionContract.ACTION_CREATE_SCHEDULE) {
@@ -239,6 +244,10 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun resolveRequestedRoute(intent: Intent): AppRoutes? {
+        if (intent.action == ACTION_OPEN_PLACE_REMINDER) {
+            val reminderId = intent.getStringExtra(EXTRA_PLACE_REMINDER_ID)
+            if (!reminderId.isNullOrBlank()) return AppRoutes.PlaceReminderDetail(reminderId)
+        }
         resolveSharedPlaceRoute(intent)?.let { return it }
 
         val data = intent.data ?: return null

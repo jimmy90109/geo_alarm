@@ -28,7 +28,6 @@ import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.size
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
@@ -70,7 +69,6 @@ import com.github.jimmy90109.geoalarm.ui.components.BackgroundLocationPermission
 import com.github.jimmy90109.geoalarm.ui.components.DeleteErrorDialog
 import com.github.jimmy90109.geoalarm.ui.components.EditDisabledDialog
 import com.github.jimmy90109.geoalarm.ui.components.ExactAlarmPermissionDialog
-import com.github.jimmy90109.geoalarm.ui.components.HomeFabMenu
 import com.github.jimmy90109.geoalarm.ui.components.NotificationPermissionDialog
 import com.github.jimmy90109.geoalarm.ui.components.NotificationRationaleDialog
 import com.github.jimmy90109.geoalarm.ui.components.PreciseLocationPermissionDialog
@@ -174,8 +172,6 @@ fun HomeScreen(
     var pendingAlarm by remember { mutableStateOf<Alarm?>(null) }
     lateinit var continueAlarmEnable: (Alarm) -> Unit
 
-    // FAB Menu State
-    var showFabMenu by remember { mutableStateOf(false) }
     var showPaymentShortcutSheet by remember { mutableStateOf(false) }
 
     // Helper: Check location permission -> Enable Alarm
@@ -311,43 +307,8 @@ fun HomeScreen(
                 }
             )
         },
-        floatingActionButton = {
-            // Only show FAB if no alarm is active
-            if (activeAlarm == null) {
-                // FAB Menu (Expressive)
-                HomeFabMenu(
-                    modifier = Modifier.offset(y = 16.dp),
-                    expanded = showFabMenu,
-                    onToggle = { showFabMenu = !showFabMenu },
-                    alarms = alarms,
-                    onAddSchedule = {
-                        showFabMenu = false
-                        onAddSchedule()
-                    },
-                    onAddAlarm = {
-                        showFabMenu = false
-                        onAddAlarm()
-                    })
-            }
-        },
-
         ) { innerPadding ->
         Box {
-            // Scrim for FAB Menu
-            if (showFabMenu) {
-                Box(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .clickable(
-                            indication = null,
-                            interactionSource = remember { MutableInteractionSource() },
-                        ) {
-                            showFabMenu = false
-                        }
-                        .zIndex(1f) // Ensure it sits above content but below FAB if FAB is in Scaffold (it is)
-                )
-            }
-
             AnimatedContent(
                 targetState = activeAlarm,
                 transitionSpec = {
