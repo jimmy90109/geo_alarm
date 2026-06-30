@@ -1,26 +1,35 @@
 package com.github.jimmy90109.geoalarm.data.places
 
 import android.content.Context
+import android.graphics.Bitmap
+import android.graphics.BitmapFactory
+import android.graphics.ImageDecoder
+import android.net.Uri
 import android.text.Html
+import android.util.Log
 import com.google.android.gms.maps.model.LatLng
 import com.google.android.libraries.places.api.Places
 import com.google.android.libraries.places.api.model.AutocompleteSessionToken
 import com.google.android.libraries.places.api.model.CircularBounds
 import com.google.android.libraries.places.api.model.Place
-import com.google.android.libraries.places.api.net.FetchPhotoRequest
+import com.google.android.libraries.places.api.model.PhotoMetadata
 import com.google.android.libraries.places.api.net.FetchPlaceRequest
+import com.google.android.libraries.places.api.net.FetchResolvedPhotoUriRequest
 import com.google.android.libraries.places.api.net.FindAutocompletePredictionsRequest
 import dagger.hilt.android.qualifiers.ApplicationContext
+import java.net.URL
 import java.util.UUID
 import java.util.concurrent.ConcurrentHashMap
 import javax.inject.Inject
 import javax.inject.Singleton
 import kotlin.coroutines.resume
 import kotlin.coroutines.resumeWithException
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.suspendCancellableCoroutine
+import kotlinx.coroutines.withContext
 
 data class PlaceSuggestion(
     val placeId: String,
@@ -49,6 +58,7 @@ interface PlaceAutocompleteService {
 class AndroidPlaceAutocompleteService @Inject constructor(
     @ApplicationContext context: Context
 ) : PlaceAutocompleteService {
+    private val appContext = context.applicationContext
     private val placesClient = Places.createClient(context)
     private val sessions = ConcurrentHashMap<String, AutocompleteSessionToken>()
 
@@ -144,22 +154,7 @@ class AndroidPlaceAutocompleteService @Inject constructor(
         }
         val location = place.location ?: error("Place has no location")
         val photoMetadata = place.photoMetadatas?.firstOrNull()
-        val photo = photoMetadata?.let { metadata ->
-            runCatching {
-                suspendCancellableCoroutine { continuation ->
-                    placesClient.fetchPhoto(
-                        FetchPhotoRequest.builder(metadata)
-                            .setMaxWidth(PHOTO_MAX_WIDTH)
-                            .setMaxHeight(PHOTO_MAX_HEIGHT)
-                            .build()
-                    ).addOnSuccessListener { response ->
-                        if (continuation.isActive) continuation.resume(response.bitmap)
-                    }.addOnFailureListener { error ->
-                        if (continuation.isActive) continuation.resumeWithException(error)
-                    }
-                }
-            }.getOrNull()
-        }
+        val photo = photoMetadata?.let { fetchResolvedPhotoBitmap(it) }
         return PlaceCandidate(
             id = place.id ?: suggestion.placeId,
             name = place.displayName ?: suggestion.primaryText,
@@ -172,7 +167,38 @@ class AndroidPlaceAutocompleteService @Inject constructor(
         )
     }
 
+    private suspend fun fetchResolvedPhotoBitmap(metadata: PhotoMetadata): Bitmap? {
+        val request = FetchResolvedPhotoUriRequest.builder(metadata)
+            .setMaxWidth(PHOTO_MAX_WIDTH)
+            .setMaxHeight(PHOTO_MAX_HEIGHT)
+            .build()
+        val uri = suspendCancellableCoroutine { continuation ->
+            placesClient.fetchResolvedPhotoUri(request)
+                .addOnSuccessListener { response ->
+                    if (continuation.isActive) continuation.resume(response.uri)
+                }
+                .addOnFailureListener { error ->
+                    Log.w(TAG, "Failed to resolve place photo uri", error)
+                    if (continuation.isActive) continuation.resume(null)
+                }
+        }
+        return uri?.let { decodePhotoUri(it) }
+    }
+
+    private suspend fun decodePhotoUri(uri: Uri): Bitmap? = withContext(Dispatchers.IO) {
+        runCatching {
+            when (uri.scheme?.lowercase()) {
+                "http", "https" -> URL(uri.toString()).openStream().use(BitmapFactory::decodeStream)
+                else -> ImageDecoder.decodeBitmap(ImageDecoder.createSource(appContext.contentResolver, uri))
+            }
+        }.getOrElse { error ->
+            Log.w(TAG, "Failed to decode resolved place photo uri=$uri", error)
+            null
+        }
+    }
+
     private companion object {
+        const val TAG = "PlaceAutocompleteService"
         const val MAX_RESULTS = 5
         const val PHOTO_MAX_WIDTH = 640
         const val PHOTO_MAX_HEIGHT = 360

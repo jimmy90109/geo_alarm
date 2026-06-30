@@ -38,7 +38,7 @@ mapsCompose = "4.3.3"
 accompanistPermissions = "0.37.3"
 
 # Places SDK
-placesVersion = "4.1.0"
+placesVersion = "5.2.0"
 datastore = "1.2.1"
 
 # HyperIsland ToolKit
