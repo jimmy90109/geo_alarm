@@ -17,6 +17,11 @@ enum class PlaceTriggerType {
     DWELL
 }
 
+enum class PlaceReminderAttachmentType {
+    IMAGE,
+    VIDEO
+}
+
 @Entity(tableName = "place_reminders")
 data class PlaceReminder(
     @PrimaryKey val id: String = UUID.randomUUID().toString(),
@@ -61,4 +66,34 @@ data class PlaceReminderItem(
     val text: String,
     val checked: Boolean,
     val sortOrder: Int
+)
+
+@Entity(
+    tableName = "place_reminder_attachments",
+    foreignKeys = [
+        ForeignKey(
+            entity = PlaceReminder::class,
+            parentColumns = ["id"],
+            childColumns = ["reminderId"],
+            onDelete = ForeignKey.CASCADE
+        )
+    ],
+    indices = [
+        Index(value = ["reminderId"]),
+        Index(value = ["reminderId", "sortOrder"])
+    ]
+)
+data class PlaceReminderAttachment(
+    @PrimaryKey val id: String = UUID.randomUUID().toString(),
+    val reminderId: String,
+    val type: PlaceReminderAttachmentType,
+    val localPath: String,
+    val mimeType: String,
+    val displayName: String,
+    val sizeBytes: Long,
+    val durationMillis: Long?,
+    val width: Int?,
+    val height: Int?,
+    val sortOrder: Int,
+    val createdAt: Long
 )

@@ -8,7 +8,13 @@ import androidx.room.TypeConverters
 import androidx.room.AutoMigration
 
 @Database(
-    entities = [Alarm::class, AlarmSchedule::class, PlaceReminder::class, PlaceReminderItem::class],
+    entities = [
+        Alarm::class,
+        AlarmSchedule::class,
+        PlaceReminder::class,
+        PlaceReminderItem::class,
+        PlaceReminderAttachment::class
+    ],
     version = 4,
     exportSchema = true,
     autoMigrations = [

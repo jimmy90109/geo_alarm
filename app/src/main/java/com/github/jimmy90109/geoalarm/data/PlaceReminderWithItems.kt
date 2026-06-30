@@ -9,8 +9,16 @@ data class PlaceReminderWithItems(
         parentColumn = "id",
         entityColumn = "reminderId"
     )
-    val items: List<PlaceReminderItem>
+    val items: List<PlaceReminderItem>,
+    @Relation(
+        parentColumn = "id",
+        entityColumn = "reminderId"
+    )
+    val attachments: List<PlaceReminderAttachment>
 ) {
     val sortedItems: List<PlaceReminderItem>
         get() = items.sortedBy { it.sortOrder }
+
+    val sortedAttachments: List<PlaceReminderAttachment>
+        get() = attachments.sortedBy { it.sortOrder }
 }

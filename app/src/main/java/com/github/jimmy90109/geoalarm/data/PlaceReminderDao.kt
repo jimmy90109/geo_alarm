@@ -33,17 +33,35 @@ interface PlaceReminderDao {
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun upsertItems(items: List<PlaceReminderItem>)
 
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun upsertAttachments(attachments: List<PlaceReminderAttachment>)
+
     @Update
     suspend fun updateReminder(reminder: PlaceReminder)
 
     @Update
     suspend fun updateItem(item: PlaceReminderItem)
 
+    @Update
+    suspend fun updateAttachment(attachment: PlaceReminderAttachment)
+
     @Delete
     suspend fun deleteReminder(reminder: PlaceReminder)
 
+    @Delete
+    suspend fun deleteAttachment(attachment: PlaceReminderAttachment)
+
     @Query("DELETE FROM place_reminder_items WHERE reminderId = :reminderId")
     suspend fun deleteItemsForReminder(reminderId: String)
+
+    @Query("DELETE FROM place_reminder_attachments WHERE reminderId = :reminderId")
+    suspend fun deleteAttachmentsForReminder(reminderId: String)
+
+    @Query("SELECT * FROM place_reminder_attachments WHERE reminderId = :reminderId")
+    suspend fun getAttachmentsForReminder(reminderId: String): List<PlaceReminderAttachment>
+
+    @Query("SELECT * FROM place_reminder_attachments WHERE id = :attachmentId")
+    suspend fun getAttachment(attachmentId: String): PlaceReminderAttachment?
 
     @Query("UPDATE place_reminders SET enabled = :enabled, updatedAt = :updatedAt WHERE id = :id")
     suspend fun setEnabled(id: String, enabled: Boolean, updatedAt: Long)

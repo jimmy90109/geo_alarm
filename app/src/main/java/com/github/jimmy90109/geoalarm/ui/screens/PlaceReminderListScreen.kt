@@ -5,8 +5,8 @@ import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
@@ -18,7 +18,13 @@ import androidx.compose.foundation.lazy.grid.GridItemSpan
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.CheckCircle
+import androidx.compose.material.icons.filled.ErrorOutline
+import androidx.compose.material.icons.filled.Image
 import androidx.compose.material.icons.filled.LocationOn
+import androidx.compose.material.icons.filled.Place
+import androidx.compose.material.icons.filled.Videocam
+import androidx.compose.material3.AssistChip
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
@@ -27,6 +33,7 @@ import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.Icon
 import androidx.compose.material3.LargeFlexibleTopAppBar
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
@@ -47,15 +54,17 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
-import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.compose.LocalLifecycleOwner
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.github.jimmy90109.geoalarm.R
+import com.github.jimmy90109.geoalarm.data.PlaceReminderAttachmentType
 import com.github.jimmy90109.geoalarm.data.PlaceReminderWithItems
 import com.github.jimmy90109.geoalarm.ui.components.AlarmIconBadge
 import com.github.jimmy90109.geoalarm.ui.components.BackgroundLocationPermissionDialog
 import com.github.jimmy90109.geoalarm.ui.viewmodel.PlaceReminderListViewModel
+import com.github.jimmy90109.geoalarm.ui.viewmodel.PlaceReminderPermissionState
 
-@OptIn(ExperimentalMaterial3Api::class, ExperimentalMaterial3ExpressiveApi::class, ExperimentalLayoutApi::class)
+@OptIn(ExperimentalMaterial3Api::class, ExperimentalMaterial3ExpressiveApi::class)
 @Composable
 fun PlaceReminderListScreen(
     viewModel: PlaceReminderListViewModel,
@@ -141,9 +150,7 @@ fun PlaceReminderListScreen(
             }
         }
         lifecycleOwner.lifecycle.addObserver(observer)
-        onDispose {
-            lifecycleOwner.lifecycle.removeObserver(observer)
-        }
+        onDispose { lifecycleOwner.lifecycle.removeObserver(observer) }
     }
 
     Scaffold(
@@ -169,6 +176,19 @@ fun PlaceReminderListScreen(
             verticalArrangement = Arrangement.spacedBy(12.dp),
             horizontalArrangement = Arrangement.spacedBy(12.dp),
         ) {
+            item(span = { GridItemSpan(maxLineSpan) }) {
+                PlaceReminderDashboard(reminders, permissionState)
+            }
+            if (reminders.any { it.reminder.enabled } && !permissionState.canEnableReminder) {
+                item(span = { GridItemSpan(maxLineSpan) }) {
+                    PlaceReminderPermissionBanner(
+                        permissionState = permissionState,
+                        onPrimaryAction = {
+                            reminders.firstOrNull { it.reminder.enabled }?.reminder?.id?.let(requestEnableReminder)
+                        },
+                    )
+                }
+            }
             if (reminders.isEmpty()) {
                 item(span = { GridItemSpan(maxLineSpan) }) {
                     PlaceReminderEmptyState(onAddReminder = onAddReminder)
@@ -199,10 +219,98 @@ fun PlaceReminderListScreen(
                 pendingEnableReminderId = null
                 showBackgroundLocationDialog = false
             },
-            onOpenSettings = {
-                showBackgroundLocationDialog = false
-            },
+            onOpenSettings = { showBackgroundLocationDialog = false },
         )
+    }
+}
+
+@Composable
+private fun PlaceReminderDashboard(
+    reminders: List<PlaceReminderWithItems>,
+    permissionState: PlaceReminderPermissionState,
+) {
+    val enabledCount = reminders.count { it.reminder.enabled }
+    val lastTriggered = reminders.mapNotNull { it.reminder.lastTriggeredAt }.maxOrNull()
+    Card(
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainer),
+    ) {
+        Column(
+            modifier = Modifier.padding(16.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp),
+        ) {
+            Text(
+                text = stringResource(R.string.place_reminder_dashboard_title),
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.SemiBold,
+            )
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                StatusChip(
+                    icon = { Icon(Icons.Filled.CheckCircle, contentDescription = null) },
+                    label = stringResource(R.string.place_reminder_enabled_count, enabledCount),
+                )
+                StatusChip(
+                    icon = {
+                        Icon(
+                            if (permissionState.canEnableReminder) Icons.Filled.CheckCircle else Icons.Filled.ErrorOutline,
+                            contentDescription = null,
+                        )
+                    },
+                    label = if (permissionState.canEnableReminder) {
+                        stringResource(R.string.place_reminder_ready_status)
+                    } else {
+                        stringResource(R.string.place_reminder_needs_attention)
+                    },
+                )
+            }
+            Text(
+                text = if (lastTriggered == null) {
+                    stringResource(R.string.place_reminder_no_recent_trigger)
+                } else {
+                    stringResource(R.string.place_reminder_last_triggered, formatTime(lastTriggered))
+                },
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        }
+    }
+}
+
+@Composable
+private fun StatusChip(icon: @Composable () -> Unit, label: String) {
+    AssistChip(onClick = {}, leadingIcon = icon, label = { Text(label) })
+}
+
+@Composable
+private fun PlaceReminderPermissionBanner(
+    permissionState: PlaceReminderPermissionState,
+    onPrimaryAction: () -> Unit,
+) {
+    val missing = listOfNotNull(
+        stringResource(R.string.place_reminder_missing_precise).takeIf { !permissionState.hasPreciseLocation },
+        stringResource(R.string.place_reminder_missing_background).takeIf { !permissionState.hasBackgroundLocation },
+        stringResource(R.string.place_reminder_missing_notifications).takeIf { !permissionState.hasNotifications },
+        stringResource(R.string.place_reminder_missing_location_service).takeIf { !permissionState.isLocationServiceEnabled },
+    )
+    Card(colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.errorContainer)) {
+        Column(
+            modifier = Modifier.padding(16.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp),
+        ) {
+            Text(
+                text = stringResource(R.string.place_reminder_permission_title),
+                style = MaterialTheme.typography.titleMedium,
+                color = MaterialTheme.colorScheme.onErrorContainer,
+                fontWeight = FontWeight.SemiBold,
+            )
+            Text(
+                text = missing.joinToString(" · "),
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onErrorContainer,
+            )
+            OutlinedButton(onClick = onPrimaryAction) {
+                Text(stringResource(R.string.place_reminder_fix_permissions))
+            }
+        }
     }
 }
 
@@ -217,7 +325,7 @@ private fun PlaceReminderEmptyState(onAddReminder: () -> Unit) {
             verticalArrangement = Arrangement.spacedBy(12.dp),
         ) {
             Icon(
-                Icons.Filled.LocationOn,
+                Icons.Filled.Place,
                 contentDescription = null,
                 modifier = Modifier.size(40.dp),
                 tint = MaterialTheme.colorScheme.primary,
@@ -252,52 +360,92 @@ private fun PlaceReminderCard(
             .clickable(onClick = onClick),
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainer),
     ) {
-        Row(
+        Column(
             modifier = Modifier.padding(16.dp),
-            horizontalArrangement = Arrangement.spacedBy(12.dp),
-            verticalAlignment = Alignment.CenterVertically,
+            verticalArrangement = Arrangement.spacedBy(12.dp),
         ) {
-            AlarmIconBadge(iconKey = reminder.iconKey)
-            Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                Text(
-                    text = reminder.title,
-                    style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.SemiBold,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
-                )
-                Text(
-                    text = reminder.placeName,
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
-                )
+            Row(
+                horizontalArrangement = Arrangement.spacedBy(12.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                AlarmIconBadge(iconKey = reminder.iconKey)
+                Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                    Text(
+                        text = reminder.placeName,
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.SemiBold,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                    )
+                    Text(
+                        text = reminder.title,
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                    )
+                }
+                Switch(checked = reminder.enabled, onCheckedChange = onEnabledChange)
+            }
+            Text(
+                text = reminderSummary(reminderWithItems),
+                style = MaterialTheme.typography.bodyMedium,
+                maxLines = 2,
+                overflow = TextOverflow.Ellipsis,
+            )
+            PlaceReminderAttachmentStrip(reminderWithItems)
+            Row(
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Icon(Icons.Filled.LocationOn, contentDescription = null, modifier = Modifier.size(18.dp))
                 Text(
                     text = triggerText(reminder.triggerType, reminder.dwellMinutes),
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.primary,
+                    modifier = Modifier.weight(1f),
                 )
-                Text(
-                    text = reminderSummary(reminderWithItems),
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
-                )
-                reminder.lastTriggeredAt?.let {
+                checklistProgressText(reminderWithItems)?.let {
                     Text(
-                        text = stringResource(R.string.place_reminder_last_triggered, formatTime(it)),
-                        style = MaterialTheme.typography.labelSmall,
+                        text = it,
+                        style = MaterialTheme.typography.labelMedium,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
                 }
             }
-            Switch(
-                checked = reminder.enabled,
-                onCheckedChange = onEnabledChange,
-            )
         }
     }
 }
 
+@Composable
+private fun PlaceReminderAttachmentStrip(reminderWithItems: PlaceReminderWithItems) {
+    val attachments = reminderWithItems.sortedAttachments
+    if (attachments.isEmpty()) return
+    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+        attachments.take(4).forEach { attachment ->
+            Box(
+                modifier = Modifier
+                    .size(44.dp)
+                    .padding(1.dp),
+                contentAlignment = Alignment.Center,
+            ) {
+                Icon(
+                    if (attachment.type == PlaceReminderAttachmentType.IMAGE) {
+                        Icons.Filled.Image
+                    } else {
+                        Icons.Filled.Videocam
+                    },
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.primary,
+                )
+            }
+        }
+        if (attachments.size > 4) {
+            Text(
+                text = stringResource(R.string.place_reminder_more_attachments, attachments.size - 4),
+                style = MaterialTheme.typography.labelMedium,
+                modifier = Modifier.align(Alignment.CenterVertically),
+            )
+        }
+    }
+}

@@ -84,6 +84,7 @@ import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import com.github.jimmy90109.geoalarm.R
+import com.github.jimmy90109.geoalarm.data.PlaceReminderAttachmentType
 import com.github.jimmy90109.geoalarm.data.PlaceReminderType
 import com.github.jimmy90109.geoalarm.data.PlaceReminderWithItems
 import com.github.jimmy90109.geoalarm.data.PlaceTriggerType
@@ -174,7 +175,7 @@ fun triggerText(triggerType: PlaceTriggerType, dwellMinutes: Int?): String =
 @Composable
 fun reminderSummary(reminderWithItems: PlaceReminderWithItems): String {
     val reminder = reminderWithItems.reminder
-    return when (reminder.type) {
+    val contentSummary = when (reminder.type) {
         PlaceReminderType.TEXT -> reminder.content.ifBlank { reminder.title }
         PlaceReminderType.CHECKLIST -> {
             val total = reminderWithItems.items.size
@@ -186,6 +187,23 @@ fun reminderSummary(reminderWithItems: PlaceReminderWithItems): String {
             }
         }
     }
+    if (contentSummary.isNotBlank()) return contentSummary
+    val imageCount = reminderWithItems.attachments.count { it.type == PlaceReminderAttachmentType.IMAGE }
+    val videoCount = reminderWithItems.attachments.count { it.type == PlaceReminderAttachmentType.VIDEO }
+    return if (imageCount + videoCount > 0) {
+        stringResource(R.string.place_reminder_attachment_summary, imageCount, videoCount)
+    } else {
+        reminder.title
+    }
+}
+
+@Composable
+fun checklistProgressText(reminderWithItems: PlaceReminderWithItems): String? {
+    if (reminderWithItems.reminder.type != PlaceReminderType.CHECKLIST) return null
+    val total = reminderWithItems.items.size
+    if (total == 0) return null
+    val done = reminderWithItems.items.count { it.checked }
+    return stringResource(R.string.place_reminder_checklist_progress, done, total)
 }
 
 fun formatTime(epochMillis: Long): String =

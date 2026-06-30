@@ -27,4 +27,11 @@ class Converters {
     @TypeConverter
     fun toPlaceTriggerType(value: String): PlaceTriggerType =
         PlaceTriggerType.valueOf(value)
+
+    @TypeConverter
+    fun fromPlaceReminderAttachmentType(value: PlaceReminderAttachmentType): String = value.name
+
+    @TypeConverter
+    fun toPlaceReminderAttachmentType(value: String): PlaceReminderAttachmentType =
+        PlaceReminderAttachmentType.valueOf(value)
 }

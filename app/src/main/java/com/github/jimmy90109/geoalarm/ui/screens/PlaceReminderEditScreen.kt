@@ -9,6 +9,7 @@ import android.provider.Settings
 import androidx.activity.compose.BackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.activity.result.PickVisualMediaRequest
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -39,8 +40,10 @@ import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.LocationOn
+import androidx.compose.material.icons.filled.Image
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Search
+import androidx.compose.material.icons.filled.Videocam
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
@@ -85,6 +88,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import com.github.jimmy90109.geoalarm.R
 import com.github.jimmy90109.geoalarm.data.PlaceReminderType
+import com.github.jimmy90109.geoalarm.data.PlaceReminderAttachmentType
 import com.github.jimmy90109.geoalarm.data.PlaceReminderWithItems
 import com.github.jimmy90109.geoalarm.data.PlaceTriggerType
 import com.github.jimmy90109.geoalarm.ui.components.AlarmIconBadge
@@ -124,6 +128,11 @@ fun PlaceReminderEditScreen(
     onBack: (String?) -> Unit,
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
+    val attachmentPicker = rememberLauncherForActivityResult(
+        ActivityResultContracts.PickMultipleVisualMedia()
+    ) { uris ->
+        viewModel.onAction(PlaceReminderEditAction.AttachmentsSelected(uris))
+    }
     val configuration = LocalConfiguration.current
     val isLandscape = configuration.orientation == Configuration.ORIENTATION_LANDSCAPE
     val locationUiState = uiState.alarmEditUiState
@@ -304,6 +313,11 @@ fun PlaceReminderEditScreen(
         PlaceReminderEditContent(
             state = uiState,
             onAction = viewModel::onAction,
+            onPickAttachments = {
+                attachmentPicker.launch(
+                    PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageAndVideo)
+                )
+            },
             modifier = Modifier
                 .padding(innerPadding)
                 .fillMaxSize(),
@@ -315,6 +329,7 @@ fun PlaceReminderEditScreen(
 private fun PlaceReminderEditContent(
     state: PlaceReminderEditUiState,
     onAction: (PlaceReminderEditAction) -> Unit,
+    onPickAttachments: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val scrollState = rememberScrollState()
@@ -333,6 +348,10 @@ private fun PlaceReminderEditContent(
             placeholder = { Text(stringResource(R.string.place_reminder_name_placeholder)) },
             modifier = Modifier.fillMaxWidth(),
             singleLine = true,
+        )
+        PlaceReminderSelectedPlaceSection(
+            state = state,
+            onSelectPlace = { onAction(PlaceReminderEditAction.StartPlaceSelection) },
         )
         OptionGroup(
             title = stringResource(R.string.place_reminder_type),
@@ -381,9 +400,10 @@ private fun PlaceReminderEditContent(
                 }
             }
         }
-        PlaceReminderSelectedPlaceSection(
+        PlaceReminderAttachmentEditor(
             state = state,
-            onSelectPlace = { onAction(PlaceReminderEditAction.StartPlaceSelection) },
+            onPickAttachments = onPickAttachments,
+            onRemoveAttachment = { onAction(PlaceReminderEditAction.RemoveAttachment(it)) },
         )
         Text(
             text = stringResource(R.string.place_reminder_radius_hint),
@@ -479,6 +499,80 @@ private fun PlaceReminderSelectedPlaceSection(
             } else {
                 IconButton(onClick = onSelectPlace) {
                     Icon(Icons.Filled.Edit, contentDescription = stringResource(R.string.place_reminder_edit_place))
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun PlaceReminderAttachmentEditor(
+    state: PlaceReminderEditUiState,
+    onPickAttachments: () -> Unit,
+    onRemoveAttachment: (String) -> Unit,
+) {
+    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Text(
+                text = stringResource(R.string.place_reminder_attachments),
+                style = MaterialTheme.typography.titleSmall,
+                fontWeight = FontWeight.SemiBold,
+                modifier = Modifier.weight(1f),
+            )
+            OutlinedButton(onClick = onPickAttachments, enabled = !state.isAddingAttachments) {
+                Icon(Icons.Filled.Add, contentDescription = null)
+                Text(stringResource(R.string.place_reminder_add_attachment))
+            }
+        }
+        if (state.isAddingAttachments) {
+            Text(
+                text = stringResource(R.string.place_reminder_adding_attachments),
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        }
+        if (state.attachments.isEmpty()) {
+            Text(
+                text = stringResource(R.string.place_reminder_attachments_hint),
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        } else {
+            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                state.attachments.sortedBy { it.sortOrder }.forEach { attachment ->
+                    Card(colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainer)) {
+                        Row(
+                            modifier = Modifier.padding(12.dp),
+                            horizontalArrangement = Arrangement.spacedBy(12.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                        ) {
+                            Icon(
+                                if (attachment.type == PlaceReminderAttachmentType.IMAGE) {
+                                    Icons.Filled.Image
+                                } else {
+                                    Icons.Filled.Videocam
+                                },
+                                contentDescription = null,
+                                tint = MaterialTheme.colorScheme.primary,
+                            )
+                            Column(modifier = Modifier.weight(1f)) {
+                                Text(
+                                    text = attachment.displayName,
+                                    style = MaterialTheme.typography.bodyMedium,
+                                    maxLines = 1,
+                                    overflow = TextOverflow.Ellipsis,
+                                )
+                                Text(
+                                    text = stringResource(R.string.place_reminder_attachment_local),
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                )
+                            }
+                            IconButton(onClick = { onRemoveAttachment(attachment.id) }) {
+                                Icon(Icons.Filled.Delete, contentDescription = stringResource(R.string.delete))
+                            }
+                        }
+                    }
                 }
             }
         }
@@ -592,4 +686,3 @@ private fun PlacePickerSection(
         }
     }
 }
-

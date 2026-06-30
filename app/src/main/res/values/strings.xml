@@ -221,8 +221,8 @@
     <!-- Place reminders -->
     <string name="place_reminders_title">Place Reminders</string>
     <string name="place_reminder_add">Add place reminder</string>
-    <string name="place_reminder_empty_title">Arrive at a place and remember what to do</string>
-    <string name="place_reminder_empty_body">For example, show a grocery list at the supermarket, or remind you to turn on silent mode at school.</string>
+    <string name="place_reminder_empty_title">Choose a place and leave what you need there</string>
+    <string name="place_reminder_empty_body">Save notes, checklists, photos, or videos that should appear when you arrive.</string>
     <string name="place_reminder_empty_cta">Add place reminder</string>
     <string name="place_reminder_permission_title">Permissions needed for reliable reminders</string>
     <string name="place_reminder_permission_body">GeoAlarm needs background location to remind you when you arrive at saved places. Your route is not stored or uploaded.</string>
@@ -233,6 +233,12 @@
     <string name="place_reminder_allow_location">Allow location</string>
     <string name="place_reminder_allow_notifications">Allow notifications</string>
     <string name="place_reminder_refresh_status">Refresh</string>
+    <string name="place_reminder_dashboard_title">Place notes ready for arrival</string>
+    <string name="place_reminder_enabled_count">%d active</string>
+    <string name="place_reminder_ready_status">Ready</string>
+    <string name="place_reminder_needs_attention">Needs attention</string>
+    <string name="place_reminder_no_recent_trigger">No recent reminders yet.</string>
+    <string name="place_reminder_fix_permissions">Fix permissions</string>
     <string name="place_reminder_last_triggered">%s reminded</string>
     <string name="place_reminder_create_title">New Place Reminder</string>
     <string name="place_reminder_edit_title">Edit Place Reminder</string>
@@ -265,6 +271,15 @@
     <string name="place_reminder_hours">%d hr</string>
     <string name="place_reminder_cooldown_today">Today only</string>
     <string name="place_reminder_checklist_summary">%1$s and %2$d items</string>
+    <string name="place_reminder_checklist_progress">%1$d/%2$d done</string>
+    <string name="place_reminder_attachment_summary">%1$d photos · %2$d videos</string>
+    <string name="place_reminder_more_attachments">+%d</string>
+    <string name="place_reminder_attachments">Attachments</string>
+    <string name="place_reminder_add_attachment">Add media</string>
+    <string name="place_reminder_adding_attachments">Adding media…</string>
+    <string name="place_reminder_attachments_hint">Add photos or videos that should be available when you arrive.</string>
+    <string name="place_reminder_attachment_local">Saved on this device</string>
+    <string name="place_reminder_trigger_area">Trigger area</string>
     <string name="place_reminder_edit_action">Edit</string>
     <string name="place_reminder_reset_checklist">Reset checklist</string>
     <string name="place_reminder_not_found">Reminder not found.</string>
@@ -273,6 +288,7 @@
     <string name="place_reminder_channel_name">Place reminders</string>
     <string name="place_reminder_channel_description">Reminders shown when you arrive at saved places</string>
     <string name="place_reminder_notification_title">Arrived at %s</string>
+    <string name="place_reminder_notification_attachment_body">%1$d photos and %2$d videos saved for this place</string>
     <plurals name="place_reminder_notification_checklist_body">
         <item quantity="one">Your checklist has %d item left</item>
         <item quantity="other">Your checklist has %d items left</item>

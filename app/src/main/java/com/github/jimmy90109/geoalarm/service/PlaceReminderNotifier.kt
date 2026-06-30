@@ -12,6 +12,7 @@ import androidx.core.app.NotificationCompat
 import androidx.core.content.ContextCompat
 import com.github.jimmy90109.geoalarm.MainActivity
 import com.github.jimmy90109.geoalarm.R
+import com.github.jimmy90109.geoalarm.data.PlaceReminderAttachmentType
 import com.github.jimmy90109.geoalarm.data.PlaceReminderType
 import com.github.jimmy90109.geoalarm.data.PlaceReminderWithItems
 import kotlin.math.absoluteValue
@@ -38,15 +39,7 @@ class PlaceReminderNotifier(private val context: Context) {
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
         )
 
-        val pendingCount = reminderWithItems.sortedItems.count { !it.checked }
-        val body = when (reminder.type) {
-            PlaceReminderType.TEXT -> reminder.content.ifBlank { reminder.title }
-            PlaceReminderType.CHECKLIST -> context.resources.getQuantityString(
-                R.plurals.place_reminder_notification_checklist_body,
-                pendingCount,
-                pendingCount,
-            )
-        }
+        val body = notificationBody(context, reminderWithItems)
         val notification = NotificationCompat.Builder(context, CHANNEL_ID)
             .setSmallIcon(R.drawable.ic_notification)
             .setContentTitle(context.getString(R.string.place_reminder_notification_title, reminder.placeName))
@@ -76,5 +69,29 @@ class PlaceReminderNotifier(private val context: Context) {
 
     companion object {
         private const val CHANNEL_ID = "place_reminder_channel"
+
+        fun notificationBody(context: Context, reminderWithItems: PlaceReminderWithItems): String {
+            val reminder = reminderWithItems.reminder
+            val pendingCount = reminderWithItems.sortedItems.count { !it.checked }
+            return when {
+                reminder.type == PlaceReminderType.CHECKLIST && reminderWithItems.items.isNotEmpty() ->
+                    context.resources.getQuantityString(
+                        R.plurals.place_reminder_notification_checklist_body,
+                        pendingCount,
+                        pendingCount,
+                    )
+                reminder.content.isNotBlank() -> reminder.content
+                reminderWithItems.attachments.isNotEmpty() -> {
+                    val imageCount = reminderWithItems.attachments.count {
+                        it.type == PlaceReminderAttachmentType.IMAGE
+                    }
+                    val videoCount = reminderWithItems.attachments.count {
+                        it.type == PlaceReminderAttachmentType.VIDEO
+                    }
+                    context.getString(R.string.place_reminder_notification_attachment_body, imageCount, videoCount)
+                }
+                else -> reminder.title
+            }
+        }
     }
 }

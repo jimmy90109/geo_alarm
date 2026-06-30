@@ -6,6 +6,7 @@ import android.content.Intent
 import android.content.res.Configuration
 import android.net.Uri
 import android.provider.Settings
+import androidx.core.content.FileProvider
 import androidx.activity.compose.BackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
@@ -38,9 +39,11 @@ import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Edit
+import androidx.compose.material.icons.filled.Image
 import androidx.compose.material.icons.filled.LocationOn
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Search
+import androidx.compose.material.icons.filled.Videocam
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
@@ -84,6 +87,7 @@ import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import com.github.jimmy90109.geoalarm.R
+import com.github.jimmy90109.geoalarm.data.PlaceReminderAttachmentType
 import com.github.jimmy90109.geoalarm.data.PlaceReminderType
 import com.github.jimmy90109.geoalarm.data.PlaceReminderWithItems
 import com.github.jimmy90109.geoalarm.data.PlaceTriggerType
@@ -110,6 +114,7 @@ import com.google.maps.android.compose.MarkerState
 import com.google.maps.android.compose.rememberCameraPositionState
 import java.text.DateFormat
 import java.util.Date
+import java.io.File
 
 private val DefaultPlaceReminderMapPosition = LatLng(25.034, 121.564)
 private val RadiusOptions = listOf(100, 150, 200, 300)
@@ -271,6 +276,11 @@ fun PlaceReminderDetailScreen(
                             AlarmIconBadge(iconKey = reminder.iconKey)
                             Column(modifier = Modifier.weight(1f)) {
                                 Text(reminder.placeName, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
+                                Text(
+                                    text = reminder.title,
+                                    style = MaterialTheme.typography.bodyMedium,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                )
                                 Text(triggerText(reminder.triggerType, reminder.dwellMinutes))
                             }
                             Switch(
@@ -283,6 +293,29 @@ fun PlaceReminderDetailScreen(
                                         viewModel.setEnabled(reminder.id, false)
                                     }
                                 },
+                            )
+                        }
+                        reminder.lastTriggeredAt?.let {
+                            Text(
+                                text = stringResource(R.string.place_reminder_last_triggered, formatTime(it)),
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            )
+                        }
+                    }
+                }
+                PlaceReminderMapPreview(current)
+                if (reminder.content.isNotBlank()) {
+                    Card(colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainer)) {
+                        Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                            Text(
+                                text = stringResource(R.string.place_reminder_content),
+                                style = MaterialTheme.typography.titleMedium,
+                                fontWeight = FontWeight.SemiBold,
+                            )
+                            Text(
+                                text = reminder.content,
+                                style = MaterialTheme.typography.bodyLarge,
                             )
                         }
                     }
@@ -328,14 +361,13 @@ fun PlaceReminderDetailScreen(
                             }
                         }
                     }
-                } else {
-                    Card(colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainer)) {
-                        Text(
-                            text = reminder.content,
-                            modifier = Modifier.padding(16.dp),
-                            style = MaterialTheme.typography.bodyLarge,
-                        )
-                    }
+                }
+                if (current.sortedAttachments.isNotEmpty()) {
+                    PlaceReminderAttachmentGrid(
+                        reminderWithItems = current,
+                        onAttachmentClick = { context.openPlaceReminderAttachment(it.localPath, it.mimeType) },
+                        onAttachmentDelete = { viewModel.deleteAttachment(it) },
+                    )
                 }
             }
         }
@@ -376,3 +408,114 @@ fun PlaceReminderDetailScreen(
     }
 }
 
+@Composable
+private fun PlaceReminderMapPreview(reminderWithItems: PlaceReminderWithItems) {
+    val reminder = reminderWithItems.reminder
+    val position = LatLng(reminder.latitude, reminder.longitude)
+    val cameraPositionState = rememberCameraPositionState {
+        this.position = CameraPosition.fromLatLngZoom(position, 15f)
+    }
+    Card(colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainer)) {
+        Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            Text(
+                text = stringResource(R.string.place_reminder_trigger_area),
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.SemiBold,
+            )
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(180.dp),
+            ) {
+                GoogleMap(
+                    modifier = Modifier.fillMaxSize(),
+                    cameraPositionState = cameraPositionState,
+                ) {
+                    Marker(state = MarkerState(position = position), title = reminder.placeName)
+                    Circle(
+                        center = position,
+                        radius = reminder.radiusMeters.toDouble(),
+                        strokeColor = MaterialTheme.colorScheme.primary,
+                        fillColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.16f),
+                    )
+                }
+            }
+            Text(
+                text = stringResource(R.string.radius_label, "${reminder.radiusMeters}"),
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        }
+    }
+}
+
+@Composable
+private fun PlaceReminderAttachmentGrid(
+    reminderWithItems: PlaceReminderWithItems,
+    onAttachmentClick: (com.github.jimmy90109.geoalarm.data.PlaceReminderAttachment) -> Unit,
+    onAttachmentDelete: (String) -> Unit,
+) {
+    Card(colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainer)) {
+        Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+            Text(
+                text = stringResource(R.string.place_reminder_attachments),
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.SemiBold,
+            )
+            LazyVerticalGrid(
+                columns = GridCells.Adaptive(120.dp),
+                modifier = Modifier.height(180.dp),
+                verticalArrangement = Arrangement.spacedBy(8.dp),
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+            ) {
+                items(reminderWithItems.sortedAttachments, key = { it.id }) { attachment ->
+                    Card(
+                        modifier = Modifier.clickable { onAttachmentClick(attachment) },
+                        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerHigh),
+                    ) {
+                        Column(
+                            modifier = Modifier.padding(12.dp),
+                            verticalArrangement = Arrangement.spacedBy(8.dp),
+                            horizontalAlignment = Alignment.CenterHorizontally,
+                        ) {
+                            Icon(
+                                if (attachment.type == PlaceReminderAttachmentType.IMAGE) {
+                                    Icons.Filled.Image
+                                } else {
+                                    Icons.Filled.Videocam
+                                },
+                                contentDescription = null,
+                                tint = MaterialTheme.colorScheme.primary,
+                                modifier = Modifier.size(36.dp),
+                            )
+                            Text(
+                                text = attachment.displayName,
+                                style = MaterialTheme.typography.bodySmall,
+                                maxLines = 2,
+                                overflow = TextOverflow.Ellipsis,
+                            )
+                            IconButton(onClick = { onAttachmentDelete(attachment.id) }) {
+                                Icon(Icons.Filled.Delete, contentDescription = stringResource(R.string.delete))
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+private fun Context.openPlaceReminderAttachment(localPath: String, mimeType: String) {
+    val file = File(localPath)
+    if (!file.exists()) return
+    val uri = FileProvider.getUriForFile(
+        this,
+        "$packageName.fileprovider",
+        file,
+    )
+    val intent = Intent(Intent.ACTION_VIEW).apply {
+        setDataAndType(uri, mimeType)
+        addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+    }
+    runCatching { startActivity(intent) }
+}

@@ -1,9 +1,12 @@
 package com.github.jimmy90109.geoalarm.ui.viewmodel
 
+import android.net.Uri
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.github.jimmy90109.geoalarm.data.DEFAULT_ALARM_ICON_KEY
 import com.github.jimmy90109.geoalarm.data.PlaceReminder
+import com.github.jimmy90109.geoalarm.data.PlaceReminderAttachment
+import com.github.jimmy90109.geoalarm.data.PlaceReminderAttachmentStore
 import com.github.jimmy90109.geoalarm.data.PlaceReminderDataRepository
 import com.github.jimmy90109.geoalarm.data.PlaceReminderItem
 import com.github.jimmy90109.geoalarm.data.PlaceReminderType
@@ -58,6 +61,8 @@ data class PlaceReminderEditUiState(
     val placeSuggestions: List<PlaceSuggestion> = emptyList(),
     val isLoadingSuggestions: Boolean = false,
     val candidateSource: PlaceCandidateSource? = null,
+    val attachments: List<PlaceReminderAttachment> = emptyList(),
+    val isAddingAttachments: Boolean = false,
     val savedReminderId: String? = null,
 ) {
     val isEditMode: Boolean get() = reminderId != null
@@ -67,10 +72,11 @@ data class PlaceReminderEditUiState(
                 PlaceReminderType.TEXT -> content.trim().isNotEmpty()
                 PlaceReminderType.CHECKLIST -> checklistItems.any { it.trim().isNotEmpty() }
             }
+            val hasAnyContent = hasContent || attachments.isNotEmpty()
             return title.trim().isNotEmpty() &&
                 selectedPosition != null &&
                 placeName.trim().isNotEmpty() &&
-                hasContent
+                hasAnyContent
         }
 
     val alarmEditUiState: AlarmEditUiState
@@ -126,6 +132,8 @@ sealed interface PlaceReminderEditAction {
     data class TriggerTypeChanged(val value: PlaceTriggerType) : PlaceReminderEditAction
     data class DwellMinutesChanged(val minutes: Int) : PlaceReminderEditAction
     data class CooldownMinutesChanged(val minutes: Int) : PlaceReminderEditAction
+    data class AttachmentsSelected(val uris: List<Uri>) : PlaceReminderEditAction
+    data class RemoveAttachment(val attachmentId: String) : PlaceReminderEditAction
     data object SaveClicked : PlaceReminderEditAction
 }
 
@@ -136,6 +144,7 @@ sealed interface PlaceReminderEditEffect {
 @HiltViewModel
 class PlaceReminderEditViewModel @Inject constructor(
     private val repository: PlaceReminderDataRepository,
+    private val attachmentStore: PlaceReminderAttachmentStore,
     private val currentLocationRepository: CurrentLocationRepository,
     private val placeSearchService: PlaceSearchService,
     private val placeAutocompleteService: PlaceAutocompleteService,
@@ -152,6 +161,8 @@ class PlaceReminderEditViewModel @Inject constructor(
     private var autocompleteRequestVersion = 0
     private var autocompleteJob: Job? = null
     private var autocompleteSessionId: String? = null
+    private val draftReminderId = UUID.randomUUID().toString()
+    private var originalAttachmentIds: Set<String> = emptySet()
 
     init {
         viewModelScope.launch {
@@ -201,6 +212,8 @@ class PlaceReminderEditViewModel @Inject constructor(
             is PlaceReminderEditAction.TriggerTypeChanged -> update { it.copy(triggerType = action.value) }
             is PlaceReminderEditAction.DwellMinutesChanged -> update { it.copy(dwellMinutes = action.minutes) }
             is PlaceReminderEditAction.CooldownMinutesChanged -> update { it.copy(cooldownMinutes = action.minutes) }
+            is PlaceReminderEditAction.AttachmentsSelected -> addAttachments(action.uris)
+            is PlaceReminderEditAction.RemoveAttachment -> removeAttachment(action.attachmentId)
             PlaceReminderEditAction.SaveClicked -> save()
         }
     }
@@ -217,6 +230,7 @@ class PlaceReminderEditViewModel @Inject constructor(
                 _uiState.value = _uiState.value.copy(isLoading = false)
                 return@launch
             }
+            originalAttachmentIds = reminderWithItems.sortedAttachments.map { it.id }.toSet()
             _uiState.value = _uiState.value.copy(
                 reminderId = reminder.id,
                 isLoading = false,
@@ -235,8 +249,37 @@ class PlaceReminderEditViewModel @Inject constructor(
                 triggerType = reminder.triggerType,
                 dwellMinutes = reminder.dwellMinutes ?: 3,
                 cooldownMinutes = reminder.cooldownMinutes,
+                attachments = reminderWithItems.sortedAttachments,
             )
         }
+    }
+
+    private fun addAttachments(uris: List<Uri>) {
+        if (uris.isEmpty() || _uiState.value.isAddingAttachments) return
+        val reminderId = _uiState.value.reminderId ?: draftReminderId
+        viewModelScope.launch {
+            _uiState.value = _uiState.value.copy(isAddingAttachments = true)
+            val existing = _uiState.value.attachments
+            val copied = uris.mapIndexedNotNull { index, uri ->
+                attachmentStore.copy(reminderId, uri, existing.size + index)
+            }
+            _uiState.value = _uiState.value.copy(
+                attachments = existing + copied,
+                isAddingAttachments = false,
+            )
+        }
+    }
+
+    private fun removeAttachment(attachmentId: String) {
+        val attachment = _uiState.value.attachments.firstOrNull { it.id == attachmentId } ?: return
+        if (attachment.id !in originalAttachmentIds) {
+            attachmentStore.delete(attachment.localPath)
+        }
+        _uiState.value = _uiState.value.copy(
+            attachments = _uiState.value.attachments
+                .filterNot { it.id == attachmentId }
+                .mapIndexed { index, item -> item.copy(sortOrder = index) }
+        )
     }
 
     private fun search() {
@@ -605,7 +648,7 @@ class PlaceReminderEditViewModel @Inject constructor(
         viewModelScope.launch {
             val now = System.currentTimeMillis()
             val existing = state.reminderId?.let { repository.getReminder(it)?.reminder }
-            val reminderId = existing?.id ?: UUID.randomUUID().toString()
+            val reminderId = existing?.id ?: draftReminderId
             val reminder = PlaceReminder(
                 id = reminderId,
                 title = state.title.trim(),
@@ -640,7 +683,10 @@ class PlaceReminderEditViewModel @Inject constructor(
             } else {
                 emptyList()
             }
-            repository.save(reminder, items)
+            val attachments = state.attachments.mapIndexed { index, attachment ->
+                attachment.copy(reminderId = reminderId, sortOrder = index)
+            }
+            repository.save(reminder, items, attachments)
             _uiState.value = state.copy(savedReminderId = reminderId)
             _effects.emit(PlaceReminderEditEffect.NavigateBack(reminderId))
         }

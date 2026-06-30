@@ -83,6 +83,12 @@ class PlaceReminderDetailViewModel @Inject constructor(
         }
     }
 
+    fun deleteAttachment(attachmentId: String) {
+        viewModelScope.launch {
+            repository.deleteAttachment(attachmentId)
+        }
+    }
+
     fun delete() {
         val current = reminder.value ?: return
         val context = getApplication<Application>()

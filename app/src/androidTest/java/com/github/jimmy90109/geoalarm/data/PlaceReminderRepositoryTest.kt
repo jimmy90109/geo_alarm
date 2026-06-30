@@ -24,7 +24,7 @@ class PlaceReminderRepositoryTest {
         database = Room.inMemoryDatabaseBuilder(context, AppDatabase::class.java)
             .allowMainThreadQueries()
             .build()
-        repository = PlaceReminderRepository(database.placeReminderDao())
+        repository = PlaceReminderRepository(database.placeReminderDao(), FakeAttachmentStore())
     }
 
     @After
@@ -58,13 +58,30 @@ class PlaceReminderRepositoryTest {
             PlaceReminderItem(reminderId = reminder.id, text = "Eggs", checked = false, sortOrder = 1),
         )
 
-        repository.save(reminder, items)
+        val attachments = listOf(
+            PlaceReminderAttachment(
+                reminderId = reminder.id,
+                type = PlaceReminderAttachmentType.IMAGE,
+                localPath = "/tmp/photo.jpg",
+                mimeType = "image/jpeg",
+                displayName = "photo.jpg",
+                sizeBytes = 100,
+                durationMillis = null,
+                width = null,
+                height = null,
+                sortOrder = 0,
+                createdAt = now,
+            )
+        )
+
+        repository.save(reminder, items, attachments)
         repository.setEnabled(reminder.id, true)
 
         val saved = repository.getReminder(reminder.id)
         assertNotNull(saved)
         assertTrue(saved!!.reminder.enabled)
         assertEquals(listOf("Milk", "Eggs"), saved.sortedItems.map { it.text })
+        assertEquals(listOf("photo.jpg"), saved.sortedAttachments.map { it.displayName })
 
         repository.updateItem(saved.sortedItems.first().copy(checked = true))
         val updated = repository.getReminder(reminder.id)!!
@@ -74,4 +91,14 @@ class PlaceReminderRepositoryTest {
         repository.delete(updated.reminder)
         assertTrue(repository.allReminders.first().isEmpty())
     }
+}
+
+private class FakeAttachmentStore : PlaceReminderAttachmentStore {
+    override suspend fun copy(
+        reminderId: String,
+        uri: android.net.Uri,
+        sortOrder: Int
+    ): PlaceReminderAttachment? = null
+
+    override fun delete(localPath: String) = Unit
 }

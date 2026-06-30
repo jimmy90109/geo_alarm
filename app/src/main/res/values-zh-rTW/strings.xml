@@ -221,8 +221,8 @@
     <!-- 地點提醒 -->
     <string name="place_reminders_title">地點提醒</string>
     <string name="place_reminder_add">新增地點提醒</string>
-    <string name="place_reminder_empty_title">抵達地點時，自動提醒你該做的事</string>
-    <string name="place_reminder_empty_body">例如到超市顯示購物清單，或到學校提醒開靜音。</string>
+    <string name="place_reminder_empty_title">選一個地點，把抵達後要看的東西放在那裡</string>
+    <string name="place_reminder_empty_body">可以放備忘、清單、照片或影片，抵達時再提醒你打開。</string>
     <string name="place_reminder_empty_cta">新增地點提醒</string>
     <string name="place_reminder_permission_title">需要權限才能穩定提醒</string>
     <string name="place_reminder_permission_body">GeoAlarm 需要背景定位，才能在你抵達指定地點時提醒你。我們不會持續顯示你的移動路線，只會用你設定的地點範圍判斷是否抵達。</string>
@@ -233,6 +233,12 @@
     <string name="place_reminder_allow_location">允許定位</string>
     <string name="place_reminder_allow_notifications">允許通知</string>
     <string name="place_reminder_refresh_status">重新檢查</string>
+    <string name="place_reminder_dashboard_title">抵達時可用的地點筆記</string>
+    <string name="place_reminder_enabled_count">%d 個啟用中</string>
+    <string name="place_reminder_ready_status">已就緒</string>
+    <string name="place_reminder_needs_attention">需要處理</string>
+    <string name="place_reminder_no_recent_trigger">還沒有近期提醒。</string>
+    <string name="place_reminder_fix_permissions">處理權限</string>
     <string name="place_reminder_last_triggered">%s 已提醒</string>
     <string name="place_reminder_create_title">新增地點提醒</string>
     <string name="place_reminder_edit_title">編輯地點提醒</string>
@@ -265,6 +271,15 @@
     <string name="place_reminder_hours">%d 小時</string>
     <string name="place_reminder_cooldown_today">今天不再提醒</string>
     <string name="place_reminder_checklist_summary">%1$s 等 %2$d 項</string>
+    <string name="place_reminder_checklist_progress">完成 %1$d/%2$d</string>
+    <string name="place_reminder_attachment_summary">%1$d 張照片 · %2$d 部影片</string>
+    <string name="place_reminder_more_attachments">+%d</string>
+    <string name="place_reminder_attachments">附件</string>
+    <string name="place_reminder_add_attachment">新增媒體</string>
+    <string name="place_reminder_adding_attachments">正在加入媒體…</string>
+    <string name="place_reminder_attachments_hint">加入抵達時可能會用到的照片或影片。</string>
+    <string name="place_reminder_attachment_local">已儲存在此裝置</string>
+    <string name="place_reminder_trigger_area">提醒範圍</string>
     <string name="place_reminder_edit_action">編輯</string>
     <string name="place_reminder_reset_checklist">重設清單</string>
     <string name="place_reminder_not_found">找不到這個提醒。</string>
@@ -273,6 +288,7 @@
     <string name="place_reminder_channel_name">地點提醒</string>
     <string name="place_reminder_channel_description">抵達已設定地點時顯示提醒</string>
     <string name="place_reminder_notification_title">到達%s</string>
+    <string name="place_reminder_notification_attachment_body">這個地點有 %1$d 張照片和 %2$d 部影片</string>
     <plurals name="place_reminder_notification_checklist_body">
         <item quantity="other">購物清單有 %d 項待買</item>
     </plurals>
