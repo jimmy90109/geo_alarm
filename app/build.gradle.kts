@@ -152,6 +152,7 @@ dependencies {
     implementation(libs.coil.compose)
     implementation(libs.coil.video)
     implementation(libs.reorderable)
+    implementation(libs.telephoto.zoomable.image.coil)
 
     // Hilt
     implementation(libs.hilt.android)

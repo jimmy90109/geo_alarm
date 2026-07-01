@@ -58,6 +58,7 @@ telemetryDeckKotlinSdk = "6.3.0"
 userMessagingPlatform = "4.0.0"
 coil = "2.6.0"
 reorderable = "2.4.3"
+telephoto = "0.19.0"
 
 [libraries]
 androidx-core-ktx = { group = "androidx.core", name = "core-ktx", version.ref = "coreKtx" }
@@ -109,6 +110,7 @@ user-messaging-platform = { group = "com.google.android.ump", name = "user-messa
 coil-compose = { group = "io.coil-kt", name = "coil-compose", version.ref = "coil" }
 coil-video = { group = "io.coil-kt", name = "coil-video", version.ref = "coil" }
 reorderable = { group = "sh.calvin.reorderable", name = "reorderable", version.ref = "reorderable" }
+telephoto-zoomable-image-coil = { group = "me.saket.telephoto", name = "zoomable-image-coil", version.ref = "telephoto" }
 
 [plugins]
 android-application = { id = "com.android.application", version.ref = "agp" }
