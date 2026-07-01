@@ -60,6 +60,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.ElevatedCard
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -74,6 +75,8 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalConfiguration
@@ -86,6 +89,10 @@ import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.compose.LocalLifecycleOwner
+import coil.compose.AsyncImage
+import coil.request.ImageRequest
+import coil.decode.VideoFrameDecoder
+
 import com.github.jimmy90109.geoalarm.R
 import com.github.jimmy90109.geoalarm.data.PlaceReminderAttachmentType
 import com.github.jimmy90109.geoalarm.data.PlaceReminderType
@@ -265,9 +272,11 @@ fun PlaceReminderDetailScreen(
                     .verticalScroll(rememberScrollState())
                     .padding(16.dp)
                     .padding(bottom = 64.dp),
-                verticalArrangement = Arrangement.spacedBy(16.dp),
+                verticalArrangement = Arrangement.spacedBy(20.dp),
             ) {
-                Card(colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainer)) {
+                ElevatedCard(
+                    colors = CardDefaults.elevatedCardColors(containerColor = MaterialTheme.colorScheme.surfaceContainer),
+                ) {
                     Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
                         Row(
                             horizontalArrangement = Arrangement.spacedBy(12.dp),
@@ -306,7 +315,7 @@ fun PlaceReminderDetailScreen(
                 }
                 PlaceReminderMapPreview(current)
                 if (reminder.content.isNotBlank()) {
-                    Card(colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainer)) {
+                    ElevatedCard(colors = CardDefaults.elevatedCardColors(containerColor = MaterialTheme.colorScheme.surfaceContainer)) {
                         Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                             Text(
                                 text = stringResource(R.string.place_reminder_content),
@@ -321,7 +330,7 @@ fun PlaceReminderDetailScreen(
                     }
                 }
                 if (reminder.type == PlaceReminderType.CHECKLIST) {
-                    Card(colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainer)) {
+                    ElevatedCard(colors = CardDefaults.elevatedCardColors(containerColor = MaterialTheme.colorScheme.surfaceContainer)) {
                         Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                             Row(verticalAlignment = Alignment.CenterVertically) {
                                 Text(
@@ -415,7 +424,7 @@ private fun PlaceReminderMapPreview(reminderWithItems: PlaceReminderWithItems) {
     val cameraPositionState = rememberCameraPositionState {
         this.position = CameraPosition.fromLatLngZoom(position, 15f)
     }
-    Card(colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainer)) {
+    ElevatedCard(colors = CardDefaults.elevatedCardColors(containerColor = MaterialTheme.colorScheme.surfaceContainer)) {
         Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
             Text(
                 text = stringResource(R.string.place_reminder_trigger_area),
@@ -455,7 +464,7 @@ private fun PlaceReminderAttachmentGrid(
     onAttachmentClick: (com.github.jimmy90109.geoalarm.data.PlaceReminderAttachment) -> Unit,
     onAttachmentDelete: (String) -> Unit,
 ) {
-    Card(colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainer)) {
+    ElevatedCard(colors = CardDefaults.elevatedCardColors(containerColor = MaterialTheme.colorScheme.surfaceContainer)) {
         Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
             Text(
                 text = stringResource(R.string.place_reminder_attachments),
@@ -463,39 +472,55 @@ private fun PlaceReminderAttachmentGrid(
                 fontWeight = FontWeight.SemiBold,
             )
             LazyVerticalGrid(
-                columns = GridCells.Adaptive(120.dp),
-                modifier = Modifier.height(180.dp),
+                columns = GridCells.Adaptive(100.dp),
+                modifier = Modifier.height(200.dp),
                 verticalArrangement = Arrangement.spacedBy(8.dp),
                 horizontalArrangement = Arrangement.spacedBy(8.dp),
             ) {
                 items(reminderWithItems.sortedAttachments, key = { it.id }) { attachment ->
+                    val isVideo = attachment.type == PlaceReminderAttachmentType.VIDEO
+                    val context = LocalContext.current
+                    val imageRequest = remember(attachment.localPath, isVideo) {
+                        ImageRequest.Builder(context)
+                            .data(attachment.localPath)
+                            .crossfade(true)
+                            .apply {
+                                if (isVideo) {
+                                    decoderFactory(VideoFrameDecoder.Factory())
+                                }
+                            }
+                            .build()
+                    }
                     Card(
-                        modifier = Modifier.clickable { onAttachmentClick(attachment) },
+                        modifier = Modifier
+                            .height(100.dp)
+                            .clickable { onAttachmentClick(attachment) },
                         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerHigh),
+                        shape = RoundedCornerShape(12.dp)
                     ) {
-                        Column(
-                            modifier = Modifier.padding(12.dp),
-                            verticalArrangement = Arrangement.spacedBy(8.dp),
-                            horizontalAlignment = Alignment.CenterHorizontally,
+                        Box(
+                            modifier = Modifier.fillMaxSize(),
+                            contentAlignment = Alignment.Center,
                         ) {
-                            Icon(
-                                if (attachment.type == PlaceReminderAttachmentType.IMAGE) {
-                                    Icons.Filled.Image
-                                } else {
-                                    Icons.Filled.Videocam
-                                },
-                                contentDescription = null,
-                                tint = MaterialTheme.colorScheme.primary,
-                                modifier = Modifier.size(36.dp),
+                            AsyncImage(
+                                model = imageRequest,
+                                contentDescription = attachment.displayName,
+                                modifier = Modifier.fillMaxSize(),
+                                contentScale = ContentScale.Crop,
                             )
-                            Text(
-                                text = attachment.displayName,
-                                style = MaterialTheme.typography.bodySmall,
-                                maxLines = 2,
-                                overflow = TextOverflow.Ellipsis,
-                            )
-                            IconButton(onClick = { onAttachmentDelete(attachment.id) }) {
-                                Icon(Icons.Filled.Delete, contentDescription = stringResource(R.string.delete))
+                            if (isVideo) {
+                                Box(
+                                    modifier = Modifier
+                                        .fillMaxSize()
+                                        .padding(4.dp),
+                                    contentAlignment = Alignment.BottomEnd
+                                ) {
+                                    Icon(
+                                        Icons.Filled.Videocam,
+                                        contentDescription = null,
+                                        tint = androidx.compose.ui.graphics.Color.White,
+                                    )
+                                }
                             }
                         }
                     }

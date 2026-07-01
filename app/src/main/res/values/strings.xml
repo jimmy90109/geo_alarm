@@ -227,7 +227,7 @@
     <string name="place_reminder_permission_title">Permissions needed for reliable reminders</string>
     <string name="place_reminder_permission_body">GeoAlarm needs background location to remind you when you arrive at saved places. Your route is not stored or uploaded.</string>
     <string name="place_reminder_missing_precise">Precise location is off</string>
-    <string name="place_reminder_missing_background">Background location is off</string>
+    <string name="place_reminder_missing_background">Allow background location so reminders can still trigger after you leave the app</string>
     <string name="place_reminder_missing_notifications">Notifications are off</string>
     <string name="place_reminder_missing_location_service">System location is off</string>
     <string name="place_reminder_allow_location">Allow location</string>
@@ -244,6 +244,9 @@
     <string name="place_reminder_edit_title">Edit Place Reminder</string>
     <string name="place_reminder_detail_title">Place Reminder</string>
     <string name="place_reminder_create_button">Create reminder</string>
+    <string name="place_reminder_step_place">Name and place</string>
+    <string name="place_reminder_step_content">What to show</string>
+    <string name="place_reminder_step_trigger">When to remind</string>
     <string name="place_reminder_name">Reminder name</string>
     <string name="place_reminder_name_placeholder">Example: Grocery list</string>
     <string name="place_reminder_type">Reminder type</string>
@@ -263,13 +266,13 @@
     <string name="place_reminder_trigger_dwell">After staying</string>
     <string name="place_reminder_trigger_enter_summary">Remind on arrival</string>
     <string name="place_reminder_trigger_dwell_summary">Remind after staying %d minutes</string>
-    <string name="place_reminder_dwell_time">Stay duration</string>
+    <string name="place_reminder_dwell_time">Stay duration (min)</string>
     <string name="place_reminder_minutes">%d min</string>
     <string name="place_reminder_radius">Reminder range</string>
     <string name="place_reminder_radius_hint">A range that is too small may make reminders less reliable.</string>
-    <string name="place_reminder_cooldown">Cooldown</string>
+    <string name="place_reminder_cooldown">Cooldown (hr)</string>
     <string name="place_reminder_hours">%d hr</string>
-    <string name="place_reminder_cooldown_today">Today only</string>
+    <string name="place_reminder_cooldown_today">Once per day</string>
     <string name="place_reminder_checklist_summary">%1$s and %2$d items</string>
     <string name="place_reminder_checklist_progress">%1$d/%2$d done</string>
     <string name="place_reminder_attachment_summary">%1$d photos · %2$d videos</string>

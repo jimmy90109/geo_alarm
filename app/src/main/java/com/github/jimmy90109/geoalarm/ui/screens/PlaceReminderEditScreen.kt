@@ -11,32 +11,54 @@ import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.activity.result.PickVisualMediaRequest
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.asPaddingValues
+import androidx.compose.foundation.layout.calculateEndPadding
+import androidx.compose.foundation.layout.calculateStartPadding
+import androidx.compose.foundation.layout.displayCutout
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.navigationBars
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.statusBars
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
+import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.GridItemSpan
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.foundation.Canvas
+import androidx.compose.foundation.pager.HorizontalPager
+import androidx.compose.foundation.pager.PagerState
+import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.Check
+import androidx.compose.material.icons.filled.ChevronRight
+import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.LocationOn
@@ -46,9 +68,12 @@ import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Videocam
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonGroup
+import androidx.compose.material3.ButtonGroupDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Checkbox
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.FilterChip
@@ -62,6 +87,26 @@ import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
+import androidx.compose.material3.ElevatedCard
+import androidx.compose.material3.Surface
+import androidx.compose.material3.ToggleButton
+import androidx.compose.material3.ToggleButtonDefaults
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
+import sh.calvin.reorderable.*
+import coil.compose.AsyncImage
+import coil.request.ImageRequest
+import coil.decode.VideoFrameDecoder
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.drawBehind
+import androidx.compose.ui.geometry.CornerRadius
+import androidx.compose.foundation.isSystemInDarkTheme
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.PathEffect
+import androidx.compose.ui.graphics.StrokeCap
+import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.material.icons.filled.DragHandle
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
@@ -71,12 +116,17 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.input.nestedscroll.nestedScroll
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalConfiguration
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
@@ -86,6 +136,7 @@ import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.compose.LocalLifecycleOwner
+
 import com.github.jimmy90109.geoalarm.R
 import com.github.jimmy90109.geoalarm.data.PlaceReminderType
 import com.github.jimmy90109.geoalarm.data.PlaceReminderAttachmentType
@@ -93,6 +144,7 @@ import com.github.jimmy90109.geoalarm.data.PlaceReminderWithItems
 import com.github.jimmy90109.geoalarm.data.PlaceTriggerType
 import com.github.jimmy90109.geoalarm.ui.components.AlarmIconBadge
 import com.github.jimmy90109.geoalarm.ui.components.BackgroundLocationPermissionDialog
+import com.github.jimmy90109.geoalarm.ui.components.TopAppBar as GeoTopAppBar
 import com.github.jimmy90109.geoalarm.ui.viewmodel.AlarmEditControlMode
 import com.github.jimmy90109.geoalarm.ui.viewmodel.AlarmEditStep
 import com.github.jimmy90109.geoalarm.ui.viewmodel.PlaceReminderDetailEffect
@@ -106,19 +158,30 @@ import com.github.jimmy90109.geoalarm.ui.viewmodel.PlaceReminderPermissionState
 import com.google.android.gms.maps.CameraUpdateFactory
 import com.google.android.gms.maps.model.CameraPosition
 import com.google.android.gms.maps.model.LatLng
+import com.google.android.gms.maps.model.MapStyleOptions
 import com.google.maps.android.compose.Circle
 import com.google.maps.android.compose.GoogleMap
 import com.google.maps.android.compose.MapProperties
+import com.google.maps.android.compose.MapUiSettings
 import com.google.maps.android.compose.Marker
 import com.google.maps.android.compose.MarkerState
 import com.google.maps.android.compose.rememberCameraPositionState
 import java.text.DateFormat
 import java.util.Date
+import kotlin.math.cos
+import kotlin.math.log2
+import kotlinx.coroutines.launch
 
 private val DefaultPlaceReminderMapPosition = LatLng(25.034, 121.564)
 private val RadiusOptions = listOf(100, 150, 200, 300)
 private val DwellOptions = listOf(1, 3, 5, 10)
 private val CooldownOptions = listOf(60, 180, 360, 1440)
+private val PlaceReminderPreviewMapHeight = 180.dp
+private val PlaceReminderLandscapeControlWidth = 360.dp
+private val PlaceReminderLandscapePaneGap = 24.dp
+private val PlaceReminderOverlayMaxWidth = 720.dp
+private val PlaceReminderFormMaxWidth = 360.dp
+private const val PlaceReminderEditPageCount = 3
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -273,43 +336,23 @@ fun PlaceReminderEditScreen(
         return
     }
 
-    Scaffold(
-        topBar = {
-            TopAppBar(
-                title = {
-                    Text(
-                        if (uiState.isEditMode) {
-                            stringResource(R.string.place_reminder_edit_title)
-                        } else {
-                            stringResource(R.string.place_reminder_create_title)
-                        }
-                    )
-                },
-                navigationIcon = {
-                    IconButton(onClick = { onBack(null) }) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = stringResource(R.string.back))
-                    }
-                },
-            )
-        },
-        bottomBar = {
-            Button(
-                onClick = { viewModel.onAction(PlaceReminderEditAction.SaveClicked) },
-                enabled = uiState.canSave,
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(16.dp),
-            ) {
-                Text(
-                    if (uiState.isEditMode) {
-                        stringResource(R.string.save)
-                    } else {
-                        stringResource(R.string.place_reminder_create_button)
-                    }
-                )
+    val formPagerState = rememberPagerState(pageCount = { PlaceReminderEditPageCount })
+    val formScope = rememberCoroutineScope()
+    fun handleFormBack() {
+        if (formPagerState.currentPage > 0) {
+            formScope.launch {
+                formPagerState.animateScrollToPage(formPagerState.currentPage - 1)
             }
-        },
-    ) { innerPadding ->
+        } else {
+            onBack(null)
+        }
+    }
+
+    BackHandler {
+        handleFormBack()
+    }
+
+    Box(modifier = Modifier.fillMaxSize()) {
         PlaceReminderEditContent(
             state = uiState,
             onAction = viewModel::onAction,
@@ -318,29 +361,242 @@ fun PlaceReminderEditScreen(
                     PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageAndVideo)
                 )
             },
+            pagerState = formPagerState,
+            isLandscape = isLandscape,
+            modifier = Modifier.fillMaxSize(),
+        )
+        val onNextPage = {
+            if (canProceedFromPlaceReminderPage(formPagerState.currentPage, uiState)) {
+                formScope.launch {
+                    formPagerState.animateScrollToPage(formPagerState.currentPage + 1)
+                }
+            }
+        }
+        if (isLandscape) {
+            PlaceReminderEditLandscapeControls(
+                pagerState = formPagerState,
+                state = uiState,
+                onBack = ::handleFormBack,
+                onNext = onNextPage,
+                onSave = { viewModel.onAction(PlaceReminderEditAction.SaveClicked) },
+                modifier = Modifier.align(Alignment.CenterEnd),
+            )
+        } else {
+            Box(
+                modifier = Modifier
+                    .align(Alignment.TopCenter)
+                    .fillMaxWidth(),
+            ) {
+                PlaceReminderEditTopBar(
+                    isEditMode = uiState.isEditMode,
+                    isLandscape = false,
+                    onBack = ::handleFormBack,
+                )
+            }
+            Box(
+                modifier = Modifier
+                    .align(Alignment.BottomCenter)
+                    .fillMaxWidth(),
+            ) {
+                PlaceReminderEditBottomBar(
+                    pagerState = formPagerState,
+                    state = uiState,
+                    onNext = onNextPage,
+                    onSave = { viewModel.onAction(PlaceReminderEditAction.SaveClicked) },
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun PlaceReminderEditTopBar(
+    isEditMode: Boolean,
+    isLandscape: Boolean,
+    onBack: () -> Unit,
+    modifier: Modifier = Modifier,
+    applyHorizontalPadding: Boolean = true,
+) {
+    Box(
+        modifier = modifier
+            .fillMaxWidth()
+            .then(if (applyHorizontalPadding) Modifier.padding(horizontal = 24.dp) else Modifier),
+        contentAlignment = if (isLandscape) Alignment.TopEnd else Alignment.TopCenter,
+    ) {
+        GeoTopAppBar(
+            title = {
+                Text(
+                    if (isEditMode) {
+                        stringResource(R.string.place_reminder_edit_title)
+                    } else {
+                        stringResource(R.string.place_reminder_create_title)
+                    }
+                )
+            },
+            navigationIcon = {
+                IconButton(onClick = onBack) {
+                    Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = stringResource(R.string.back))
+                }
+            },
+            containerColor = MaterialTheme.colorScheme.surfaceVariant,
             modifier = Modifier
-                .padding(innerPadding)
-                .fillMaxSize(),
+                .widthIn(max = if (isLandscape) PlaceReminderLandscapeControlWidth else PlaceReminderOverlayMaxWidth)
+                .fillMaxWidth(),
         )
     }
 }
 
 @Composable
+private fun PlaceReminderEditLandscapeControls(
+    pagerState: PagerState,
+    state: PlaceReminderEditUiState,
+    onBack: () -> Unit,
+    onNext: () -> Unit,
+    onSave: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    val navInsets = WindowInsets.navigationBars.asPaddingValues()
+    val layoutDirection = LocalLayoutDirection.current
+    val bottomPadding = maxOf(24.dp, navInsets.calculateBottomPadding())
+    val endPadding = maxOf(24.dp, navInsets.calculateEndPadding(layoutDirection))
+    Box(
+        modifier = modifier
+            .padding(top = 24.dp, end = endPadding, bottom = bottomPadding)
+            .windowInsetsPadding(WindowInsets.displayCutout)
+            .widthIn(max = PlaceReminderLandscapeControlWidth)
+            .fillMaxHeight(),
+    ) {
+        Column(modifier = Modifier.fillMaxSize()) {
+            PlaceReminderEditTopBar(
+                isEditMode = state.isEditMode,
+                isLandscape = true,
+                onBack = onBack,
+                applyHorizontalPadding = false,
+            )
+            Spacer(modifier = Modifier.weight(1f))
+            PlaceReminderEditActionCard(
+                pagerState = pagerState,
+                state = state,
+                onNext = onNext,
+                onSave = onSave,
+                modifier = Modifier.fillMaxWidth(),
+            )
+        }
+    }
+}
+
+@Composable
+@OptIn(ExperimentalMaterial3ExpressiveApi::class, ExperimentalLayoutApi::class)
 private fun PlaceReminderEditContent(
     state: PlaceReminderEditUiState,
     onAction: (PlaceReminderEditAction) -> Unit,
     onPickAttachments: () -> Unit,
+    pagerState: PagerState,
+    isLandscape: Boolean,
     modifier: Modifier = Modifier,
 ) {
-    val scrollState = rememberScrollState()
-    Column(
-        modifier = modifier
-            .verticalScroll(scrollState)
-            .padding(16.dp)
-            .padding(bottom = 96.dp)
-            .widthIn(max = 720.dp),
-        verticalArrangement = Arrangement.spacedBy(16.dp),
+    var newChecklistText by remember { mutableStateOf("") }
+    val newChecklistFocusRequester = remember { FocusRequester() }
+    val navInsets = WindowInsets.navigationBars.asPaddingValues()
+    val cutoutInsets = WindowInsets.displayCutout.asPaddingValues()
+    val layoutDirection = LocalLayoutDirection.current
+    val startPadding = maxOf(
+        24.dp,
+        navInsets.calculateStartPadding(layoutDirection),
+        if (isLandscape) cutoutInsets.calculateStartPadding(layoutDirection) else 0.dp,
+    )
+    val endPadding = maxOf(
+        24.dp,
+        navInsets.calculateEndPadding(layoutDirection),
+        if (isLandscape) cutoutInsets.calculateEndPadding(layoutDirection) else 0.dp,
+    )
+    val contentTopPadding = maxOf(24.dp, WindowInsets.statusBars.asPaddingValues().calculateTopPadding())
+    val contentBottomPadding = maxOf(24.dp, navInsets.calculateBottomPadding())
+    BoxWithConstraints(
+        modifier = modifier,
+        contentAlignment = if (isLandscape) Alignment.CenterStart else Alignment.Center,
     ) {
+        val landscapePagerWidth = (
+            maxWidth -
+                startPadding -
+                endPadding -
+                PlaceReminderLandscapeControlWidth -
+                PlaceReminderLandscapePaneGap
+            ).coerceAtLeast(280.dp)
+        val pagerModifier = if (isLandscape) {
+            Modifier
+                .align(Alignment.CenterStart)
+                .padding(start = startPadding)
+                .width(landscapePagerWidth)
+                .fillMaxHeight()
+        } else {
+            Modifier.fillMaxSize()
+        }
+        val pageStartPadding = if (isLandscape) 0.dp else startPadding
+        val pageEndPadding = if (isLandscape) 0.dp else endPadding
+        val pageMaxWidth = if (isLandscape) {
+            minOf(landscapePagerWidth, PlaceReminderFormMaxWidth)
+        } else {
+            PlaceReminderFormMaxWidth
+        }
+
+        HorizontalPager(
+            state = pagerState,
+            modifier = pagerModifier,
+            userScrollEnabled = false,
+        ) { page ->
+            BoxWithConstraints(
+                modifier = Modifier.fillMaxSize(),
+                contentAlignment = Alignment.Center,
+            ) {
+                Box(
+                    modifier = Modifier
+                        .padding(
+                            start = pageStartPadding,
+                            end = pageEndPadding,
+                        )
+                        .widthIn(max = pageMaxWidth)
+                        .fillMaxSize(),
+                    contentAlignment = Alignment.Center,
+                ) {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .verticalScroll(rememberScrollState()),
+                        contentAlignment = Alignment.Center,
+                    ) {
+                        Box(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(top = contentTopPadding, bottom = contentBottomPadding),
+                            contentAlignment = Alignment.Center,
+                        ) {
+                            when (page) {
+                                0 -> PlaceReminderPlaceFormPage(state = state, onAction = onAction)
+                                1 -> PlaceReminderContentFormPage(
+                                    state = state,
+                                    onAction = onAction,
+                                    newChecklistText = newChecklistText,
+                                    onNewChecklistTextChange = { newChecklistText = it },
+                                    newChecklistFocusRequester = newChecklistFocusRequester,
+                                    onPickAttachments = onPickAttachments,
+                                )
+                                else -> PlaceReminderTriggerFormPage(state = state, onAction = onAction)
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun PlaceReminderPlaceFormPage(
+    state: PlaceReminderEditUiState,
+    onAction: (PlaceReminderEditAction) -> Unit,
+) {
+    FormSection(title = stringResource(R.string.place_reminder_step_place)) {
         OutlinedTextField(
             value = state.title,
             onValueChange = { onAction(PlaceReminderEditAction.TitleChanged(it)) },
@@ -353,7 +609,21 @@ private fun PlaceReminderEditContent(
             state = state,
             onSelectPlace = { onAction(PlaceReminderEditAction.StartPlaceSelection) },
         )
-        OptionGroup(
+    }
+}
+
+@Composable
+@OptIn(ExperimentalMaterial3ExpressiveApi::class)
+private fun PlaceReminderContentFormPage(
+    state: PlaceReminderEditUiState,
+    onAction: (PlaceReminderEditAction) -> Unit,
+    newChecklistText: String,
+    onNewChecklistTextChange: (String) -> Unit,
+    newChecklistFocusRequester: FocusRequester,
+    onPickAttachments: () -> Unit,
+) {
+    FormSection(title = stringResource(R.string.place_reminder_step_content)) {
+        ExpressiveOptionGroup(
             title = stringResource(R.string.place_reminder_type),
             options = listOf(
                 PlaceReminderType.TEXT to stringResource(R.string.place_reminder_type_text),
@@ -373,31 +643,51 @@ private fun PlaceReminderEditContent(
                 minLines = 4,
             )
         } else {
-            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
                 Text(
                     text = stringResource(R.string.place_reminder_content),
                     style = MaterialTheme.typography.titleSmall,
                     fontWeight = FontWeight.SemiBold,
                 )
-                state.checklistItems.forEachIndexed { index, item ->
-                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
-                        OutlinedTextField(
-                            value = item,
-                            onValueChange = {
-                                onAction(PlaceReminderEditAction.ChecklistItemChanged(index, it))
-                            },
-                            modifier = Modifier.weight(1f),
-                            singleLine = true,
-                        )
-                        IconButton(onClick = { onAction(PlaceReminderEditAction.RemoveChecklistItem(index)) }) {
-                            Icon(Icons.Filled.Delete, contentDescription = stringResource(R.string.delete))
+                val visibleItems = state.checklistItems.filter { it.text.isNotBlank() }
+                ReorderableColumn(
+                    list = visibleItems,
+                    onSettle = { fromIndex, toIndex ->
+                        val fromId = visibleItems.getOrNull(fromIndex)?.id
+                        val toId = visibleItems.getOrNull(toIndex)?.id
+                        val fullFrom = state.checklistItems.indexOfFirst { it.id == fromId }
+                        val fullTo = state.checklistItems.indexOfFirst { it.id == toId }
+                        if (fullFrom >= 0 && fullTo >= 0) {
+                            onAction(PlaceReminderEditAction.MoveChecklistItem(fullFrom, fullTo))
                         }
-                    }
+                    },
+                    verticalArrangement = Arrangement.spacedBy(10.dp),
+                ) { _, item, _ ->
+                    val index = state.checklistItems.indexOfFirst { it.id == item.id }
+                    ChecklistEditRow(
+                        value = item.text,
+                        onValueChange = {
+                            if (index >= 0) onAction(PlaceReminderEditAction.ChecklistItemChanged(index, it))
+                        },
+                        onRemove = {
+                            if (index >= 0) onAction(PlaceReminderEditAction.RemoveChecklistItem(index))
+                        },
+                        dragHandleModifier = Modifier.draggableHandle(),
+                    )
                 }
-                OutlinedButton(onClick = { onAction(PlaceReminderEditAction.AddChecklistItem) }) {
-                    Icon(Icons.Filled.Add, contentDescription = null)
-                    Text(stringResource(R.string.place_reminder_add_item))
-                }
+                ChecklistAddRow(
+                    value = newChecklistText,
+                    onValueChange = onNewChecklistTextChange,
+                    onAdd = {
+                        val text = newChecklistText.trim()
+                        if (text.isNotEmpty()) {
+                            onAction(PlaceReminderEditAction.AddChecklistItemWithText(text))
+                            onNewChecklistTextChange("")
+                            newChecklistFocusRequester.requestFocus()
+                        }
+                    },
+                    focusRequester = newChecklistFocusRequester,
+                )
             }
         }
         PlaceReminderAttachmentEditor(
@@ -405,12 +695,17 @@ private fun PlaceReminderEditContent(
             onPickAttachments = onPickAttachments,
             onRemoveAttachment = { onAction(PlaceReminderEditAction.RemoveAttachment(it)) },
         )
-        Text(
-            text = stringResource(R.string.place_reminder_radius_hint),
-            style = MaterialTheme.typography.bodySmall,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-        )
-        OptionGroup(
+    }
+}
+
+@Composable
+@OptIn(ExperimentalMaterial3ExpressiveApi::class)
+private fun PlaceReminderTriggerFormPage(
+    state: PlaceReminderEditUiState,
+    onAction: (PlaceReminderEditAction) -> Unit,
+) {
+    FormSection(title = stringResource(R.string.place_reminder_step_trigger)) {
+        ExpressiveOptionGroup(
             title = stringResource(R.string.place_reminder_trigger_type),
             options = listOf(
                 PlaceTriggerType.ENTER to stringResource(R.string.place_reminder_trigger_enter),
@@ -420,26 +715,349 @@ private fun PlaceReminderEditContent(
             onSelected = { onAction(PlaceReminderEditAction.TriggerTypeChanged(it)) },
         )
         if (state.triggerType == PlaceTriggerType.DWELL) {
-            IntOptionGroup(
+            ExpressiveIntOptionGroup(
                 title = stringResource(R.string.place_reminder_dwell_time),
                 options = DwellOptions,
                 selected = state.dwellMinutes,
-                label = { stringResource(R.string.place_reminder_minutes, it) },
+                label = { it.toString() },
                 onSelected = { onAction(PlaceReminderEditAction.DwellMinutesChanged(it)) },
             )
         }
-        IntOptionGroup(
+        CooldownOptionGroup(
             title = stringResource(R.string.place_reminder_cooldown),
-            options = CooldownOptions,
+            numericOptions = CooldownOptions.filterNot { it == 1440 },
             selected = state.cooldownMinutes,
-            label = {
-                if (it == 1440) {
-                    stringResource(R.string.place_reminder_cooldown_today)
+            oneDayLabel = stringResource(R.string.place_reminder_cooldown_today),
+            onSelected = { onAction(PlaceReminderEditAction.CooldownMinutesChanged(it)) },
+        )
+    }
+}
+
+@Composable
+private fun PlaceReminderEditBottomBar(
+    pagerState: PagerState,
+    state: PlaceReminderEditUiState,
+    onNext: () -> Unit,
+    onSave: () -> Unit,
+) {
+    val navInsets = WindowInsets.navigationBars.asPaddingValues()
+    val bottomPadding = maxOf(24.dp, navInsets.calculateBottomPadding())
+    Box(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(start = 24.dp, end = 24.dp, bottom = bottomPadding),
+        contentAlignment = Alignment.Center,
+    ) {
+        PlaceReminderEditActionCard(
+            pagerState = pagerState,
+            state = state,
+            onNext = onNext,
+            onSave = onSave,
+            modifier = Modifier
+                .widthIn(max = PlaceReminderOverlayMaxWidth)
+                .fillMaxWidth(),
+        )
+    }
+}
+
+@Composable
+private fun PlaceReminderEditActionCard(
+    pagerState: PagerState,
+    state: PlaceReminderEditUiState,
+    onNext: () -> Unit,
+    onSave: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    val isLastPage = pagerState.currentPage == PlaceReminderEditPageCount - 1
+    val actionEnabled = if (isLastPage) {
+        state.canSave
+    } else {
+        canProceedFromPlaceReminderPage(pagerState.currentPage, state)
+    }
+    Card(
+        modifier = modifier,
+        shape = RoundedCornerShape(44.dp),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant),
+        elevation = CardDefaults.cardElevation(defaultElevation = 10.dp),
+    ) {
+        Column(
+            modifier = Modifier.padding(20.dp),
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.spacedBy(14.dp),
+        ) {
+            PlaceReminderPageIndicator(
+                pageCount = PlaceReminderEditPageCount,
+                currentPage = pagerState.currentPage,
+            )
+            Button(
+                onClick = {
+                    if (isLastPage) onSave() else onNext()
+                },
+                enabled = actionEnabled,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(56.dp),
+                shape = CircleShape,
+            ) {
+                Text(
+                    if (!isLastPage) {
+                        stringResource(R.string.next_step)
+                    } else if (state.isEditMode) {
+                        stringResource(R.string.save)
+                    } else {
+                        stringResource(R.string.place_reminder_create_button)
+                    }
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun Modifier.landscapeSafeAreaPadding(isLandscape: Boolean): Modifier {
+    return if (isLandscape) {
+        windowInsetsPadding(WindowInsets.displayCutout)
+    } else {
+        this
+    }
+}
+
+private fun canProceedFromPlaceReminderPage(
+    page: Int,
+    state: PlaceReminderEditUiState,
+): Boolean = when (page) {
+    0 -> state.title.trim().isNotEmpty() &&
+        state.selectedPosition != null &&
+        state.placeName.trim().isNotEmpty()
+    1 -> when (state.type) {
+        PlaceReminderType.TEXT -> state.content.trim().isNotEmpty()
+        PlaceReminderType.CHECKLIST -> state.checklistItems.any { it.text.trim().isNotEmpty() }
+    } || state.attachments.isNotEmpty()
+    else -> state.canSave
+}
+
+@Composable
+private fun PlaceReminderPageIndicator(
+    pageCount: Int,
+    currentPage: Int,
+) {
+    Row(
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        repeat(pageCount) { index ->
+            Surface(
+                modifier = Modifier.size(
+                    width = if (index == currentPage) 22.dp else 8.dp,
+                    height = 8.dp,
+                ),
+                shape = CircleShape,
+                color = if (index == currentPage) {
+                    MaterialTheme.colorScheme.primary
                 } else {
-                    stringResource(R.string.place_reminder_hours, it / 60)
+                    MaterialTheme.colorScheme.outlineVariant
+                },
+                content = {},
+            )
+        }
+    }
+}
+
+@Composable
+private fun FormSection(
+    title: String,
+    content: @Composable ColumnScope.() -> Unit,
+) {
+    Column(
+        modifier = Modifier.fillMaxWidth(),
+        verticalArrangement = Arrangement.spacedBy(10.dp),
+    ) {
+        Text(
+            text = title,
+            style = MaterialTheme.typography.titleLarge,
+            color = MaterialTheme.colorScheme.onSurface,
+            fontWeight = FontWeight.SemiBold,
+            modifier = Modifier.padding(horizontal = 4.dp),
+        )
+        Surface(
+            modifier = Modifier.fillMaxWidth(),
+            shape = RoundedCornerShape(28.dp),
+            color = MaterialTheme.colorScheme.surfaceContainer,
+        ) {
+            Column(
+                modifier = Modifier.padding(18.dp),
+                verticalArrangement = Arrangement.spacedBy(16.dp),
+            ) {
+                content()
+            }
+        }
+    }
+}
+
+@Composable
+@OptIn(ExperimentalMaterial3ExpressiveApi::class)
+private fun <T> ExpressiveOptionGroup(
+    title: String,
+    options: List<Pair<T, String>>,
+    selected: T,
+    onSelected: (T) -> Unit,
+) {
+    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        Text(title, style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.SemiBold)
+        ExpressiveOptionButtons(options = options, selected = selected, onSelected = onSelected)
+    }
+}
+
+@Composable
+@OptIn(ExperimentalMaterial3ExpressiveApi::class)
+private fun <T> ExpressiveOptionButtons(
+    options: List<Pair<T, String>>,
+    selected: T,
+    onSelected: (T) -> Unit,
+) {
+    ButtonGroup(
+        overflowIndicator = { menuState ->
+            ButtonGroupDefaults.OverflowIndicator(menuState = menuState)
+        },
+        modifier = Modifier.fillMaxWidth(),
+    ) {
+        val buttonGroupScope = this
+        options.forEach { (value, label) ->
+            val isSelected = selected == value
+            customItem(
+                buttonGroupContent = {
+                    ToggleButton(
+                        checked = isSelected,
+                        onCheckedChange = { onSelected(value) },
+                        modifier = with(buttonGroupScope) { Modifier.weight(1f) },
+                        shapes = ToggleButtonDefaults.shapes(
+                            shape = RoundedCornerShape(14.dp),
+                            pressedShape = RoundedCornerShape(20.dp),
+                            checkedShape = ToggleButtonDefaults.roundShape,
+                        ),
+                        colors = ToggleButtonDefaults.toggleButtonColors().copy(
+                            containerColor = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.42f),
+                            checkedContainerColor = MaterialTheme.colorScheme.primary,
+                            contentColor = MaterialTheme.colorScheme.onPrimaryContainer,
+                            checkedContentColor = MaterialTheme.colorScheme.onPrimary,
+                        ),
+                    ) {
+                        if (isSelected) {
+                            Icon(Icons.Filled.Check, contentDescription = null)
+                        }
+                        Text(label, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                    }
+                },
+                menuContent = { menuState ->
+                    DropdownMenuItem(
+                        text = { Text(label) },
+                        onClick = {
+                            onSelected(value)
+                            menuState.dismiss()
+                        },
+                        leadingIcon = {
+                            if (isSelected) Icon(Icons.Filled.Check, contentDescription = null)
+                        },
+                    )
+                }
+            )
+        }
+    }
+}
+
+@Composable
+private fun ExpressiveIntOptionGroup(
+    title: String,
+    options: List<Int>,
+    selected: Int,
+    label: @Composable (Int) -> String,
+    onSelected: (Int) -> Unit,
+) {
+    ExpressiveOptionGroup(
+        title = title,
+        options = options.map { it to label(it) },
+        selected = selected,
+        onSelected = onSelected,
+    )
+}
+
+@Composable
+private fun CooldownOptionGroup(
+    title: String,
+    numericOptions: List<Int>,
+    selected: Int,
+    oneDayLabel: String,
+    onSelected: (Int) -> Unit,
+) {
+    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        Text(title, style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.SemiBold)
+        ExpressiveOptionButtons(
+            options = numericOptions.map { it to (it / 60).toString() },
+            selected = selected,
+            onSelected = onSelected,
+        )
+        ExpressiveSingleOptionButton(
+            label = oneDayLabel,
+            selected = selected == 1440,
+            onClick = { onSelected(1440) },
+        )
+    }
+}
+
+@Composable
+@OptIn(ExperimentalMaterial3ExpressiveApi::class)
+private fun ExpressiveSingleOptionButton(
+    label: String,
+    selected: Boolean,
+    onClick: () -> Unit,
+) {
+    ButtonGroup(
+        overflowIndicator = { menuState ->
+            ButtonGroupDefaults.OverflowIndicator(menuState = menuState)
+        },
+        modifier = Modifier.fillMaxWidth(),
+    ) {
+        val buttonGroupScope = this
+        customItem(
+            buttonGroupContent = {
+                ToggleButton(
+                    checked = selected,
+                    onCheckedChange = { onClick() },
+                    modifier = with(buttonGroupScope) {
+                        Modifier
+                            .weight(1f)
+                            .height(48.dp)
+                    },
+                    shapes = ToggleButtonDefaults.shapes(
+                        shape = RoundedCornerShape(14.dp),
+                        pressedShape = RoundedCornerShape(20.dp),
+                        checkedShape = ToggleButtonDefaults.roundShape,
+                    ),
+                    colors = ToggleButtonDefaults.toggleButtonColors().copy(
+                        containerColor = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.42f),
+                        checkedContainerColor = MaterialTheme.colorScheme.primary,
+                        contentColor = MaterialTheme.colorScheme.onPrimaryContainer,
+                        checkedContentColor = MaterialTheme.colorScheme.onPrimary,
+                    ),
+                ) {
+                    if (selected) {
+                        Icon(Icons.Filled.Check, contentDescription = null)
+                    }
+                    Text(label, maxLines = 1, overflow = TextOverflow.Ellipsis)
                 }
             },
-            onSelected = { onAction(PlaceReminderEditAction.CooldownMinutesChanged(it)) },
+            menuContent = { menuState ->
+                DropdownMenuItem(
+                    text = { Text(label) },
+                    onClick = {
+                        onClick()
+                        menuState.dismiss()
+                    },
+                    leadingIcon = {
+                        if (selected) Icon(Icons.Filled.Check, contentDescription = null)
+                    },
+                )
+            },
         )
     }
 }
@@ -449,26 +1067,73 @@ private fun PlaceReminderSelectedPlaceSection(
     state: PlaceReminderEditUiState,
     onSelectPlace: () -> Unit,
 ) {
-    Card(colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainer)) {
-        Row(
-            modifier = Modifier.padding(16.dp),
-            horizontalArrangement = Arrangement.spacedBy(12.dp),
-            verticalAlignment = Alignment.CenterVertically,
+    if (state.selectedPosition == null) {
+        Button(
+            onClick = onSelectPlace,
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(56.dp),
+            shape = CircleShape,
         ) {
-            AlarmIconBadge(iconKey = state.selectedIconKey)
-            Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
-                Text(
-                    text = stringResource(R.string.place_reminder_place),
-                    style = MaterialTheme.typography.labelMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
-                if (state.selectedPosition == null) {
-                    Text(
-                        text = stringResource(R.string.place_reminder_place_required),
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    )
-                } else {
+            Text(stringResource(R.string.select_shared_place))
+        }
+        return
+    }
+    val position = state.selectedPosition
+    val context = LocalContext.current
+    val darkTheme = isSystemInDarkTheme()
+    val density = LocalDensity.current
+    val mapHeightPx = with(density) { PlaceReminderPreviewMapHeight.toPx() }
+    val previewZoom = remember(position, state.radiusMeters, mapHeightPx) {
+        previewZoomForRadius(
+            latitude = position.latitude,
+            radiusMeters = state.radiusMeters,
+            mapHeightPx = mapHeightPx,
+        )
+    }
+    var mapProperties by remember { mutableStateOf(MapProperties()) }
+    LaunchedEffect(darkTheme) {
+        mapProperties = if (darkTheme) {
+            MapProperties(
+                mapStyleOptions = MapStyleOptions.loadRawResourceStyle(
+                    context,
+                    R.raw.map_style_dark,
+                ),
+            )
+        } else {
+            MapProperties(mapStyleOptions = null)
+        }
+    }
+    val previewMapUiSettings = remember {
+        MapUiSettings(
+            zoomControlsEnabled = false,
+            compassEnabled = false,
+            indoorLevelPickerEnabled = false,
+            mapToolbarEnabled = false,
+            myLocationButtonEnabled = false,
+            rotationGesturesEnabled = false,
+            scrollGesturesEnabled = false,
+            scrollGesturesEnabledDuringRotateOrZoom = false,
+            tiltGesturesEnabled = false,
+            zoomGesturesEnabled = false,
+        )
+    }
+
+    Surface(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable(onClick = onSelectPlace),
+        shape = RoundedCornerShape(24.dp),
+            color = MaterialTheme.colorScheme.surfaceContainerHigh,
+    ) {
+        Column {
+            Row(
+                modifier = Modifier.padding(16.dp),
+                horizontalArrangement = Arrangement.spacedBy(12.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                AlarmIconBadge(iconKey = state.selectedIconKey)
+                Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
                     Text(
                         text = state.placeName,
                         style = MaterialTheme.typography.titleMedium,
@@ -485,24 +1150,58 @@ private fun PlaceReminderSelectedPlaceSection(
                             overflow = TextOverflow.Ellipsis,
                         )
                     }
-                    Text(
-                        text = stringResource(R.string.radius_label, "${state.radiusMeters}"),
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                }
+                Icon(Icons.Filled.ChevronRight, contentDescription = stringResource(R.string.place_reminder_edit_place))
+            }
+
+            HorizontalDivider()
+            val cameraPositionState = rememberCameraPositionState {
+                this.position = CameraPosition.fromLatLngZoom(position, previewZoom)
+            }
+            LaunchedEffect(position, previewZoom) {
+                cameraPositionState.animate(CameraUpdateFactory.newLatLngZoom(position, previewZoom))
+            }
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(PlaceReminderPreviewMapHeight),
+            ) {
+                GoogleMap(
+                    modifier = Modifier.fillMaxSize(),
+                    cameraPositionState = cameraPositionState,
+                    properties = mapProperties,
+                    uiSettings = previewMapUiSettings,
+                ) {
+                    Marker(state = MarkerState(position = position), title = state.placeName)
+                    Circle(
+                        center = position,
+                        radius = state.radiusMeters.toDouble(),
+                        strokeColor = Color(0xFF607D8B).copy(alpha = 0.8f),
+                        strokeWidth = 2f,
+                        fillColor = Color(0xFF607D8B).copy(alpha = 0.14f),
                     )
                 }
-            }
-            if (state.selectedPosition == null) {
-                Button(onClick = onSelectPlace) {
-                    Text(stringResource(R.string.select_shared_place))
-                }
-            } else {
-                IconButton(onClick = onSelectPlace) {
-                    Icon(Icons.Filled.Edit, contentDescription = stringResource(R.string.place_reminder_edit_place))
-                }
+                Box(
+                    modifier = Modifier
+                        .matchParentSize()
+                        .clickable(onClick = onSelectPlace),
+                )
             }
         }
     }
+}
+
+private fun previewZoomForRadius(
+    latitude: Double,
+    radiusMeters: Int,
+    mapHeightPx: Float,
+): Float {
+    val radius = radiusMeters.coerceAtLeast(50)
+    val targetDiameterPx = mapHeightPx * 0.72f
+    val metersPerPixel = (radius * 2f) / targetDiameterPx.coerceAtLeast(1f)
+    val latitudeScale = cos(Math.toRadians(latitude)).coerceAtLeast(0.2)
+    val zoom = log2((156543.03392 * latitudeScale) / metersPerPixel)
+    return zoom.toFloat().coerceIn(10f, 18f)
 }
 
 @Composable
@@ -511,19 +1210,12 @@ private fun PlaceReminderAttachmentEditor(
     onPickAttachments: () -> Unit,
     onRemoveAttachment: (String) -> Unit,
 ) {
-    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            Text(
-                text = stringResource(R.string.place_reminder_attachments),
-                style = MaterialTheme.typography.titleSmall,
-                fontWeight = FontWeight.SemiBold,
-                modifier = Modifier.weight(1f),
-            )
-            OutlinedButton(onClick = onPickAttachments, enabled = !state.isAddingAttachments) {
-                Icon(Icons.Filled.Add, contentDescription = null)
-                Text(stringResource(R.string.place_reminder_add_attachment))
-            }
-        }
+    Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+        Text(
+            text = stringResource(R.string.place_reminder_attachments),
+            style = MaterialTheme.typography.titleSmall,
+            fontWeight = FontWeight.SemiBold,
+        )
         if (state.isAddingAttachments) {
             Text(
                 text = stringResource(R.string.place_reminder_adding_attachments),
@@ -531,52 +1223,194 @@ private fun PlaceReminderAttachmentEditor(
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
         }
-        if (state.attachments.isEmpty()) {
-            Text(
-                text = stringResource(R.string.place_reminder_attachments_hint),
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
+        FlowRow(
+            horizontalArrangement = Arrangement.spacedBy(10.dp),
+            verticalArrangement = Arrangement.spacedBy(10.dp),
+        ) {
+            state.attachments.sortedBy { it.sortOrder }.forEach { attachment ->
+                AttachmentPreviewTile(
+                    attachment = attachment,
+                    onRemove = { onRemoveAttachment(attachment.id) },
+                )
+            }
+            AttachmentAddTile(
+                enabled = !state.isAddingAttachments,
+                onClick = onPickAttachments,
             )
-        } else {
-            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                state.attachments.sortedBy { it.sortOrder }.forEach { attachment ->
-                    Card(colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainer)) {
-                        Row(
-                            modifier = Modifier.padding(12.dp),
-                            horizontalArrangement = Arrangement.spacedBy(12.dp),
-                            verticalAlignment = Alignment.CenterVertically,
-                        ) {
-                            Icon(
-                                if (attachment.type == PlaceReminderAttachmentType.IMAGE) {
-                                    Icons.Filled.Image
-                                } else {
-                                    Icons.Filled.Videocam
-                                },
-                                contentDescription = null,
-                                tint = MaterialTheme.colorScheme.primary,
-                            )
-                            Column(modifier = Modifier.weight(1f)) {
-                                Text(
-                                    text = attachment.displayName,
-                                    style = MaterialTheme.typography.bodyMedium,
-                                    maxLines = 1,
-                                    overflow = TextOverflow.Ellipsis,
-                                )
-                                Text(
-                                    text = stringResource(R.string.place_reminder_attachment_local),
-                                    style = MaterialTheme.typography.bodySmall,
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                )
-                            }
-                            IconButton(onClick = { onRemoveAttachment(attachment.id) }) {
-                                Icon(Icons.Filled.Delete, contentDescription = stringResource(R.string.delete))
-                            }
-                        }
-                    }
+        }
+    }
+}
+
+@Composable
+private fun ChecklistEditRow(
+    value: String,
+    onValueChange: (String) -> Unit,
+    onRemove: () -> Unit,
+    dragHandleModifier: Modifier,
+) {
+    Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
+        Icon(
+            imageVector = Icons.Filled.DragHandle,
+            contentDescription = null,
+            modifier = dragHandleModifier,
+            tint = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+        OutlinedTextField(
+            value = value,
+            onValueChange = onValueChange,
+            modifier = Modifier.weight(1f),
+            singleLine = true,
+        )
+        IconButton(onClick = onRemove) {
+            Icon(
+                Icons.Filled.Delete,
+                contentDescription = stringResource(R.string.delete),
+                tint = MaterialTheme.colorScheme.error,
+            )
+        }
+    }
+}
+
+@Composable
+private fun ChecklistAddRow(
+    value: String,
+    onValueChange: (String) -> Unit,
+    onAdd: () -> Unit,
+    focusRequester: FocusRequester,
+) {
+    Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
+        OutlinedTextField(
+            value = value,
+            onValueChange = onValueChange,
+            modifier = Modifier
+                .weight(1f)
+                .focusRequester(focusRequester),
+            singleLine = true,
+            placeholder = { Text(stringResource(R.string.place_reminder_new_item)) },
+        )
+        IconButton(onClick = onAdd, enabled = value.trim().isNotEmpty()) {
+            Surface(
+                shape = CircleShape,
+                color = if (value.trim().isNotEmpty()) {
+                    MaterialTheme.colorScheme.primaryContainer
+                } else {
+                    MaterialTheme.colorScheme.surfaceContainerHigh
+                },
+            ) {
+                Box(
+                    modifier = Modifier.size(40.dp),
+                    contentAlignment = Alignment.Center,
+                ) {
+                    Icon(
+                        Icons.Filled.Add,
+                        contentDescription = stringResource(R.string.place_reminder_add_item),
+                        tint = if (value.trim().isNotEmpty()) {
+                            MaterialTheme.colorScheme.onPrimaryContainer
+                        } else {
+                            MaterialTheme.colorScheme.onSurfaceVariant
+                        },
+                    )
                 }
             }
         }
     }
+}
+
+@Composable
+private fun AttachmentPreviewTile(
+    attachment: com.github.jimmy90109.geoalarm.data.PlaceReminderAttachment,
+    onRemove: () -> Unit,
+) {
+    val isVideo = attachment.type == PlaceReminderAttachmentType.VIDEO
+    val context = LocalContext.current
+    val imageRequest = remember(attachment.localPath, isVideo) {
+        ImageRequest.Builder(context)
+            .data(attachment.localPath)
+            .crossfade(true)
+            .apply {
+                if (isVideo) decoderFactory(VideoFrameDecoder.Factory())
+            }
+            .build()
+    }
+    Box(
+        modifier = Modifier
+            .size(104.dp)
+            .clip(RoundedCornerShape(24.dp))
+            .background(MaterialTheme.colorScheme.surfaceContainerHigh),
+    ) {
+        AsyncImage(
+            model = imageRequest,
+            contentDescription = null,
+            modifier = Modifier.fillMaxSize(),
+            contentScale = ContentScale.Crop,
+        )
+        if (isVideo) {
+            Icon(
+                Icons.Filled.Videocam,
+                contentDescription = null,
+                tint = androidx.compose.ui.graphics.Color.White,
+                modifier = Modifier
+                    .align(Alignment.BottomStart)
+                    .padding(8.dp),
+            )
+        }
+        Surface(
+            onClick = onRemove,
+            modifier = Modifier
+                .align(Alignment.TopEnd)
+                .padding(6.dp)
+                .size(28.dp),
+            shape = CircleShape,
+            color = MaterialTheme.colorScheme.surface.copy(alpha = 0.92f),
+        ) {
+            Box(contentAlignment = Alignment.Center) {
+                Icon(
+                    Icons.Filled.Close,
+                    contentDescription = stringResource(R.string.delete),
+                    modifier = Modifier.size(18.dp),
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun AttachmentAddTile(
+    enabled: Boolean,
+    onClick: () -> Unit,
+) {
+    val outlineColor = MaterialTheme.colorScheme.outline
+    Box(
+        modifier = Modifier
+            .size(104.dp)
+            .clip(RoundedCornerShape(24.dp))
+            .clickable(enabled = enabled, onClick = onClick)
+            .drawDottedOutline(outlineColor, RoundedCornerShape(24.dp)),
+        contentAlignment = Alignment.Center,
+    ) {
+        Icon(
+            Icons.Filled.Add,
+            contentDescription = stringResource(R.string.place_reminder_add_attachment),
+            tint = MaterialTheme.colorScheme.primary,
+            modifier = Modifier.size(32.dp),
+        )
+    }
+}
+
+private fun Modifier.drawDottedOutline(
+    color: androidx.compose.ui.graphics.Color,
+    shape: RoundedCornerShape,
+): Modifier = drawBehind {
+    val strokeWidth = 1.5.dp.toPx()
+    drawRoundRect(
+        color = color,
+        cornerRadius = CornerRadius(24.dp.toPx(), 24.dp.toPx()),
+        style = Stroke(
+            width = strokeWidth,
+            cap = StrokeCap.Round,
+            pathEffect = PathEffect.dashPathEffect(floatArrayOf(1.dp.toPx(), 7.dp.toPx())),
+        ),
+    )
 }
 
 @Composable

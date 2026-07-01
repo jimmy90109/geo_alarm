@@ -148,6 +148,11 @@ dependencies {
     // HyperIsland ToolKit for Xiaomi Dynamic Island notifications
     implementation(libs.hyperisland.kit)
 
+    // Image/Video Previews & Reorderable List
+    implementation(libs.coil.compose)
+    implementation(libs.coil.video)
+    implementation(libs.reorderable)
+
     // Hilt
     implementation(libs.hilt.android)
     implementation(libs.androidx.hilt.navigation.compose)

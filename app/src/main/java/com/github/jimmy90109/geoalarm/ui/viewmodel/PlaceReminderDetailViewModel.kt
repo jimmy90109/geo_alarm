@@ -59,6 +59,21 @@ class PlaceReminderDetailViewModel @Inject constructor(
         }
     }
 
+    fun moveItem(reminderId: String, from: Int, to: Int) {
+        viewModelScope.launch {
+            val current = repository.getReminder(reminderId) ?: return@launch
+            val items = current.sortedItems.toMutableList()
+            if (from in items.indices && to in items.indices) {
+                val item = items.removeAt(from)
+                items.add(to, item)
+                val updatedItems = items.mapIndexed { index, placeReminderItem ->
+                    placeReminderItem.copy(sortOrder = index)
+                }
+                repository.save(current.reminder, updatedItems)
+            }
+        }
+    }
+
     fun addItem(reminderId: String, text: String) {
         val trimmed = text.trim()
         if (trimmed.isEmpty()) return

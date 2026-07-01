@@ -12,6 +12,7 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.GridItemSpan
@@ -59,10 +60,18 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.github.jimmy90109.geoalarm.R
 import com.github.jimmy90109.geoalarm.data.PlaceReminderAttachmentType
 import com.github.jimmy90109.geoalarm.data.PlaceReminderWithItems
+import com.github.jimmy90109.geoalarm.ui.components.ActionBanner
+import com.github.jimmy90109.geoalarm.ui.components.ActionBannerButton
 import com.github.jimmy90109.geoalarm.ui.components.AlarmIconBadge
 import com.github.jimmy90109.geoalarm.ui.components.BackgroundLocationPermissionDialog
 import com.github.jimmy90109.geoalarm.ui.viewmodel.PlaceReminderListViewModel
 import com.github.jimmy90109.geoalarm.ui.viewmodel.PlaceReminderPermissionState
+import coil.compose.AsyncImage
+import coil.request.ImageRequest
+import coil.decode.VideoFrameDecoder
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.layout.ContentScale
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalMaterial3ExpressiveApi::class)
 @Composable
@@ -176,9 +185,7 @@ fun PlaceReminderListScreen(
             verticalArrangement = Arrangement.spacedBy(12.dp),
             horizontalArrangement = Arrangement.spacedBy(12.dp),
         ) {
-            item(span = { GridItemSpan(maxLineSpan) }) {
-                PlaceReminderDashboard(reminders, permissionState)
-            }
+
             if (reminders.any { it.reminder.enabled } && !permissionState.canEnableReminder) {
                 item(span = { GridItemSpan(maxLineSpan) }) {
                     PlaceReminderPermissionBanner(
@@ -224,61 +231,7 @@ fun PlaceReminderListScreen(
     }
 }
 
-@Composable
-private fun PlaceReminderDashboard(
-    reminders: List<PlaceReminderWithItems>,
-    permissionState: PlaceReminderPermissionState,
-) {
-    val enabledCount = reminders.count { it.reminder.enabled }
-    val lastTriggered = reminders.mapNotNull { it.reminder.lastTriggeredAt }.maxOrNull()
-    Card(
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainer),
-    ) {
-        Column(
-            modifier = Modifier.padding(16.dp),
-            verticalArrangement = Arrangement.spacedBy(12.dp),
-        ) {
-            Text(
-                text = stringResource(R.string.place_reminder_dashboard_title),
-                style = MaterialTheme.typography.titleMedium,
-                fontWeight = FontWeight.SemiBold,
-            )
-            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                StatusChip(
-                    icon = { Icon(Icons.Filled.CheckCircle, contentDescription = null) },
-                    label = stringResource(R.string.place_reminder_enabled_count, enabledCount),
-                )
-                StatusChip(
-                    icon = {
-                        Icon(
-                            if (permissionState.canEnableReminder) Icons.Filled.CheckCircle else Icons.Filled.ErrorOutline,
-                            contentDescription = null,
-                        )
-                    },
-                    label = if (permissionState.canEnableReminder) {
-                        stringResource(R.string.place_reminder_ready_status)
-                    } else {
-                        stringResource(R.string.place_reminder_needs_attention)
-                    },
-                )
-            }
-            Text(
-                text = if (lastTriggered == null) {
-                    stringResource(R.string.place_reminder_no_recent_trigger)
-                } else {
-                    stringResource(R.string.place_reminder_last_triggered, formatTime(lastTriggered))
-                },
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
-        }
-    }
-}
 
-@Composable
-private fun StatusChip(icon: @Composable () -> Unit, label: String) {
-    AssistChip(onClick = {}, leadingIcon = icon, label = { Text(label) })
-}
 
 @Composable
 private fun PlaceReminderPermissionBanner(
@@ -291,26 +244,20 @@ private fun PlaceReminderPermissionBanner(
         stringResource(R.string.place_reminder_missing_notifications).takeIf { !permissionState.hasNotifications },
         stringResource(R.string.place_reminder_missing_location_service).takeIf { !permissionState.isLocationServiceEnabled },
     )
-    Card(colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.errorContainer)) {
-        Column(
-            modifier = Modifier.padding(16.dp),
-            verticalArrangement = Arrangement.spacedBy(8.dp),
-        ) {
-            Text(
-                text = stringResource(R.string.place_reminder_permission_title),
-                style = MaterialTheme.typography.titleMedium,
-                color = MaterialTheme.colorScheme.onErrorContainer,
-                fontWeight = FontWeight.SemiBold,
-            )
-            Text(
-                text = missing.joinToString(" · "),
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onErrorContainer,
-            )
-            OutlinedButton(onClick = onPrimaryAction) {
-                Text(stringResource(R.string.place_reminder_fix_permissions))
-            }
-        }
+    
+    ActionBanner(
+        icon = Icons.Default.ErrorOutline,
+        message = missing.joinToString(" · "),
+        containerColor = MaterialTheme.colorScheme.errorContainer,
+        contentColor = MaterialTheme.colorScheme.onErrorContainer,
+    ) {
+        ActionBannerButton(
+            text = stringResource(R.string.place_reminder_fix_permissions),
+            onClick = onPrimaryAction,
+            modifier = Modifier
+                .weight(1f)
+                .height(48.dp),
+        )
     }
 }
 
@@ -423,29 +370,61 @@ private fun PlaceReminderAttachmentStrip(reminderWithItems: PlaceReminderWithIte
     if (attachments.isEmpty()) return
     Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
         attachments.take(4).forEach { attachment ->
+            val isVideo = attachment.type == PlaceReminderAttachmentType.VIDEO
+            val context = LocalContext.current
+            val imageRequest = remember(attachment.localPath, isVideo) {
+                ImageRequest.Builder(context)
+                    .data(attachment.localPath)
+                    .crossfade(true)
+                    .apply {
+                        if (isVideo) {
+                            decoderFactory(VideoFrameDecoder.Factory())
+                        }
+                    }
+                    .build()
+            }
             Box(
                 modifier = Modifier
-                    .size(44.dp)
-                    .padding(1.dp),
+                    .size(48.dp)
+                    .clip(RoundedCornerShape(8.dp)),
                 contentAlignment = Alignment.Center,
             ) {
-                Icon(
-                    if (attachment.type == PlaceReminderAttachmentType.IMAGE) {
-                        Icons.Filled.Image
-                    } else {
-                        Icons.Filled.Videocam
-                    },
+                AsyncImage(
+                    model = imageRequest,
                     contentDescription = null,
-                    tint = MaterialTheme.colorScheme.primary,
+                    modifier = Modifier.fillMaxSize(),
+                    contentScale = ContentScale.Crop,
                 )
+                if (isVideo) {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .padding(2.dp),
+                        contentAlignment = Alignment.BottomEnd
+                    ) {
+                        Icon(
+                            Icons.Filled.Videocam,
+                            contentDescription = null,
+                            tint = androidx.compose.ui.graphics.Color.White,
+                            modifier = Modifier.size(16.dp)
+                        )
+                    }
+                }
             }
         }
         if (attachments.size > 4) {
-            Text(
-                text = stringResource(R.string.place_reminder_more_attachments, attachments.size - 4),
-                style = MaterialTheme.typography.labelMedium,
-                modifier = Modifier.align(Alignment.CenterVertically),
-            )
+            Box(
+                modifier = Modifier
+                    .size(48.dp)
+                    .clip(RoundedCornerShape(8.dp)),
+                contentAlignment = Alignment.Center,
+            ) {
+                Text(
+                    text = stringResource(R.string.place_reminder_more_attachments, attachments.size - 4),
+                    style = MaterialTheme.typography.labelMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
         }
     }
 }

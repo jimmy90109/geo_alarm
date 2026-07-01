@@ -56,6 +56,8 @@ junitPlatformEngine = "1.13.4"
 journeysJunitEngine = "0.2.1"
 telemetryDeckKotlinSdk = "6.3.0"
 userMessagingPlatform = "4.0.0"
+coil = "2.6.0"
+reorderable = "2.4.3"
 
 [libraries]
 androidx-core-ktx = { group = "androidx.core", name = "core-ktx", version.ref = "coreKtx" }
@@ -104,6 +106,9 @@ junit-platform-engine = { group = "org.junit.platform", name = "junit-platform-e
 journeys-junit-engine = { group = "com.android.tools.journeys", name = "journeys-junit-engine", version.ref = "journeysJunitEngine" }
 telemetrydeck-kotlin-sdk = { group = "com.telemetrydeck", name = "kotlin-sdk", version.ref = "telemetryDeckKotlinSdk" }
 user-messaging-platform = { group = "com.google.android.ump", name = "user-messaging-platform", version.ref = "userMessagingPlatform" }
+coil-compose = { group = "io.coil-kt", name = "coil-compose", version.ref = "coil" }
+coil-video = { group = "io.coil-kt", name = "coil-video", version.ref = "coil" }
+reorderable = { group = "sh.calvin.reorderable", name = "reorderable", version.ref = "reorderable" }
 
 [plugins]
 android-application = { id = "com.android.application", version.ref = "agp" }

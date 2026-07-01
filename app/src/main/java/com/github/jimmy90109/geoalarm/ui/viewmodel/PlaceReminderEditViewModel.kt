@@ -30,13 +30,15 @@ import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 
+data class EditChecklistItem(val id: String = java.util.UUID.randomUUID().toString(), val text: String)
+
 data class PlaceReminderEditUiState(
     val reminderId: String? = null,
     val isLoading: Boolean = true,
     val title: String = "",
     val type: PlaceReminderType = PlaceReminderType.TEXT,
     val content: String = "",
-    val checklistItems: List<String> = listOf(""),
+    val checklistItems: List<EditChecklistItem> = listOf(EditChecklistItem(text = "")),
     val placeName: String = "",
     val address: String? = null,
     val selectedIconKey: String = DEFAULT_ALARM_ICON_KEY,
@@ -70,7 +72,7 @@ data class PlaceReminderEditUiState(
         get() {
             val hasContent = when (type) {
                 PlaceReminderType.TEXT -> content.trim().isNotEmpty()
-                PlaceReminderType.CHECKLIST -> checklistItems.any { it.trim().isNotEmpty() }
+                PlaceReminderType.CHECKLIST -> checklistItems.any { it.text.trim().isNotEmpty() }
             }
             val hasAnyContent = hasContent || attachments.isNotEmpty()
             return title.trim().isNotEmpty() &&
@@ -107,7 +109,9 @@ sealed interface PlaceReminderEditAction {
     data class ContentChanged(val value: String) : PlaceReminderEditAction
     data class ChecklistItemChanged(val index: Int, val value: String) : PlaceReminderEditAction
     data object AddChecklistItem : PlaceReminderEditAction
+    data class AddChecklistItemWithText(val value: String) : PlaceReminderEditAction
     data class RemoveChecklistItem(val index: Int) : PlaceReminderEditAction
+    data class MoveChecklistItem(val from: Int, val to: Int) : PlaceReminderEditAction
     data class SearchQueryChanged(val value: String) : PlaceReminderEditAction
     data object SearchSubmitted : PlaceReminderEditAction
     data class SearchResultSelected(val index: Int) : PlaceReminderEditAction
@@ -182,8 +186,10 @@ class PlaceReminderEditViewModel @Inject constructor(
             is PlaceReminderEditAction.TypeChanged -> update { it.copy(type = action.value) }
             is PlaceReminderEditAction.ContentChanged -> update { it.copy(content = action.value) }
             is PlaceReminderEditAction.ChecklistItemChanged -> updateChecklistItem(action.index, action.value)
-            PlaceReminderEditAction.AddChecklistItem -> update { it.copy(checklistItems = it.checklistItems + "") }
+            PlaceReminderEditAction.AddChecklistItem -> update { it.copy(checklistItems = it.checklistItems + EditChecklistItem(text = "")) }
+            is PlaceReminderEditAction.AddChecklistItemWithText -> addChecklistItem(action.value)
             is PlaceReminderEditAction.RemoveChecklistItem -> removeChecklistItem(action.index)
+            is PlaceReminderEditAction.MoveChecklistItem -> moveChecklistItem(action.from, action.to)
             is PlaceReminderEditAction.SearchQueryChanged -> update {
                 it.copy(searchQuery = action.value, searchFailed = false)
             }
@@ -237,7 +243,7 @@ class PlaceReminderEditViewModel @Inject constructor(
                 title = reminder.title,
                 type = reminder.type,
                 content = reminder.content,
-                checklistItems = reminderWithItems.sortedItems.map { it.text }.ifEmpty { listOf("") },
+                checklistItems = reminderWithItems.sortedItems.map { EditChecklistItem(id = it.id, text = it.text) }.ifEmpty { listOf(EditChecklistItem(text = "")) },
                 placeName = reminder.placeName,
                 address = reminder.address,
                 selectedIconKey = reminder.iconKey,
@@ -630,7 +636,15 @@ class PlaceReminderEditViewModel @Inject constructor(
     private fun updateChecklistItem(index: Int, value: String) {
         val items = _uiState.value.checklistItems.toMutableList()
         if (index !in items.indices) return
-        items[index] = value
+        items[index] = items[index].copy(text = value)
+        _uiState.value = _uiState.value.copy(checklistItems = items)
+    }
+
+    private fun addChecklistItem(value: String) {
+        val trimmed = value.trim()
+        if (trimmed.isEmpty()) return
+        val items = _uiState.value.checklistItems
+            .filter { it.text.trim().isNotEmpty() } + EditChecklistItem(text = trimmed)
         _uiState.value = _uiState.value.copy(checklistItems = items)
     }
 
@@ -638,7 +652,16 @@ class PlaceReminderEditViewModel @Inject constructor(
         val items = _uiState.value.checklistItems.toMutableList()
         if (index !in items.indices) return
         items.removeAt(index)
-        _uiState.value = _uiState.value.copy(checklistItems = items.ifEmpty { mutableListOf("") })
+        _uiState.value = _uiState.value.copy(checklistItems = items.ifEmpty { mutableListOf(EditChecklistItem(text = "")) })
+    }
+
+    private fun moveChecklistItem(from: Int, to: Int) {
+        val items = _uiState.value.checklistItems.toMutableList()
+        if (from in items.indices && to in items.indices) {
+            val item = items.removeAt(from)
+            items.add(to, item)
+            _uiState.value = _uiState.value.copy(checklistItems = items)
+        }
     }
 
     private fun save() {
@@ -669,13 +692,12 @@ class PlaceReminderEditViewModel @Inject constructor(
                 updatedAt = now,
             )
             val items = if (state.type == PlaceReminderType.CHECKLIST) {
-                state.checklistItems.map(String::trim)
-                    .filter(String::isNotEmpty)
-                    .mapIndexed { index, text ->
+                state.checklistItems.filter { it.text.trim().isNotEmpty() }
+                    .mapIndexed { index, item ->
                         PlaceReminderItem(
-                            id = UUID.randomUUID().toString(),
+                            id = item.id,
                             reminderId = reminderId,
-                            text = text,
+                            text = item.text.trim(),
                             checked = false,
                             sortOrder = index,
                         )

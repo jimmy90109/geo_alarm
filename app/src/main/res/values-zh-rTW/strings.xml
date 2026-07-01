@@ -227,7 +227,7 @@
     <string name="place_reminder_permission_title">需要權限才能穩定提醒</string>
     <string name="place_reminder_permission_body">GeoAlarm 需要背景定位，才能在你抵達指定地點時提醒你。我們不會持續顯示你的移動路線，只會用你設定的地點範圍判斷是否抵達。</string>
     <string name="place_reminder_missing_precise">精準定位未開啟</string>
-    <string name="place_reminder_missing_background">背景定位未允許</string>
+    <string name="place_reminder_missing_background">允許背景定位，離開 App 後才能在抵達時提醒你</string>
     <string name="place_reminder_missing_notifications">通知權限未開啟</string>
     <string name="place_reminder_missing_location_service">系統定位服務已關閉</string>
     <string name="place_reminder_allow_location">允許定位</string>
@@ -244,6 +244,9 @@
     <string name="place_reminder_edit_title">編輯地點提醒</string>
     <string name="place_reminder_detail_title">地點提醒</string>
     <string name="place_reminder_create_button">建立提醒</string>
+    <string name="place_reminder_step_place">名稱與地點</string>
+    <string name="place_reminder_step_content">提醒內容</string>
+    <string name="place_reminder_step_trigger">觸發方式</string>
     <string name="place_reminder_name">提醒名稱</string>
     <string name="place_reminder_name_placeholder">例如：超市購物清單</string>
     <string name="place_reminder_type">提醒類型</string>
@@ -263,13 +266,13 @@
     <string name="place_reminder_trigger_dwell">停留後</string>
     <string name="place_reminder_trigger_enter_summary">抵達時提醒</string>
     <string name="place_reminder_trigger_dwell_summary">停留 %d 分鐘後提醒</string>
-    <string name="place_reminder_dwell_time">停留時間</string>
+    <string name="place_reminder_dwell_time">停留時間（分鐘）</string>
     <string name="place_reminder_minutes">%d 分鐘</string>
     <string name="place_reminder_radius">提醒範圍</string>
     <string name="place_reminder_radius_hint">範圍太小可能導致提醒不穩定。</string>
-    <string name="place_reminder_cooldown">冷卻時間</string>
+    <string name="place_reminder_cooldown">冷卻時間（小時）</string>
     <string name="place_reminder_hours">%d 小時</string>
-    <string name="place_reminder_cooldown_today">今天不再提醒</string>
+    <string name="place_reminder_cooldown_today">當天只提醒一次</string>
     <string name="place_reminder_checklist_summary">%1$s 等 %2$d 項</string>
     <string name="place_reminder_checklist_progress">完成 %1$d/%2$d</string>
     <string name="place_reminder_attachment_summary">%1$d 張照片 · %2$d 部影片</string>
