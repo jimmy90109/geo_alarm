@@ -244,7 +244,7 @@
     <string name="place_reminder_edit_title">Edit Place Reminder</string>
     <string name="place_reminder_detail_title">Place Reminder</string>
     <string name="place_reminder_create_button">Create reminder</string>
-    <string name="place_reminder_step_place">Name and place</string>
+    <string name="place_reminder_step_place">Place</string>
     <string name="place_reminder_step_content">What to show</string>
     <string name="place_reminder_step_trigger">When to remind</string>
     <string name="place_reminder_name">Reminder name</string>

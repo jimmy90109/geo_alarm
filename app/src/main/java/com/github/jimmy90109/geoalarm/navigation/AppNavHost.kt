@@ -31,17 +31,20 @@ import androidx.navigation.NavHostController
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.toRoute
+import com.github.jimmy90109.geoalarm.data.DEFAULT_ALARM_ICON_KEY
 import com.github.jimmy90109.geoalarm.ui.screens.AlarmEditScreen
 import com.github.jimmy90109.geoalarm.ui.screens.MainScreen
 import com.github.jimmy90109.geoalarm.ui.screens.OnboardingScreen
 import com.github.jimmy90109.geoalarm.ui.screens.PlaceReminderDetailScreen
 import com.github.jimmy90109.geoalarm.ui.screens.PlaceReminderEditScreen
+import com.github.jimmy90109.geoalarm.ui.screens.PlaceReminderPlacePickerScreen
 import com.github.jimmy90109.geoalarm.ui.screens.ScheduleEditScreen
 import com.github.jimmy90109.geoalarm.ui.viewmodel.AlarmEditViewModel
 import com.github.jimmy90109.geoalarm.ui.viewmodel.HomeAction
 import com.github.jimmy90109.geoalarm.ui.viewmodel.HomeViewModel
 import com.github.jimmy90109.geoalarm.ui.viewmodel.OnboardingViewModel
 import com.github.jimmy90109.geoalarm.ui.viewmodel.PlaceReminderDetailViewModel
+import com.github.jimmy90109.geoalarm.ui.viewmodel.PlaceReminderEditAction
 import com.github.jimmy90109.geoalarm.ui.viewmodel.PlaceReminderEditViewModel
 import com.github.jimmy90109.geoalarm.ui.viewmodel.ScheduleEditViewModel
 
@@ -181,7 +184,9 @@ fun AppNavHost(
                         navController.navigate(AppRoutes.ScheduleEdit(scheduleId))
                     },
                     onAddPlaceReminder = {
-                        navController.navigate(AppRoutes.PlaceReminderEdit())
+                        navController.navigate(
+                            AppRoutes.PlaceReminderPlacePicker(createEditOnComplete = true)
+                        )
                     },
                     onPlaceReminderClick = { reminderId ->
                         navController.navigate(AppRoutes.PlaceReminderDetail(reminderId))
@@ -269,15 +274,35 @@ fun AppNavHost(
         composable<AppRoutes.PlaceReminderEdit> { backStackEntry ->
             val route = backStackEntry.toRoute<AppRoutes.PlaceReminderEdit>()
             val viewModel: PlaceReminderEditViewModel = hiltViewModel()
+            LaunchedEffect(route) {
+                val latitude = route.initialLatitude
+                val longitude = route.initialLongitude
+                val placeName = route.initialPlaceName
+                if (latitude != null && longitude != null && !placeName.isNullOrBlank()) {
+                    viewModel.onAction(
+                        PlaceReminderEditAction.ApplyInitialPlace(
+                            latitude = latitude,
+                            longitude = longitude,
+                            placeName = placeName,
+                            address = route.initialAddress,
+                            iconKey = route.initialIconKey ?: DEFAULT_ALARM_ICON_KEY,
+                            radiusMeters = route.initialRadiusMeters ?: 1000,
+                        )
+                    )
+                }
+            }
 
             AnimatedNavScreen {
                 PlaceReminderEditScreen(
                     viewModel = viewModel,
                     reminderId = route.reminderId,
+                    onSelectPlace = {
+                        navController.navigate(AppRoutes.PlaceReminderPlacePicker(route.reminderId))
+                    },
                     onBack = { savedReminderId ->
                         if (savedReminderId != null) {
                             navController.navigate(AppRoutes.PlaceReminderDetail(savedReminderId)) {
-                                popUpTo(AppRoutes.PlaceReminderEdit(route.reminderId)) {
+                                popUpTo(route) {
                                     inclusive = true
                                 }
                                 launchSingleTop = true
@@ -285,6 +310,56 @@ fun AppNavHost(
                         } else {
                             navController.popBackStack()
                         }
+                    },
+                )
+            }
+        }
+
+        composable<AppRoutes.PlaceReminderPlacePicker> { backStackEntry ->
+            val route = backStackEntry.toRoute<AppRoutes.PlaceReminderPlacePicker>()
+            val viewModel: PlaceReminderEditViewModel = if (route.createEditOnComplete) {
+                hiltViewModel()
+            } else {
+                val editBackStackEntry = remember(navController, backStackEntry, route.reminderId) {
+                    navController.previousBackStackEntry
+                        ?: navController.getBackStackEntry(AppRoutes.PlaceReminderEdit(route.reminderId))
+                }
+                hiltViewModel(editBackStackEntry)
+            }
+            LaunchedEffect(route.createEditOnComplete) {
+                if (route.createEditOnComplete) {
+                    viewModel.onAction(PlaceReminderEditAction.Load(null))
+                }
+            }
+            AnimatedNavScreen {
+                PlaceReminderPlacePickerScreen(
+                    viewModel = viewModel,
+                    reminderId = route.reminderId,
+                    onPlaceSelected = {
+                        if (route.createEditOnComplete) {
+                            val state = viewModel.uiState.value
+                            val position = state.selectedPosition
+                            if (position != null && state.placeName.isNotBlank()) {
+                                navController.navigate(
+                                    AppRoutes.PlaceReminderEdit(
+                                        initialLatitude = position.latitude,
+                                        initialLongitude = position.longitude,
+                                        initialPlaceName = state.placeName,
+                                        initialAddress = state.address,
+                                        initialIconKey = state.selectedIconKey,
+                                        initialRadiusMeters = state.radiusMeters,
+                                    )
+                                ) {
+                                    popUpTo(route) { inclusive = true }
+                                    launchSingleTop = true
+                                }
+                            }
+                        } else {
+                            navController.popBackStack()
+                        }
+                    },
+                    onCancel = {
+                        navController.popBackStack()
                     },
                 )
             }

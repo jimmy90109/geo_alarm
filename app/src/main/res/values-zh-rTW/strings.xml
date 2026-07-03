@@ -244,7 +244,7 @@
     <string name="place_reminder_edit_title">編輯地點提醒</string>
     <string name="place_reminder_detail_title">地點提醒</string>
     <string name="place_reminder_create_button">建立提醒</string>
-    <string name="place_reminder_step_place">名稱與地點</string>
+    <string name="place_reminder_step_place">地點</string>
     <string name="place_reminder_step_content">提醒內容</string>
     <string name="place_reminder_step_trigger">觸發方式</string>
     <string name="place_reminder_name">提醒名稱</string>

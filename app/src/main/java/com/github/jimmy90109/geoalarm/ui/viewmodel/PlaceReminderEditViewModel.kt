@@ -104,6 +104,14 @@ data class PlaceReminderEditUiState(
 
 sealed interface PlaceReminderEditAction {
     data class Load(val reminderId: String?) : PlaceReminderEditAction
+    data class ApplyInitialPlace(
+        val latitude: Double,
+        val longitude: Double,
+        val placeName: String,
+        val address: String?,
+        val iconKey: String,
+        val radiusMeters: Int,
+    ) : PlaceReminderEditAction
     data class TitleChanged(val value: String) : PlaceReminderEditAction
     data class TypeChanged(val value: PlaceReminderType) : PlaceReminderEditAction
     data class ContentChanged(val value: String) : PlaceReminderEditAction
@@ -182,6 +190,7 @@ class PlaceReminderEditViewModel @Inject constructor(
     fun onAction(action: PlaceReminderEditAction) {
         when (action) {
             is PlaceReminderEditAction.Load -> load(action.reminderId)
+            is PlaceReminderEditAction.ApplyInitialPlace -> applyInitialPlace(action)
             is PlaceReminderEditAction.TitleChanged -> update { it.copy(title = action.value) }
             is PlaceReminderEditAction.TypeChanged -> update { it.copy(type = action.value) }
             is PlaceReminderEditAction.ContentChanged -> update { it.copy(content = action.value) }
@@ -258,6 +267,21 @@ class PlaceReminderEditViewModel @Inject constructor(
                 attachments = reminderWithItems.sortedAttachments,
             )
         }
+    }
+
+    private fun applyInitialPlace(action: PlaceReminderEditAction.ApplyInitialPlace) {
+        val state = _uiState.value
+        if (state.reminderId != null || state.selectedPosition != null) return
+        _uiState.value = state.copy(
+            placeName = action.placeName,
+            address = action.address,
+            selectedIconKey = action.iconKey,
+            selectedPosition = LatLng(action.latitude, action.longitude),
+            radiusMeters = action.radiusMeters,
+            step = AlarmEditStep.DetailsForm,
+            isSelectingPlace = false,
+            hasUserInteractedWithMap = true,
+        )
     }
 
     private fun addAttachments(uris: List<Uri>) {
