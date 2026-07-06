@@ -59,7 +59,6 @@ import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.ChevronRight
 import androidx.compose.material.icons.filled.Close
-import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.LocationOn
 import androidx.compose.material.icons.filled.Image
@@ -106,7 +105,6 @@ import androidx.compose.ui.graphics.PathEffect
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.layout.ContentScale
-import androidx.compose.material.icons.filled.DragHandle
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
@@ -122,7 +120,6 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.focus.FocusRequester
-import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalDensity
@@ -181,6 +178,7 @@ private val PlaceReminderLandscapeControlWidth = 360.dp
 private val PlaceReminderLandscapePaneGap = 24.dp
 private val PlaceReminderOverlayMaxWidth = 720.dp
 private val PlaceReminderFormMaxWidth = 360.dp
+private const val PlaceReminderContentPageIndex = 1
 private const val PlaceReminderEditPageCount = 3
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -589,6 +587,11 @@ private fun PlaceReminderEditContent(
                 modifier = Modifier.fillMaxSize(),
                 contentAlignment = Alignment.Center,
             ) {
+                val contentPageExtraVerticalPadding = if (!isLandscape && page == PlaceReminderContentPageIndex) {
+                    maxHeight * 0.2f
+                } else {
+                    0.dp
+                }
                 Box(
                     modifier = Modifier
                         .padding(
@@ -608,12 +611,15 @@ private fun PlaceReminderEditContent(
                         Box(
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .padding(top = contentTopPadding, bottom = contentBottomPadding),
+                                .padding(
+                                    top = contentTopPadding + contentPageExtraVerticalPadding,
+                                    bottom = contentBottomPadding + contentPageExtraVerticalPadding,
+                                ),
                             contentAlignment = Alignment.Center,
                         ) {
                             when (page) {
                                 0 -> PlaceReminderPlaceFormPage(state = state, onSelectPlace = onSelectPlace)
-                                1 -> PlaceReminderContentFormPage(
+                                PlaceReminderContentPageIndex -> PlaceReminderContentFormPage(
                                     state = state,
                                     onAction = onAction,
                                     newChecklistText = newChecklistText,
@@ -672,6 +678,7 @@ private fun PlaceReminderContentFormPage(
             placeholder = { Text(stringResource(R.string.place_reminder_name_placeholder)) },
             modifier = Modifier.fillMaxWidth(),
             singleLine = true,
+            shape = PlaceReminderTextFieldShape,
         )
         ExpressiveOptionGroup(
             title = stringResource(R.string.place_reminder_type),
@@ -691,6 +698,7 @@ private fun PlaceReminderContentFormPage(
                     .fillMaxWidth()
                     .height(136.dp),
                 minLines = 4,
+                shape = PlaceReminderTextFieldShape,
             )
         } else {
             Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
@@ -1292,81 +1300,6 @@ private fun PlaceReminderAttachmentEditor(
 }
 
 @Composable
-private fun ChecklistEditRow(
-    value: String,
-    onValueChange: (String) -> Unit,
-    onRemove: () -> Unit,
-    dragHandleModifier: Modifier,
-) {
-    Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
-        Icon(
-            imageVector = Icons.Filled.DragHandle,
-            contentDescription = null,
-            modifier = dragHandleModifier,
-            tint = MaterialTheme.colorScheme.onSurfaceVariant,
-        )
-        OutlinedTextField(
-            value = value,
-            onValueChange = onValueChange,
-            modifier = Modifier.weight(1f),
-            singleLine = true,
-        )
-        IconButton(onClick = onRemove) {
-            Icon(
-                Icons.Filled.Delete,
-                contentDescription = stringResource(R.string.delete),
-                tint = MaterialTheme.colorScheme.error,
-            )
-        }
-    }
-}
-
-@Composable
-private fun ChecklistAddRow(
-    value: String,
-    onValueChange: (String) -> Unit,
-    onAdd: () -> Unit,
-    focusRequester: FocusRequester,
-) {
-    Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
-        OutlinedTextField(
-            value = value,
-            onValueChange = onValueChange,
-            modifier = Modifier
-                .weight(1f)
-                .focusRequester(focusRequester),
-            singleLine = true,
-            placeholder = { Text(stringResource(R.string.place_reminder_new_item)) },
-        )
-        IconButton(onClick = onAdd, enabled = value.trim().isNotEmpty()) {
-            Surface(
-                shape = CircleShape,
-                color = if (value.trim().isNotEmpty()) {
-                    MaterialTheme.colorScheme.primaryContainer
-                } else {
-                    MaterialTheme.colorScheme.surfaceContainerHigh
-                },
-            ) {
-                Box(
-                    modifier = Modifier.size(40.dp),
-                    contentAlignment = Alignment.Center,
-                ) {
-                    Icon(
-                        Icons.Filled.Add,
-                        contentDescription = stringResource(R.string.place_reminder_add_item),
-                        tint = if (value.trim().isNotEmpty()) {
-                            MaterialTheme.colorScheme.onPrimaryContainer
-                        } else {
-                            MaterialTheme.colorScheme.onSurfaceVariant
-                        },
-                    )
-                }
-            }
-        }
-    }
-}
-
-@Composable
 private fun AttachmentPreviewTile(
     attachment: com.github.jimmy90109.geoalarm.data.PlaceReminderAttachment,
     onRemove: () -> Unit,
@@ -1493,6 +1426,7 @@ private fun PlacePickerSection(
                 label = { Text(stringResource(R.string.search_location)) },
                 modifier = Modifier.weight(1f),
                 singleLine = true,
+                shape = PlaceReminderTextFieldShape,
             )
             IconButton(onClick = { onAction(PlaceReminderEditAction.SearchSubmitted) }) {
                 Icon(Icons.Filled.Search, contentDescription = stringResource(R.string.search_location))
