@@ -163,6 +163,7 @@
 
     <!-- About -->
     <string name="section_about">關於</string>
+    <string name="open_source_licenses">開放原始碼授權</string>
     <string name="settings_version_label">版本 %s</string>
 
     <!--  Monitoring Screen  -->

@@ -95,6 +95,7 @@ import com.github.jimmy90109.geoalarm.ui.viewmodel.SettingsAction
 import com.github.jimmy90109.geoalarm.ui.viewmodel.SettingsViewModel
 import com.github.jimmy90109.geoalarm.utils.AudioUtils
 import com.github.jimmy90109.geoalarm.utils.PaymentShortcutNotifier
+import com.google.android.gms.oss.licenses.v2.OssLicensesMenuActivity
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.LocalLifecycleOwner
@@ -134,6 +135,11 @@ fun SettingsScreen(
         }.onFailure {
             context.startActivity(FullScreenIntentPermissionHelper.createAppDetailsIntent(context))
         }
+    }
+
+    fun openOpenSourceLicenses() {
+        OssLicensesMenuActivity.setActivityTitle(context.getString(R.string.open_source_licenses))
+        context.startActivity(Intent(context, OssLicensesMenuActivity::class.java))
     }
 
     DisposableEffect(lifecycleOwner) {
@@ -238,6 +244,7 @@ fun SettingsScreen(
                         Spacer(modifier = Modifier.height(16.dp))
                         SettingsAboutSection(
                             currentVersion = viewModel.currentVersion,
+                            onOpenSourceLicensesClick = ::openOpenSourceLicenses,
                         )
                     }
                 }
@@ -284,6 +291,7 @@ fun SettingsScreen(
                     Spacer(modifier = Modifier.height(24.dp))
                     SettingsAboutSection(
                         currentVersion = viewModel.currentVersion,
+                        onOpenSourceLicensesClick = ::openOpenSourceLicenses,
                     )
                 }
             }
@@ -990,7 +998,8 @@ private fun Context.findActivity(): Activity? {
 
 @Composable
 private fun SettingsAboutSection(
-    currentVersion: String
+    currentVersion: String,
+    onOpenSourceLicensesClick: () -> Unit,
 ) {
     SettingsSectionHeader(title = stringResource(R.string.section_about))
 
@@ -999,6 +1008,12 @@ private fun SettingsAboutSection(
         value = stringResource(R.string.settings_version_label, currentVersion),
         onClick = {},
         enabled = false,
+    )
+    Spacer(modifier = Modifier.height(8.dp))
+    SettingsCard(
+        title = stringResource(R.string.open_source_licenses),
+        value = stringResource(R.string.view),
+        onClick = onOpenSourceLicensesClick,
     )
 }
 

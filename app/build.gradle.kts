@@ -7,6 +7,7 @@ plugins {
     alias(libs.plugins.hilt.android)
     alias(libs.plugins.compose.compiler)
     alias(libs.plugins.kotlin.serialization)
+    id("com.google.android.gms.oss-licenses-plugin")
 }
 
 android {
@@ -122,6 +123,7 @@ dependencies {
     implementation(libs.androidx.ui.text.google.fonts)
     implementation(libs.play.services.location)
     implementation(libs.play.services.ads)
+    implementation(libs.play.services.oss.licenses)
     implementation(libs.maps.compose)
     implementation(libs.places)
     implementation(libs.accompanist.permissions)

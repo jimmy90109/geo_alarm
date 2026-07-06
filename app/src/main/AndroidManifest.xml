@@ -124,6 +124,11 @@
             android:showWhenLocked="true"
             android:turnScreenOn="true"
             android:theme="@style/Theme.GeoAlarm" />
+
+        <activity
+            android:name="com.google.android.gms.oss.licenses.v2.OssLicensesMenuActivity"
+            android:theme="@style/Theme.GeoAlarm"
+            tools:replace="android:theme" />
             
         <activity
             android:name=".MainActivity"

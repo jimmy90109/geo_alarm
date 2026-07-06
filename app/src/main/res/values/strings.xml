@@ -163,6 +163,7 @@
 
     <!-- About -->
     <string name="section_about">About</string>
+    <string name="open_source_licenses">Open source licenses</string>
     <string name="settings_version_label">Version %s</string>
 
     <!--  Monitoring Screen  -->
