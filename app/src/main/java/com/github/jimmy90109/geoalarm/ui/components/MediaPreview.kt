@@ -12,6 +12,7 @@ import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectVerticalDragGestures
+import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.WindowInsets
@@ -118,6 +119,7 @@ fun MediaPreviewThumbnail(
 
     Card(
         modifier = modifier
+            .aspectRatio(1f)
             .onGloballyPositioned { coordinates ->
                 itemBounds = coordinates.boundsInRoot()
             }
@@ -251,14 +253,19 @@ fun MediaPreviewOverlay(
             horizontalPaddingPx,
             verticalPaddingPx,
             mediaAspectRatio,
+            isVideo,
         ) {
-            fitRectInContainer(
-                containerWidth = maxWidthPx,
-                containerHeight = maxHeightPx,
-                horizontalPadding = horizontalPaddingPx,
-                verticalPadding = verticalPaddingPx,
-                aspectRatio = mediaAspectRatio,
-            )
+            if (isVideo) {
+                fitRectInContainer(
+                    containerWidth = maxWidthPx,
+                    containerHeight = maxHeightPx,
+                    horizontalPadding = horizontalPaddingPx,
+                    verticalPadding = verticalPaddingPx,
+                    aspectRatio = mediaAspectRatio,
+                )
+            } else {
+                Rect(left = 0f, top = 0f, right = maxWidthPx, bottom = maxHeightPx)
+            }
         }
         val draggedTargetBounds = remember(targetBounds, viewerScale, dragOffsetY.value) {
             targetBounds
@@ -286,10 +293,12 @@ fun MediaPreviewOverlay(
             animationSpec = tween(120),
             label = "mediaPreviewControlsAlpha",
         )
-        val imageContentScale = if (transitionProgress.value > 0.96f) {
-            ContentScale.Fit
-        } else {
-            ContentScale.Crop
+        val imageContentScale = when {
+            isVideo -> {
+                if (transitionProgress.value > 0.96f) ContentScale.Fit else ContentScale.Crop
+            }
+            transitionProgress.value > 0.18f -> ContentScale.Fit
+            else -> ContentScale.Crop
         }
 
         Box(

@@ -7,6 +7,7 @@ import android.provider.Settings
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.FlowRow
@@ -433,7 +434,7 @@ private fun PlaceReminderAttachmentGrid(
                         item = attachment.toMediaPreviewItem(),
                         hidden = attachment.id == hiddenAttachmentId,
                         modifier = Modifier
-                            .height(100.dp),
+                            .aspectRatio(1f),
                         onClick = onAttachmentClick,
                     )
                 }
