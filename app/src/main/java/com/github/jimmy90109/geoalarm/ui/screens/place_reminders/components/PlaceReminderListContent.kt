@@ -21,12 +21,16 @@ import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.LoadingIndicator
+import androidx.compose.material3.Surface
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import com.github.jimmy90109.geoalarm.R
+import com.github.jimmy90109.geoalarm.ui.components.DashedAddListItem
+import com.github.jimmy90109.geoalarm.ui.theme.GeoAlarmTheme
 import com.github.jimmy90109.geoalarm.ui.viewmodel.PlaceReminderListUiState
 import com.github.jimmy90109.geoalarm.ui.viewmodel.PlaceReminderPermissionState
 
@@ -45,6 +49,7 @@ fun PlaceReminderListContent(
     loadingTopPadding: PaddingValues,
     emptyTopPadding: PaddingValues,
     onPermissionPrimaryAction: () -> Unit,
+    onAddReminder: () -> Unit,
     onReminderClick: (String) -> Unit,
     onReminderEnabledChange: (String, Boolean) -> Unit,
     modifier: Modifier = Modifier,
@@ -87,7 +92,10 @@ fun PlaceReminderListContent(
                     horizontalAlignment = Alignment.CenterHorizontally,
                 ) {
                     Spacer(modifier = Modifier.weight(1f))
-                    PlaceReminderEmptyState(modifier = Modifier.fillMaxWidth())
+                    PlaceReminderEmptyState(
+                        onAddReminder = onAddReminder,
+                        modifier = Modifier.fillMaxWidth(),
+                    )
                     Spacer(modifier = Modifier.weight(2f))
                 }
             }
@@ -122,10 +130,12 @@ fun PlaceReminderListContent(
                             )
                         }
                     }
-                    if (savedReminders.isNotEmpty()) {
+                    if (state.reminders.isNotEmpty()) {
                         item(span = { GridItemSpan(maxLineSpan) }) {
                             PlaceReminderSectionHeader(text = stringResource(R.string.place_reminder_section_saved))
                         }
+                    }
+                    if (savedReminders.isNotEmpty()) {
                         items(savedReminders, key = { it.reminder.id }) { reminder ->
                             PlaceReminderCard(
                                 reminderWithItems = reminder,
@@ -136,8 +146,43 @@ fun PlaceReminderListContent(
                             )
                         }
                     }
+                    if (state.reminders.isNotEmpty()) {
+                        item(span = {
+                            if (savedReminders.isEmpty()) {
+                                GridItemSpan(maxLineSpan)
+                            } else {
+                                GridItemSpan(1)
+                            }
+                        }) {
+                            DashedAddListItem(
+                                text = stringResource(R.string.place_reminder_add),
+                                onClick = onAddReminder,
+                            )
+                        }
+                    }
                 }
             }
+        }
+    }
+}
+
+@Preview(name = "Place reminder list empty", widthDp = 360, heightDp = 720)
+@Composable
+private fun PlaceReminderListContentEmptyPreview() {
+    GeoAlarmTheme {
+        Surface {
+            PlaceReminderListContent(
+                state = PlaceReminderListUiState(isLoading = false),
+                permissionState = PlaceReminderPermissionState(),
+                contentPadding = PaddingValues(16.dp),
+                loadingTopPadding = PaddingValues(top = 24.dp),
+                emptyTopPadding = PaddingValues(),
+                onPermissionPrimaryAction = {},
+                onAddReminder = {},
+                onReminderClick = {},
+                onReminderEnabledChange = { _, _ -> },
+                modifier = Modifier.fillMaxSize(),
+            )
         }
     }
 }

@@ -23,6 +23,9 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Add
+import androidx.compose.material3.Button
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -53,6 +56,7 @@ import kotlinx.coroutines.launch
 
 @Composable
 fun PlaceReminderEmptyState(
+    onAddReminder: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     BoxWithConstraints(
@@ -76,6 +80,23 @@ fun PlaceReminderEmptyState(
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
+                Button(
+                    onClick = onAddReminder,
+                    contentPadding = androidx.compose.foundation.layout.PaddingValues(
+                        horizontal = 24.dp,
+                        vertical = 14.dp,
+                    ),
+                ) {
+                    Icon(
+                        imageVector = Icons.Filled.Add,
+                        contentDescription = null,
+                    )
+                    Text(
+                        text = stringResource(R.string.place_reminder_empty_cta),
+                        modifier = Modifier.padding(start = 8.dp),
+                        style = MaterialTheme.typography.titleMedium,
+                    )
+                }
             }
         }
 
@@ -286,7 +307,10 @@ private fun PlaceReminderEmptyStatePhonePreview() {
                 .background(MaterialTheme.colorScheme.background),
             contentAlignment = Alignment.Center,
         ) {
-            PlaceReminderEmptyState(modifier = Modifier.fillMaxWidth())
+            PlaceReminderEmptyState(
+                onAddReminder = {},
+                modifier = Modifier.fillMaxWidth(),
+            )
         }
     }
 }
@@ -301,7 +325,10 @@ private fun PlaceReminderEmptyStateWidePreview() {
                 .background(MaterialTheme.colorScheme.background),
             contentAlignment = Alignment.Center,
         ) {
-            PlaceReminderEmptyState(modifier = Modifier.fillMaxWidth())
+            PlaceReminderEmptyState(
+                onAddReminder = {},
+                modifier = Modifier.fillMaxWidth(),
+            )
         }
     }
 }

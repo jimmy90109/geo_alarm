@@ -17,6 +17,7 @@ import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.GridItemSpan
@@ -24,7 +25,6 @@ import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
-import androidx.compose.material.icons.filled.Widgets
 import androidx.compose.material.icons.outlined.Widgets
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
@@ -48,14 +48,17 @@ import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.graphics.PathEffect
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import com.github.jimmy90109.geoalarm.R
 import com.github.jimmy90109.geoalarm.data.Alarm
 import com.github.jimmy90109.geoalarm.data.AlarmSchedule
 import com.github.jimmy90109.geoalarm.data.ScheduleWithAlarm
+import com.github.jimmy90109.geoalarm.ui.theme.GeoAlarmTheme
 import com.github.jimmy90109.geoalarm.utils.TimeUtils
 import com.google.android.gms.ads.nativead.NativeAd
 
@@ -70,6 +73,7 @@ fun AlarmList(
     onToggleAlarm: (Alarm, Boolean) -> Unit,
     onScheduleClick: (ScheduleWithAlarm) -> Unit,
     onToggleSchedule: (AlarmSchedule, Boolean) -> Unit,
+    onAddAlarm: () -> Unit,
     onAddSchedule: () -> Unit,
     onOpenWidgetPicker: () -> Unit,
     contentPadding: PaddingValues = PaddingValues(bottom = 80.dp),
@@ -116,9 +120,19 @@ fun AlarmList(
                 )
             }
         } else if (alarms.isNotEmpty()) {
-             // Show Guide Item if no schedules but alarms exist
             item(span = { GridItemSpan(maxLineSpan) }) {
-                ScheduleGuideItem(onClick = onAddSchedule)
+                DashedAddListItem(
+                    text = stringResource(R.string.schedule_guide_message),
+                    onClick = onAddSchedule,
+                )
+            }
+        }
+        if (alarms.isNotEmpty() && schedules.isNotEmpty()) {
+            item {
+                DashedAddListItem(
+                    text = stringResource(R.string.new_schedule),
+                    onClick = onAddSchedule,
+                )
             }
         }
 
@@ -166,9 +180,75 @@ fun AlarmList(
                     onHighlightFinished = onHighlightFinished
                 )
             }
+            item {
+                DashedAddListItem(
+                    text = stringResource(R.string.new_alarm),
+                    onClick = onAddAlarm,
+                )
+            }
         }
     }
 }
+
+@Preview(name = "Alarm list", widthDp = 390, heightDp = 720)
+@Composable
+private fun AlarmListPreview() {
+    val homeAlarm = previewAlarm(id = "home", name = "Home", iconKey = "home")
+    val workAlarm = previewAlarm(id = "work", name = "Office", iconKey = "work")
+    val trainAlarm = previewAlarm(id = "train", name = "Taipei Main Station", iconKey = "train")
+    val schedules = listOf(
+        ScheduleWithAlarm(
+            schedule = AlarmSchedule(
+                id = "weekday",
+                alarmId = workAlarm.id,
+                daysOfWeek = setOf(2, 3, 4, 5, 6),
+                hour = 8,
+                minute = 30,
+            ),
+            alarm = workAlarm,
+        ),
+        ScheduleWithAlarm(
+            schedule = AlarmSchedule(
+                id = "weekend",
+                alarmId = trainAlarm.id,
+                daysOfWeek = setOf(1, 7),
+                hour = 22,
+                minute = 10,
+                isEnabled = false,
+            ),
+            alarm = trainAlarm,
+        ),
+    )
+
+    GeoAlarmTheme {
+        AlarmList(
+            alarms = listOf(homeAlarm, workAlarm, trainAlarm),
+            schedules = schedules,
+            onAlarmClick = {},
+            onToggleAlarm = { _, _ -> },
+            onScheduleClick = {},
+            onToggleSchedule = { _, _ -> },
+            onAddAlarm = {},
+            onAddSchedule = {},
+            onOpenWidgetPicker = {},
+            contentPadding = PaddingValues(16.dp),
+        )
+    }
+}
+
+private fun previewAlarm(
+    id: String,
+    name: String,
+    iconKey: String,
+) = Alarm(
+    id = id,
+    name = name,
+    latitude = 25.033,
+    longitude = 121.565,
+    radius = 300.0,
+    isEnabled = false,
+    iconKey = iconKey,
+)
 
 @Composable
 private fun AnimatedHomeNativeAdCard(nativeAd: NativeAd) {
@@ -340,12 +420,11 @@ fun ScheduleItem(
 }
 
 
-/**
- * A guide item encouraging users to add a schedule.
- */
 @Composable
-fun ScheduleGuideItem(
+fun DashedAddListItem(
+    text: String,
     modifier: Modifier = Modifier,
+    icon: ImageVector = Icons.Default.Add,
     onClick: () -> Unit,
 ) {
     val haptic = LocalHapticFeedback.current
@@ -356,6 +435,7 @@ fun ScheduleGuideItem(
     androidx.compose.foundation.layout.Box(
         modifier = modifier
             .fillMaxWidth()
+            .heightIn(min = 80.dp)
             .clickable(onClick = {
                 haptic.performHapticFeedback(HapticFeedbackType.ContextClick)
                 onClick()
@@ -378,14 +458,14 @@ fun ScheduleGuideItem(
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.Center,
         ) {
-            androidx.compose.material3.Icon(
-                imageVector = Icons.Default.Add,
+            Icon(
+                imageVector = icon,
                 contentDescription = null,
                 tint = MaterialTheme.colorScheme.primary,
                 modifier = Modifier.padding(end = 8.dp)
             )
             Text(
-                text = stringResource(R.string.schedule_guide_message),
+                text = text,
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )

@@ -221,6 +221,7 @@
 
     <!-- 地點提醒 -->
     <string name="place_reminders_title">地點提醒</string>
+    <string name="place_reminder_beta_tag">Beta</string>
     <string name="place_reminder_add">新增地點提醒</string>
     <string name="place_reminder_section_enabled">啟用中</string>
     <string name="place_reminder_section_saved">已儲存</string>

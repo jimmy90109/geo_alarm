@@ -221,6 +221,7 @@
 
     <!-- Place reminders -->
     <string name="place_reminders_title">Place Reminders</string>
+    <string name="place_reminder_beta_tag">Beta</string>
     <string name="place_reminder_add">Add place reminder</string>
     <string name="place_reminder_section_enabled">Active</string>
     <string name="place_reminder_section_saved">Saved</string>

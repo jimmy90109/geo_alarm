@@ -101,7 +101,8 @@ fun HomeScreen(
     onAlarmClick: (Alarm) -> Unit,
     onAddSchedule: () -> Unit,
     onScheduleClick: (ScheduleWithAlarm) -> Unit,
-    onOpenOnboarding: () -> Unit
+    onOpenOnboarding: () -> Unit,
+    isLandscape: Boolean = false,
 ) {
     val homeListState by viewModel.homeListState.collectAsStateWithLifecycle()
     val alarms = homeListState.alarms
@@ -378,11 +379,12 @@ fun HomeScreen(
                         },
                     )
                 } else {
+                    val bottomListPadding = if (isLandscape) 16.dp else 96.dp
                     HomeListContent(
                         state = homeListState,
                         contentPadding = PaddingValues(
                             top = innerPadding.calculateTopPadding() + 16.dp,
-                            bottom = innerPadding.calculateBottomPadding() + 100.dp,
+                            bottom = innerPadding.calculateBottomPadding() + bottomListPadding,
                             start = 16.dp,
                             end = 16.dp,
                         ),
@@ -401,6 +403,7 @@ fun HomeScreen(
                         onToggleSchedule = { schedule, isEnabled ->
                             viewModel.onAction(HomeAction.ScheduleToggled(schedule, isEnabled))
                         },
+                        onAddAlarm = onAddAlarm,
                         onAddSchedule = onAddSchedule,
                         onOpenWidgetPicker = {
                             val appWidgetManager = AppWidgetManager.getInstance(context)
