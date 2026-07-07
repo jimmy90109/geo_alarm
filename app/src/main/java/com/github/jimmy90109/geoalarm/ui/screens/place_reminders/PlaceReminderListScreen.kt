@@ -1,6 +1,7 @@
-package com.github.jimmy90109.geoalarm.ui.screens
+package com.github.jimmy90109.geoalarm.ui.screens.place_reminders
 
 import android.Manifest
+import android.os.Build
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.Arrangement
@@ -103,7 +104,7 @@ fun PlaceReminderListScreen(
             }
             !permissionState.hasNotifications -> {
                 pendingEnableReminderId = reminderId
-                if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.TIRAMISU) {
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
                     notificationLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
                 }
             }

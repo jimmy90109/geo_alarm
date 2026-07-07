@@ -1,4 +1,4 @@
-package com.github.jimmy90109.geoalarm.ui.screens
+package com.github.jimmy90109.geoalarm.ui.screens.place_reminders
 
 import android.Manifest
 import android.content.Context

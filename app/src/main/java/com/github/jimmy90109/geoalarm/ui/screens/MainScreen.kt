@@ -42,6 +42,7 @@ import com.github.jimmy90109.geoalarm.navigation.MainRoutes
 import com.github.jimmy90109.geoalarm.ui.components.AppNavigationRail
 import com.github.jimmy90109.geoalarm.ui.components.BottomNavBar
 import com.github.jimmy90109.geoalarm.ui.components.NavTab
+import com.github.jimmy90109.geoalarm.ui.screens.place_reminders.PlaceReminderListScreen
 import com.github.jimmy90109.geoalarm.ui.viewmodel.HomeViewModel
 import com.github.jimmy90109.geoalarm.ui.viewmodel.PlaceReminderListViewModel
 import com.github.jimmy90109.geoalarm.ui.viewmodel.SettingsViewModel

@@ -1,57 +1,36 @@
-package com.github.jimmy90109.geoalarm.ui.screens
+package com.github.jimmy90109.geoalarm.ui.screens.place_reminders
 
 import android.Manifest
-import android.content.res.Configuration
-import android.net.Uri
-import android.provider.Settings
+import android.os.Build
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.FlowRow
-import androidx.compose.foundation.layout.ExperimentalLayoutApi
-import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.navigationBars
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.grid.GridCells
-import androidx.compose.foundation.lazy.grid.GridItemSpan
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Edit
-import androidx.compose.material.icons.filled.Image
-import androidx.compose.material.icons.filled.LocationOn
 import androidx.compose.material.icons.filled.Refresh
-import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.Button
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Checkbox
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
-import androidx.compose.material3.FilterChip
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
-import androidx.compose.material3.LargeFlexibleTopAppBar
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.ElevatedCard
@@ -59,7 +38,6 @@ import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
-import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
@@ -71,13 +49,9 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Rect
-import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.platform.LocalConfiguration
-import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
@@ -89,7 +63,6 @@ import com.github.jimmy90109.geoalarm.data.PlaceReminderAttachment
 import com.github.jimmy90109.geoalarm.data.PlaceReminderAttachmentType
 import com.github.jimmy90109.geoalarm.data.PlaceReminderType
 import com.github.jimmy90109.geoalarm.data.PlaceReminderWithItems
-import com.github.jimmy90109.geoalarm.data.PlaceTriggerType
 import com.github.jimmy90109.geoalarm.ui.components.AlarmIconBadge
 import com.github.jimmy90109.geoalarm.ui.components.BackgroundLocationPermissionDialog
 import com.github.jimmy90109.geoalarm.ui.components.MediaPreviewItem
@@ -98,18 +71,9 @@ import com.github.jimmy90109.geoalarm.ui.components.MediaPreviewPreloader
 import com.github.jimmy90109.geoalarm.ui.components.MediaPreviewSelection
 import com.github.jimmy90109.geoalarm.ui.components.MediaPreviewThumbnail
 import com.github.jimmy90109.geoalarm.ui.components.MediaPreviewType
-import com.github.jimmy90109.geoalarm.ui.viewmodel.AlarmEditControlMode
-import com.github.jimmy90109.geoalarm.ui.viewmodel.AlarmEditStep
 import com.github.jimmy90109.geoalarm.ui.viewmodel.PlaceReminderDetailEffect
 import com.github.jimmy90109.geoalarm.ui.viewmodel.PlaceReminderDetailViewModel
-import com.github.jimmy90109.geoalarm.ui.viewmodel.PlaceReminderEditAction
-import com.github.jimmy90109.geoalarm.ui.viewmodel.PlaceReminderEditEffect
-import com.github.jimmy90109.geoalarm.ui.viewmodel.PlaceReminderEditUiState
-import com.github.jimmy90109.geoalarm.ui.viewmodel.PlaceReminderEditViewModel
 import com.github.jimmy90109.geoalarm.ui.viewmodel.PlaceReminderListViewModel
-import com.github.jimmy90109.geoalarm.ui.viewmodel.PlaceReminderPermissionState
-import java.text.DateFormat
-import java.util.Date
 
 private val RadiusOptions = listOf(100, 150, 200, 300)
 private val DwellOptions = listOf(1, 3, 5, 10)
@@ -177,7 +141,7 @@ fun PlaceReminderDetailScreen(
             }
             !permissionState.hasNotifications -> {
                 pendingEnableReminderId = id
-                if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.TIRAMISU) {
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
                     notificationLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
                 }
             }
@@ -303,7 +267,9 @@ fun PlaceReminderDetailScreen(
                             }
                             reminder.lastTriggeredAt?.let {
                                 Text(
-                                    text = stringResource(R.string.place_reminder_last_triggered, formatTime(it)),
+                                    text = stringResource(R.string.place_reminder_last_triggered,
+                                        formatTime(it)
+                                    ),
                                     style = MaterialTheme.typography.bodySmall,
                                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                                 )

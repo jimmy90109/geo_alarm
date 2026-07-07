@@ -35,9 +35,9 @@ import com.github.jimmy90109.geoalarm.data.DEFAULT_ALARM_ICON_KEY
 import com.github.jimmy90109.geoalarm.ui.screens.AlarmEditScreen
 import com.github.jimmy90109.geoalarm.ui.screens.MainScreen
 import com.github.jimmy90109.geoalarm.ui.screens.OnboardingScreen
-import com.github.jimmy90109.geoalarm.ui.screens.PlaceReminderDetailScreen
-import com.github.jimmy90109.geoalarm.ui.screens.PlaceReminderEditScreen
-import com.github.jimmy90109.geoalarm.ui.screens.PlaceReminderPlacePickerScreen
+import com.github.jimmy90109.geoalarm.ui.screens.place_reminders.PlaceReminderDetailScreen
+import com.github.jimmy90109.geoalarm.ui.screens.place_reminders.PlaceReminderEditScreen
+import com.github.jimmy90109.geoalarm.ui.screens.place_reminders.PlaceReminderPlacePickerScreen
 import com.github.jimmy90109.geoalarm.ui.screens.ScheduleEditScreen
 import com.github.jimmy90109.geoalarm.ui.viewmodel.AlarmEditViewModel
 import com.github.jimmy90109.geoalarm.ui.viewmodel.HomeAction
