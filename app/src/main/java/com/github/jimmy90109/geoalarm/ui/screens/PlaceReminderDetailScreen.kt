@@ -64,11 +64,13 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateMapOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalConfiguration
@@ -92,6 +94,7 @@ import com.github.jimmy90109.geoalarm.ui.components.AlarmIconBadge
 import com.github.jimmy90109.geoalarm.ui.components.BackgroundLocationPermissionDialog
 import com.github.jimmy90109.geoalarm.ui.components.MediaPreviewItem
 import com.github.jimmy90109.geoalarm.ui.components.MediaPreviewOverlay
+import com.github.jimmy90109.geoalarm.ui.components.MediaPreviewPreloader
 import com.github.jimmy90109.geoalarm.ui.components.MediaPreviewSelection
 import com.github.jimmy90109.geoalarm.ui.components.MediaPreviewThumbnail
 import com.github.jimmy90109.geoalarm.ui.components.MediaPreviewType
@@ -126,6 +129,8 @@ fun PlaceReminderDetailScreen(
     val context = LocalContext.current
     val lifecycleOwner = LocalLifecycleOwner.current
     var selectedPreview by remember { mutableStateOf<MediaPreviewSelection?>(null) }
+    var activePreviewItemId by remember { mutableStateOf<String?>(null) }
+    val previewSourceBounds = remember { mutableStateMapOf<String, Rect>() }
     var permissionState by remember {
         mutableStateOf(PlaceReminderListViewModel.permissionState(context))
     }
@@ -220,7 +225,13 @@ fun PlaceReminderDetailScreen(
     }
 
     val current = reminderWithItems
+    val previewItems = remember(current?.sortedAttachments) {
+        current?.sortedAttachments?.map { attachment ->
+            attachment.toMediaPreviewItem()
+        } ?: emptyList()
+    }
     Box(modifier = Modifier.fillMaxSize()) {
+        MediaPreviewPreloader(items = previewItems)
         Scaffold(
             topBar = {
                 TopAppBar(
@@ -359,9 +370,13 @@ fun PlaceReminderDetailScreen(
                     if (current.sortedAttachments.isNotEmpty()) {
                         PlaceReminderAttachmentGrid(
                             reminderWithItems = current,
-                            hiddenAttachmentId = selectedPreview?.item?.id,
+                            hiddenAttachmentId = activePreviewItemId ?: selectedPreview?.item?.id,
+                            onAttachmentBoundsChanged = { id, bounds ->
+                                previewSourceBounds[id] = bounds
+                            },
                             onAttachmentClick = { selection ->
                                 selectedPreview = selection
+                                activePreviewItemId = selection.item.id
                             },
                         )
                     }
@@ -370,7 +385,18 @@ fun PlaceReminderDetailScreen(
         }
 
         selectedPreview?.let {
-            MediaPreviewOverlay(selection = it, onDismiss = { selectedPreview = null })
+            MediaPreviewOverlay(
+                selection = it,
+                items = previewItems.ifEmpty { listOf(it.item) },
+                sourceBoundsById = previewSourceBounds.toMap(),
+                onActiveItemChanged = { item ->
+                    activePreviewItemId = item.id
+                },
+                onDismiss = {
+                    selectedPreview = null
+                    activePreviewItemId = null
+                },
+            )
         }
     }
 
@@ -414,6 +440,7 @@ fun PlaceReminderDetailScreen(
 private fun PlaceReminderAttachmentGrid(
     reminderWithItems: PlaceReminderWithItems,
     hiddenAttachmentId: String?,
+    onAttachmentBoundsChanged: (String, Rect) -> Unit,
     onAttachmentClick: (MediaPreviewSelection) -> Unit,
 ) {
     ElevatedCard(colors = CardDefaults.elevatedCardColors(containerColor = MaterialTheme.colorScheme.surfaceContainer)) {
@@ -435,6 +462,7 @@ private fun PlaceReminderAttachmentGrid(
                         hidden = attachment.id == hiddenAttachmentId,
                         modifier = Modifier
                             .aspectRatio(1f),
+                        onBoundsChanged = onAttachmentBoundsChanged,
                         onClick = onAttachmentClick,
                     )
                 }

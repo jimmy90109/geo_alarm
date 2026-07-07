@@ -222,9 +222,18 @@
     <!-- Place reminders -->
     <string name="place_reminders_title">Place Reminders</string>
     <string name="place_reminder_add">Add place reminder</string>
-    <string name="place_reminder_empty_title">Choose a place and leave what you need there</string>
-    <string name="place_reminder_empty_body">Save notes, checklists, photos, or videos that should appear when you arrive.</string>
+    <string name="place_reminder_section_enabled">Active</string>
+    <string name="place_reminder_section_saved">Saved</string>
+    <string name="place_reminder_empty_title">Let places bring up what matters</string>
+    <string name="place_reminder_empty_body">Save notes, checklists, photos, or videos to a place. GeoAlarm keeps a 24/7 watch and reminds you when you arrive.</string>
     <string name="place_reminder_empty_cta">Add place reminder</string>
+    <string name="place_reminder_help_title">Alarms vs reminders</string>
+    <string name="place_reminder_help_body">Both can use location, but they are meant for different moments.</string>
+    <string name="place_reminder_help_alarm_title">Location alarms</string>
+    <string name="place_reminder_help_alarm_body">Use an alarm when you want one active trip monitor that vibrates and keeps tracking until you stop it.</string>
+    <string name="place_reminder_help_reminder_title">Place reminders</string>
+    <string name="place_reminder_help_reminder_body">Use a reminder when you want saved content to appear at a place, even while you are not actively watching a trip.</string>
+    <string name="place_reminder_help_done">Got it</string>
     <string name="place_reminder_permission_title">Permissions needed for reliable reminders</string>
     <string name="place_reminder_permission_body">GeoAlarm needs background location to remind you when you arrive at saved places. Your route is not stored or uploaded.</string>
     <string name="place_reminder_missing_precise">Precise location is off</string>
@@ -281,6 +290,8 @@
     <string name="place_reminder_attachments">Attachments</string>
     <string name="place_reminder_add_attachment">Add media</string>
     <string name="place_reminder_adding_attachments">Adding media…</string>
+    <string name="place_reminder_attachments_limit">Up to %d attachments</string>
+    <string name="place_reminder_attachments_limit_reached">Attachment limit reached (%d)</string>
     <string name="place_reminder_attachments_hint">Add photos or videos that should be available when you arrive.</string>
     <string name="place_reminder_attachment_local">Saved on this device</string>
     <string name="place_reminder_trigger_area">Trigger area</string>

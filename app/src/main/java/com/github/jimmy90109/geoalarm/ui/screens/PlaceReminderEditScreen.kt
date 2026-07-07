@@ -135,6 +135,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.compose.LocalLifecycleOwner
 
 import com.github.jimmy90109.geoalarm.R
+import com.github.jimmy90109.geoalarm.data.MaxPlaceReminderAttachments
 import com.github.jimmy90109.geoalarm.data.PlaceReminderType
 import com.github.jimmy90109.geoalarm.data.PlaceReminderAttachmentType
 import com.github.jimmy90109.geoalarm.data.PlaceReminderWithItems
@@ -190,8 +191,18 @@ fun PlaceReminderEditScreen(
     onBack: (String?) -> Unit,
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
+    val remainingAttachmentSlots = uiState.remainingAttachmentSlots
+    val singleAttachmentPicker = rememberLauncherForActivityResult(
+        ActivityResultContracts.PickVisualMedia()
+    ) { uri ->
+        uri?.let {
+            viewModel.onAction(PlaceReminderEditAction.AttachmentsSelected(listOf(it)))
+        }
+    }
     val attachmentPicker = rememberLauncherForActivityResult(
-        ActivityResultContracts.PickMultipleVisualMedia()
+        ActivityResultContracts.PickMultipleVisualMedia(
+            maxItems = remainingAttachmentSlots.coerceAtLeast(2),
+        )
     ) { uris ->
         viewModel.onAction(PlaceReminderEditAction.AttachmentsSelected(uris))
     }
@@ -230,9 +241,15 @@ fun PlaceReminderEditScreen(
             onAction = viewModel::onAction,
             onSelectPlace = onSelectPlace,
             onPickAttachments = {
-                attachmentPicker.launch(
-                    PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageAndVideo)
-                )
+                when (remainingAttachmentSlots) {
+                    0 -> Unit
+                    1 -> singleAttachmentPicker.launch(
+                        PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageAndVideo)
+                    )
+                    else -> attachmentPicker.launch(
+                        PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageAndVideo)
+                    )
+                }
             },
             pagerState = formPagerState,
             isLandscape = isLandscape,
@@ -1281,6 +1298,15 @@ private fun PlaceReminderAttachmentEditor(
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
         }
+        Text(
+            text = if (state.attachmentLimitReached) {
+                stringResource(R.string.place_reminder_attachments_limit_reached, MaxPlaceReminderAttachments)
+            } else {
+                stringResource(R.string.place_reminder_attachments_limit, MaxPlaceReminderAttachments)
+            },
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
         FlowRow(
             horizontalArrangement = Arrangement.spacedBy(10.dp),
             verticalArrangement = Arrangement.spacedBy(10.dp),
@@ -1292,7 +1318,7 @@ private fun PlaceReminderAttachmentEditor(
                 )
             }
             AttachmentAddTile(
-                enabled = !state.isAddingAttachments,
+                enabled = !state.isAddingAttachments && !state.attachmentLimitReached,
                 onClick = onPickAttachments,
             )
         }
@@ -1362,7 +1388,16 @@ private fun AttachmentAddTile(
     enabled: Boolean,
     onClick: () -> Unit,
 ) {
-    val outlineColor = MaterialTheme.colorScheme.outline
+    val outlineColor = if (enabled) {
+        MaterialTheme.colorScheme.outline
+    } else {
+        MaterialTheme.colorScheme.outline.copy(alpha = 0.38f)
+    }
+    val iconColor = if (enabled) {
+        MaterialTheme.colorScheme.primary
+    } else {
+        MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.38f)
+    }
     Box(
         modifier = Modifier
             .size(104.dp)
@@ -1374,7 +1409,7 @@ private fun AttachmentAddTile(
         Icon(
             Icons.Filled.Add,
             contentDescription = stringResource(R.string.place_reminder_add_attachment),
-            tint = MaterialTheme.colorScheme.primary,
+            tint = iconColor,
             modifier = Modifier.size(32.dp),
         )
     }

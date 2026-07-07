@@ -4,6 +4,7 @@ import android.net.Uri
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.github.jimmy90109.geoalarm.data.DEFAULT_ALARM_ICON_KEY
+import com.github.jimmy90109.geoalarm.data.MaxPlaceReminderAttachments
 import com.github.jimmy90109.geoalarm.data.PlaceReminder
 import com.github.jimmy90109.geoalarm.data.PlaceReminderAttachment
 import com.github.jimmy90109.geoalarm.data.PlaceReminderAttachmentStore
@@ -68,6 +69,9 @@ data class PlaceReminderEditUiState(
     val savedReminderId: String? = null,
 ) {
     val isEditMode: Boolean get() = reminderId != null
+    val attachmentLimitReached: Boolean get() = attachments.size >= MaxPlaceReminderAttachments
+    val remainingAttachmentSlots: Int
+        get() = (MaxPlaceReminderAttachments - attachments.size).coerceAtLeast(0)
     val canSave: Boolean
         get() {
             val hasContent = when (type) {
@@ -285,12 +289,14 @@ class PlaceReminderEditViewModel @Inject constructor(
     }
 
     private fun addAttachments(uris: List<Uri>) {
-        if (uris.isEmpty() || _uiState.value.isAddingAttachments) return
-        val reminderId = _uiState.value.reminderId ?: draftReminderId
+        val state = _uiState.value
+        val acceptedUris = uris.take(state.remainingAttachmentSlots)
+        if (acceptedUris.isEmpty() || state.isAddingAttachments) return
+        val reminderId = state.reminderId ?: draftReminderId
         viewModelScope.launch {
             _uiState.value = _uiState.value.copy(isAddingAttachments = true)
             val existing = _uiState.value.attachments
-            val copied = uris.mapIndexedNotNull { index, uri ->
+            val copied = acceptedUris.mapIndexedNotNull { index, uri ->
                 attachmentStore.copy(reminderId, uri, existing.size + index)
             }
             _uiState.value = _uiState.value.copy(

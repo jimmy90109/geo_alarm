@@ -222,9 +222,18 @@
     <!-- 地點提醒 -->
     <string name="place_reminders_title">地點提醒</string>
     <string name="place_reminder_add">新增地點提醒</string>
-    <string name="place_reminder_empty_title">選一個地點，把抵達後要看的東西放在那裡</string>
-    <string name="place_reminder_empty_body">可以放備忘、清單、照片或影片，抵達時再提醒你打開。</string>
+    <string name="place_reminder_section_enabled">啟用中</string>
+    <string name="place_reminder_section_saved">已儲存</string>
+    <string name="place_reminder_empty_title">讓地點帶出當下需要的內容</string>
+    <string name="place_reminder_empty_body">把備忘、清單、照片或影片存到指定地點，GeoAlarm 會全天候監聽範圍，抵達時提醒你打開。</string>
     <string name="place_reminder_empty_cta">新增地點提醒</string>
+    <string name="place_reminder_help_title">鬧鐘 vs 提醒</string>
+    <string name="place_reminder_help_body">兩者都可以使用定位，但適合的情境不一樣。</string>
+    <string name="place_reminder_help_alarm_title">定位鬧鐘</string>
+    <string name="place_reminder_help_alarm_body">適合正在移動時使用，一次啟用一個行程監控，抵達後會大力震動，直到你手動關閉。</string>
+    <string name="place_reminder_help_reminder_title">地點提醒</string>
+    <string name="place_reminder_help_reminder_body">適合把內容存到某個地點，沒有開著行程監控時，也能在抵達附近提醒你打開。</string>
+    <string name="place_reminder_help_done">知道了</string>
     <string name="place_reminder_permission_title">需要權限才能穩定提醒</string>
     <string name="place_reminder_permission_body">GeoAlarm 需要背景定位，才能在你抵達指定地點時提醒你。我們不會持續顯示你的移動路線，只會用你設定的地點範圍判斷是否抵達。</string>
     <string name="place_reminder_missing_precise">精準定位未開啟</string>
@@ -281,6 +290,8 @@
     <string name="place_reminder_attachments">附件</string>
     <string name="place_reminder_add_attachment">新增媒體</string>
     <string name="place_reminder_adding_attachments">正在加入媒體…</string>
+    <string name="place_reminder_attachments_limit">最多 %d 個附件</string>
+    <string name="place_reminder_attachments_limit_reached">已達附件上限（%d 個）</string>
     <string name="place_reminder_attachments_hint">加入抵達時可能會用到的照片或影片。</string>
     <string name="place_reminder_attachment_local">已儲存在此裝置</string>
     <string name="place_reminder_trigger_area">提醒範圍</string>
