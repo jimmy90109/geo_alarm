@@ -61,6 +61,7 @@ import com.github.jimmy90109.geoalarm.ui.components.BottomNavBar
 import com.github.jimmy90109.geoalarm.ui.components.HomeFabMenu
 import com.github.jimmy90109.geoalarm.ui.components.NavTab
 import com.github.jimmy90109.geoalarm.ui.viewmodel.HomeViewModel
+import com.github.jimmy90109.geoalarm.ui.viewmodel.PlaceReminderListViewModel
 import com.github.jimmy90109.geoalarm.ui.viewmodel.SettingsViewModel
 
 @Composable
@@ -78,7 +79,8 @@ fun MainScreen(
     val navBackStackEntry by navController.currentBackStackEntryAsState()
     val configuration = LocalConfiguration.current
     val isLandscape = configuration.orientation == Configuration.ORIENTATION_LANDSCAPE
-    val alarms by viewModel.alarms.collectAsStateWithLifecycle(initialValue = emptyList())
+    val homeListState by viewModel.homeListState.collectAsStateWithLifecycle()
+    val alarms = homeListState.alarms
     val homeUiState by viewModel.uiState.collectAsStateWithLifecycle()
     val activeAlarm = homeUiState.testActiveAlarm ?: alarms.find { it.isEnabled }
     var showHomeFabMenu by remember { mutableStateOf(false) }
@@ -87,6 +89,8 @@ fun MainScreen(
     val isPlaceReminders = navBackStackEntry?.destination?.hasRoute<MainRoutes.PlaceReminders>() == true
 
     val settingsViewModel: SettingsViewModel = hiltViewModel()
+    val placeReminderListViewModel: PlaceReminderListViewModel = hiltViewModel()
+    placeReminderListViewModel.listState.collectAsStateWithLifecycle()
     val showSettingsUpdateDot = false
     val currentTab = when {
         isSettings -> NavTab.SETTINGS
@@ -163,6 +167,7 @@ fun MainScreen(
                     navController = navController,
                     viewModel = viewModel,
                     settingsViewModel = settingsViewModel,
+                    placeReminderListViewModel = placeReminderListViewModel,
                     onAddAlarm = onAddAlarm,
                     onAlarmClick = onAlarmClick,
                     onAddSchedule = onAddSchedule,
@@ -212,6 +217,7 @@ fun MainScreen(
                 navController = navController,
                 viewModel = viewModel,
                 settingsViewModel = settingsViewModel,
+                placeReminderListViewModel = placeReminderListViewModel,
                 onAddAlarm = onAddAlarm,
                 onAlarmClick = onAlarmClick,
                 onAddSchedule = onAddSchedule,
@@ -344,6 +350,7 @@ fun MainNavHost(
     navController: androidx.navigation.NavHostController,
     viewModel: HomeViewModel,
     settingsViewModel: SettingsViewModel,
+    placeReminderListViewModel: PlaceReminderListViewModel,
     onAddAlarm: () -> Unit,
     onAlarmClick: (String) -> Unit,
     onAddSchedule: () -> Unit,
@@ -488,7 +495,7 @@ fun MainNavHost(
             },
         ) {
             PlaceReminderListScreen(
-                viewModel = hiltViewModel(),
+                viewModel = placeReminderListViewModel,
                 onAddReminder = onAddPlaceReminder,
                 onReminderClick = onPlaceReminderClick,
             )

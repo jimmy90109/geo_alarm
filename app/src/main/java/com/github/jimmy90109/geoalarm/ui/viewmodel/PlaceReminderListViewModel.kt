@@ -16,6 +16,7 @@ import dagger.hilt.android.lifecycle.HiltViewModel
 import javax.inject.Inject
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 
@@ -29,6 +30,11 @@ data class PlaceReminderPermissionState(
         get() = hasPreciseLocation && hasBackgroundLocation && hasNotifications && isLocationServiceEnabled
 }
 
+data class PlaceReminderListUiState(
+    val isLoading: Boolean = true,
+    val reminders: List<PlaceReminderWithItems> = emptyList(),
+)
+
 @HiltViewModel
 class PlaceReminderListViewModel @Inject constructor(
     application: Application,
@@ -39,6 +45,19 @@ class PlaceReminderListViewModel @Inject constructor(
         SharingStarted.WhileSubscribed(5000),
         emptyList(),
     )
+
+    val listState: StateFlow<PlaceReminderListUiState> = repository.allReminders
+        .map { reminders ->
+            PlaceReminderListUiState(
+                isLoading = false,
+                reminders = reminders,
+            )
+        }
+        .stateIn(
+            viewModelScope,
+            SharingStarted.WhileSubscribed(5000),
+            PlaceReminderListUiState(),
+        )
 
     fun permissionState(): PlaceReminderPermissionState =
         permissionState(getApplication())

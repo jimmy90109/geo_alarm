@@ -25,6 +25,7 @@ import com.github.jimmy90109.geoalarm.data.Alarm
 import com.github.jimmy90109.geoalarm.data.AlarmDataRepository
 import com.github.jimmy90109.geoalarm.data.AlarmSchedule
 import com.github.jimmy90109.geoalarm.data.PaymentShortcut
+import com.github.jimmy90109.geoalarm.data.ScheduleWithAlarm
 import com.github.jimmy90109.geoalarm.data.SettingsRepository
 import com.github.jimmy90109.geoalarm.data.location.AlarmActivationPermissionChecker
 import com.github.jimmy90109.geoalarm.service.GeoAlarmService
@@ -64,6 +65,12 @@ data class HomeUiState(
     val alarmToDelete: Alarm? = null, // Alarm pending deletion (shows confirmation dialog if not null)
     val highlightedAlarmId: String? = null, // Alarm ID to highlight (flash animation)
     val highlightedScheduleId: String? = null, // Schedule ID to highlight (flash animation)
+)
+
+data class HomeListUiState(
+    val isLoading: Boolean = true,
+    val alarms: List<Alarm> = emptyList(),
+    val schedules: List<ScheduleWithAlarm> = emptyList(),
 )
 
 sealed interface HomeAction {
@@ -197,6 +204,21 @@ class HomeViewModel @Inject constructor(
         SharingStarted.WhileSubscribed(5000),
         emptyList()
     )
+    val homeListState: StateFlow<HomeListUiState> = combine(
+        repository.allAlarms,
+        repository.allSchedulesWithAlarm,
+    ) { alarms, schedules ->
+        HomeListUiState(
+            isLoading = false,
+            alarms = alarms,
+            schedules = schedules,
+        )
+    }
+        .stateIn(
+            viewModelScope,
+            SharingStarted.WhileSubscribed(5000),
+            HomeListUiState(),
+        )
     val paymentShortcut = settingsRepository.paymentShortcutFlow.stateIn(
         viewModelScope,
         SharingStarted.WhileSubscribed(5000),
