@@ -51,6 +51,8 @@
     <string name="language">Language</string>
     <string name="locale_en">English</string>
     <string name="locale_zh">中文 (繁體)</string>
+    <string name="language_switching_title">Switching language</string>
+    <string name="language_switching_body">Updating Geo Alarm. This will only take a moment.</string>
     <string name="ok">OK</string>
     <string name="alarm_deleted">Alarm deleted</string>
     <string name="undo">Undo</string>

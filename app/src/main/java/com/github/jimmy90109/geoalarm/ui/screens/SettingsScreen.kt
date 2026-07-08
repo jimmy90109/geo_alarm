@@ -89,6 +89,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.github.jimmy90109.geoalarm.R
 import com.github.jimmy90109.geoalarm.data.PaymentShortcut
 import com.github.jimmy90109.geoalarm.data.RingtoneSettings
+import com.github.jimmy90109.geoalarm.ui.components.LanguageSwitchingOverlay
 import com.github.jimmy90109.geoalarm.util.FullScreenIntentPermissionHelper
 import com.github.jimmy90109.geoalarm.ui.viewmodel.SettingsAction
 import com.github.jimmy90109.geoalarm.ui.viewmodel.SettingsViewModel
@@ -472,6 +473,11 @@ fun SettingsScreen(
             )
         }
     }
+
+    LanguageSwitchingOverlay(
+        visible = uiState.isLocaleSwitching,
+        modifier = Modifier.fillMaxSize(),
+    )
 }
 
 @Composable

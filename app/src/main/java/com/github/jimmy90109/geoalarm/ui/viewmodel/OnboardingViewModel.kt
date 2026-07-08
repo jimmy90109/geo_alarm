@@ -9,6 +9,7 @@ import com.github.jimmy90109.geoalarm.data.AnalyticsPreferencesStore
 import com.github.jimmy90109.geoalarm.data.OnboardingRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
 import javax.inject.Inject
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharedFlow
@@ -20,6 +21,7 @@ import kotlinx.coroutines.launch
 data class OnboardingUiState(
     val currentLanguage: String = "en",
     val analyticsEnabled: Boolean = false,
+    val isLocaleSwitching: Boolean = false,
 )
 
 sealed interface OnboardingAction {
@@ -54,6 +56,7 @@ class OnboardingViewModel @Inject constructor(
     }
 
     private fun setAnalyticsEnabled(enabled: Boolean) {
+        if (_uiState.value.isLocaleSwitching) return
         _uiState.value = _uiState.value.copy(analyticsEnabled = enabled)
     }
 
@@ -67,12 +70,19 @@ class OnboardingViewModel @Inject constructor(
     }
 
     private fun toggleLanguage() {
-        val nextLanguageTag = if (_uiState.value.currentLanguage == "zh") "en" else "zh-TW"
-        AppCompatDelegate.setApplicationLocales(LocaleListCompat.forLanguageTags(nextLanguageTag))
-        _uiState.value = _uiState.value.copy(currentLanguage = resolveCurrentLanguage())
+        val currentState = _uiState.value
+        if (currentState.isLocaleSwitching) return
+
+        val nextLanguageTag = if (currentState.currentLanguage == "zh") "en" else "zh-TW"
+        _uiState.value = currentState.copy(isLocaleSwitching = true)
+        viewModelScope.launch {
+            delay(1000)
+            AppCompatDelegate.setApplicationLocales(LocaleListCompat.forLanguageTags(nextLanguageTag))
+        }
     }
 
     private fun completeOnboarding(trackAnalyticsOptIn: Boolean) {
+        if (_uiState.value.isLocaleSwitching) return
         viewModelScope.launch {
             if (trackAnalyticsOptIn) {
                 analyticsPreferencesStore.setAnalyticsEnabled(_uiState.value.analyticsEnabled)

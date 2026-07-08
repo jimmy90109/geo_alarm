@@ -20,6 +20,7 @@ import com.github.jimmy90109.geoalarm.data.SettingsRepository
 import com.github.jimmy90109.geoalarm.utils.AudioUtils
 import dagger.hilt.android.lifecycle.HiltViewModel
 import javax.inject.Inject
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
@@ -37,6 +38,7 @@ data class SettingsUiState(
     val isPreviewPlaying: Boolean = false,
     val previewingUri: String? = null, // null = default ringtone, or custom URI
     val isPreviewingDefault: Boolean = false, // true if previewing default ringtone
+    val isLocaleSwitching: Boolean = false,
 )
 
 sealed interface SettingsAction {
@@ -152,9 +154,22 @@ class SettingsViewModel @Inject constructor(
     }
 
     private fun setAppLocale(languageTag: String) {
-        val appLocale = LocaleListCompat.forLanguageTags(languageTag)
-        AppCompatDelegate.setApplicationLocales(appLocale)
-        dismissLanguageSheet()
+        val currentState = _uiState.value
+        if (currentState.isLocaleSwitching) return
+        if (languageTag.substringBefore("-") == currentLanguage) {
+            dismissLanguageSheet()
+            return
+        }
+
+        _uiState.value = currentState.copy(
+            showLanguageSheet = false,
+            isLocaleSwitching = true,
+        )
+        viewModelScope.launch {
+            delay(1000)
+            val appLocale = LocaleListCompat.forLanguageTags(languageTag)
+            AppCompatDelegate.setApplicationLocales(appLocale)
+        }
     }
 
     // UI State Controls
