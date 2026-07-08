@@ -1,8 +1,6 @@
 package com.github.jimmy90109.geoalarm.ui.components
 
-import android.app.Activity
 import android.content.Context
-import android.content.ContextWrapper
 import android.net.Uri
 import androidx.activity.compose.BackHandler
 import androidx.compose.animation.core.Animatable
@@ -70,8 +68,6 @@ import androidx.compose.ui.viewinterop.AndroidView
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.LocalLifecycleOwner
-import androidx.core.view.WindowInsetsCompat
-import androidx.core.view.WindowInsetsControllerCompat
 import androidx.media3.common.C
 import androidx.media3.common.MediaItem
 import androidx.media3.common.Player
@@ -92,7 +88,6 @@ import kotlin.math.abs
 private const val MediaPreviewTransitionMillis = 360
 private const val MediaPreviewReturnMillis = 260
 private val MediaPreviewControlEdgePadding = 16.dp
-private val MediaPreviewControlCutoutPadding = 18.dp
 
 enum class MediaPreviewType {
     IMAGE,
@@ -213,8 +208,6 @@ fun MediaPreviewOverlay(
     onActiveItemChanged: (MediaPreviewItem) -> Unit = {},
     onDismiss: () -> Unit,
 ) {
-    val context = LocalContext.current
-    HideSystemUiWhileVisible(context)
     val previewItems = remember(items, selection.item) {
         val distinctItems = items.distinctBy { it.id }
         distinctItems.takeIf { list -> list.any { it.id == selection.item.id } }
@@ -537,23 +530,6 @@ private fun MediaPreviewImagePage(
     }
 }
 
-@Composable
-private fun HideSystemUiWhileVisible(context: Context) {
-    DisposableEffect(context) {
-        val window = context.findActivity()?.window
-        val controller = window?.let {
-            WindowInsetsControllerCompat(it, it.decorView)
-        }
-        controller?.systemBarsBehavior =
-            WindowInsetsControllerCompat.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE
-        controller?.hide(WindowInsetsCompat.Type.systemBars())
-
-        onDispose {
-            controller?.show(WindowInsetsCompat.Type.systemBars())
-        }
-    }
-}
-
 @OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
 private fun MediaPreviewVideoPlayer(
@@ -699,7 +675,7 @@ private fun MediaPreviewVideoPlayer(
                     start = MediaPreviewControlEdgePadding,
                     top = MediaPreviewControlEdgePadding,
                     end = MediaPreviewControlEdgePadding,
-                    bottom = MediaPreviewControlEdgePadding + MediaPreviewControlCutoutPadding,
+                    bottom = MediaPreviewControlEdgePadding,
                 ),
         )
     }
@@ -765,13 +741,6 @@ private fun MediaPreviewVideoControls(
         }
     }
 }
-
-private tailrec fun Context.findActivity(): Activity? =
-    when (this) {
-        is Activity -> this
-        is ContextWrapper -> baseContext.findActivity()
-        else -> null
-    }
 
 private fun lerp(start: Rect, end: Rect, fraction: Float): Rect {
     val coercedFraction = fraction.coerceIn(0f, 1f)
