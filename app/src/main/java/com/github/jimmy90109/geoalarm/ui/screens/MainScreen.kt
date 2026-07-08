@@ -41,6 +41,7 @@ import androidx.navigation.compose.rememberNavController
 import com.github.jimmy90109.geoalarm.navigation.MainRoutes
 import com.github.jimmy90109.geoalarm.ui.components.AppNavigationRail
 import com.github.jimmy90109.geoalarm.ui.components.BottomNavBar
+import com.github.jimmy90109.geoalarm.ui.components.LanguageSwitchingOverlay
 import com.github.jimmy90109.geoalarm.ui.components.NavTab
 import com.github.jimmy90109.geoalarm.ui.screens.place_reminders.PlaceReminderListScreen
 import com.github.jimmy90109.geoalarm.ui.viewmodel.HomeViewModel
@@ -69,6 +70,7 @@ fun MainScreen(
     val isPlaceReminders = navBackStackEntry?.destination?.hasRoute<MainRoutes.PlaceReminders>() == true
 
     val settingsViewModel: SettingsViewModel = hiltViewModel()
+    val settingsUiState by settingsViewModel.uiState.collectAsStateWithLifecycle()
     val placeReminderListViewModel: PlaceReminderListViewModel = hiltViewModel()
     placeReminderListViewModel.listState.collectAsStateWithLifecycle()
     val sharedPreferenceManager = remember(context) {
@@ -145,23 +147,44 @@ fun MainScreen(
         }
     }
 
-    if (isLandscape) {
-        // Landscape Layout: Navigation Rail + Content
-        Row(
-            modifier = Modifier
-                .fillMaxSize()
-                .windowInsetsPadding(WindowInsets.safeDrawing.only(WindowInsetsSides.Horizontal)),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            AppNavigationRail(
-                currentTab = currentTab,
-                onHomeClick = onHomeClick,
-                onRemindersClick = onRemindersClick,
-                onSettingsClick = onSettingsClick,
-                showRemindersBadge = showRemindersBadge,
-            )
+    Box(modifier = Modifier.fillMaxSize()) {
+        if (isLandscape) {
+            // Landscape Layout: Navigation Rail + Content
+            Row(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .windowInsetsPadding(WindowInsets.safeDrawing.only(WindowInsetsSides.Horizontal)),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                AppNavigationRail(
+                    currentTab = currentTab,
+                    onHomeClick = onHomeClick,
+                    onRemindersClick = onRemindersClick,
+                    onSettingsClick = onSettingsClick,
+                    showRemindersBadge = showRemindersBadge,
+                )
 
-            Box(modifier = Modifier.weight(1f)) {
+                Box(modifier = Modifier.weight(1f)) {
+                    MainNavHost(
+                        navController = navController,
+                        viewModel = viewModel,
+                        settingsViewModel = settingsViewModel,
+                        placeReminderListViewModel = placeReminderListViewModel,
+                        onAddAlarm = onAddAlarm,
+                        onAlarmClick = onAlarmClick,
+                        onAddSchedule = onAddSchedule,
+                        onScheduleClick = onScheduleClick,
+                        onAddPlaceReminder = onAddPlaceReminder,
+                        onPlaceReminderClick = onPlaceReminderClick,
+                        onOpenOnboarding = onOpenOnboarding,
+                        isLandscape = true
+                    )
+                }
+            }
+        } else {
+            // Portrait Layout: Content + Floating Bottom Bar
+
+            Box(modifier = Modifier.fillMaxSize()) {
                 MainNavHost(
                     navController = navController,
                     viewModel = viewModel,
@@ -174,43 +197,29 @@ fun MainScreen(
                     onAddPlaceReminder = onAddPlaceReminder,
                     onPlaceReminderClick = onPlaceReminderClick,
                     onOpenOnboarding = onOpenOnboarding,
-                    isLandscape = true
+                    isLandscape = false
+                )
+
+                BottomNavBar(
+                    currentTab = currentTab,
+                    onHomeClick = onHomeClick,
+                    onRemindersClick = onRemindersClick,
+                    onSettingsClick = onSettingsClick,
+                    showRemindersBadge = showRemindersBadge,
+                    modifier = Modifier
+                        .align(Alignment.BottomCenter)
+                        .padding(
+                            bottom = WindowInsets.navigationBars.asPaddingValues()
+                                .calculateBottomPadding() + 16.dp
+                        ),
                 )
             }
         }
-    } else {
-        // Portrait Layout: Content + Floating Bottom Bar
 
-        Box(modifier = Modifier.fillMaxSize()) {
-            MainNavHost(
-                navController = navController,
-                viewModel = viewModel,
-                settingsViewModel = settingsViewModel,
-                placeReminderListViewModel = placeReminderListViewModel,
-                onAddAlarm = onAddAlarm,
-                onAlarmClick = onAlarmClick,
-                onAddSchedule = onAddSchedule,
-                onScheduleClick = onScheduleClick,
-                onAddPlaceReminder = onAddPlaceReminder,
-                onPlaceReminderClick = onPlaceReminderClick,
-                onOpenOnboarding = onOpenOnboarding,
-                isLandscape = false
-            )
-
-            BottomNavBar(
-                currentTab = currentTab,
-                onHomeClick = onHomeClick,
-                onRemindersClick = onRemindersClick,
-                onSettingsClick = onSettingsClick,
-                showRemindersBadge = showRemindersBadge,
-                modifier = Modifier
-                    .align(Alignment.BottomCenter)
-                    .padding(
-                        bottom = WindowInsets.navigationBars.asPaddingValues()
-                            .calculateBottomPadding() + 16.dp
-                    ),
-            )
-        }
+        LanguageSwitchingOverlay(
+            visible = settingsUiState.isLocaleSwitching,
+            modifier = Modifier.fillMaxSize(),
+        )
     }
 }
 

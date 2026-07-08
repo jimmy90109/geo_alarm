@@ -77,6 +77,7 @@ class OnboardingViewModel @Inject constructor(
         _uiState.value = currentState.copy(isLocaleSwitching = true)
         viewModelScope.launch {
             delay(1000)
+            _uiState.value = _uiState.value.copy(isLocaleSwitching = false)
             AppCompatDelegate.setApplicationLocales(LocaleListCompat.forLanguageTags(nextLanguageTag))
         }
     }

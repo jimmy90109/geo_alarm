@@ -64,6 +64,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -89,7 +90,6 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.github.jimmy90109.geoalarm.R
 import com.github.jimmy90109.geoalarm.data.PaymentShortcut
 import com.github.jimmy90109.geoalarm.data.RingtoneSettings
-import com.github.jimmy90109.geoalarm.ui.components.LanguageSwitchingOverlay
 import com.github.jimmy90109.geoalarm.util.FullScreenIntentPermissionHelper
 import com.github.jimmy90109.geoalarm.ui.viewmodel.SettingsAction
 import com.github.jimmy90109.geoalarm.ui.viewmodel.SettingsViewModel
@@ -99,6 +99,7 @@ import com.google.android.gms.oss.licenses.v2.OssLicensesMenuActivity
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.LocalLifecycleOwner
+import kotlinx.coroutines.launch
 import kotlin.math.PI
 import kotlin.math.sin
 
@@ -119,6 +120,8 @@ fun SettingsScreen(
     val context = LocalContext.current
     val lifecycleOwner = LocalLifecycleOwner.current
     val uriHandler = LocalUriHandler.current
+    val coroutineScope = rememberCoroutineScope()
+    val languageSheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
     val ringtonePickerTitle = stringResource(R.string.ringtone_select)
     var canUseFullScreenIntent by remember {
         mutableStateOf(FullScreenIntentPermissionHelper.canUseFullScreenIntent(context))
@@ -302,7 +305,7 @@ fun SettingsScreen(
     if (uiState.showLanguageSheet) {
         ModalBottomSheet(
             onDismissRequest = { viewModel.onAction(SettingsAction.LanguageSheetDismissed) },
-            sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true),
+            sheetState = languageSheetState,
         ) {
             Text(
                 text = stringResource(R.string.language),
@@ -319,14 +322,24 @@ fun SettingsScreen(
                     text = stringResource(R.string.locale_zh),
                     selected = currentLanguage == "zh",
                     enabled = true,
-                    onClick = { viewModel.onAction(SettingsAction.LocaleSelected("zh-TW")) },
+                    onClick = {
+                        coroutineScope.launch {
+                            languageSheetState.hide()
+                            viewModel.onAction(SettingsAction.LocaleSelected("zh-TW"))
+                        }
+                    },
                 )
                 HorizontalDivider(modifier = Modifier.padding(horizontal = 16.dp))
                 SettingsSelectionItem(
                     text = stringResource(R.string.locale_en),
                     selected = currentLanguage == "en",
                     enabled = true,
-                    onClick = { viewModel.onAction(SettingsAction.LocaleSelected("en")) },
+                    onClick = {
+                        coroutineScope.launch {
+                            languageSheetState.hide()
+                            viewModel.onAction(SettingsAction.LocaleSelected("en"))
+                        }
+                    },
                 )
             }
         }
@@ -481,11 +494,6 @@ fun SettingsScreen(
             )
         }
     }
-
-    LanguageSwitchingOverlay(
-        visible = uiState.isLocaleSwitching,
-        modifier = Modifier.fillMaxSize(),
-    )
 }
 
 @Composable

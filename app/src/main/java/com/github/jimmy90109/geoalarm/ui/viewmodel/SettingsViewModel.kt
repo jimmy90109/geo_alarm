@@ -167,6 +167,7 @@ class SettingsViewModel @Inject constructor(
         )
         viewModelScope.launch {
             delay(1000)
+            _uiState.value = _uiState.value.copy(isLocaleSwitching = false)
             val appLocale = LocaleListCompat.forLanguageTags(languageTag)
             AppCompatDelegate.setApplicationLocales(appLocale)
         }
