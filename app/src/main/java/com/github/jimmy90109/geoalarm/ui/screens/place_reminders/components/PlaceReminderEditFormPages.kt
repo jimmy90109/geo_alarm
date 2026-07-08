@@ -21,8 +21,13 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.ToggleButton
 import androidx.compose.material3.ToggleButtonDefaults
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.geometry.Rect
+import androidx.compose.ui.layout.boundsInRoot
+import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
@@ -30,8 +35,11 @@ import androidx.compose.ui.unit.dp
 import com.github.jimmy90109.geoalarm.R
 import com.github.jimmy90109.geoalarm.data.PlaceReminderType
 import com.github.jimmy90109.geoalarm.data.PlaceTriggerType
+import com.github.jimmy90109.geoalarm.ui.components.MediaPreviewSelection
 import com.github.jimmy90109.geoalarm.ui.viewmodel.PlaceReminderEditAction
 import com.github.jimmy90109.geoalarm.ui.viewmodel.PlaceReminderEditUiState
+import kotlinx.coroutines.android.awaitFrame
+import kotlinx.coroutines.launch
 import sh.calvin.reorderable.ReorderableColumn
 
 private val DwellOptions = listOf(1, 3, 5, 10)
@@ -69,14 +77,24 @@ internal fun PlaceReminderContentFormPage(
     onNewChecklistTextChange: (String) -> Unit,
     newChecklistFocusRequester: FocusRequester,
     onPickAttachments: () -> Unit,
+    hiddenAttachmentId: String?,
+    onAttachmentBoundsChanged: (String, Rect) -> Unit,
+    onAttachmentClick: (MediaPreviewSelection) -> Unit,
+    onInputBoundsChanged: (String, Rect?) -> Unit,
 ) {
+    val coroutineScope = rememberCoroutineScope()
     FormSection(title = stringResource(R.string.place_reminder_step_content)) {
+        DisposableEffect(Unit) {
+            onDispose { onInputBoundsChanged("title", null) }
+        }
         OutlinedTextField(
             value = state.title,
             onValueChange = { onAction(PlaceReminderEditAction.TitleChanged(it)) },
             label = { Text(stringResource(R.string.place_reminder_name)) },
             placeholder = { Text(stringResource(R.string.place_reminder_name_placeholder)) },
-            modifier = Modifier.fillMaxWidth(),
+            modifier = Modifier
+                .fillMaxWidth()
+                .onGloballyPositioned { onInputBoundsChanged("title", it.boundsInRoot()) },
             singleLine = true,
             shape = PlaceReminderTextFieldShape,
         )
@@ -90,13 +108,17 @@ internal fun PlaceReminderContentFormPage(
             onSelected = { onAction(PlaceReminderEditAction.TypeChanged(it)) },
         )
         if (state.type == PlaceReminderType.TEXT) {
+            DisposableEffect(Unit) {
+                onDispose { onInputBoundsChanged("content", null) }
+            }
             OutlinedTextField(
                 value = state.content,
                 onValueChange = { onAction(PlaceReminderEditAction.ContentChanged(it)) },
                 label = { Text(stringResource(R.string.place_reminder_content)) },
                 modifier = Modifier
                     .fillMaxWidth()
-                    .height(136.dp),
+                    .height(136.dp)
+                    .onGloballyPositioned { onInputBoundsChanged("content", it.boundsInRoot()) },
                 minLines = 4,
                 shape = PlaceReminderTextFieldShape,
             )
@@ -131,6 +153,9 @@ internal fun PlaceReminderContentFormPage(
                             if (index >= 0) onAction(PlaceReminderEditAction.RemoveChecklistItem(index))
                         },
                         dragHandleModifier = Modifier.draggableHandle(),
+                        onInputBoundsChanged = { bounds ->
+                            onInputBoundsChanged("checklist:${item.id}", bounds)
+                        },
                     )
                 }
                 ChecklistAddRow(
@@ -141,10 +166,19 @@ internal fun PlaceReminderContentFormPage(
                         if (text.isNotEmpty()) {
                             onAction(PlaceReminderEditAction.AddChecklistItemWithText(text))
                             onNewChecklistTextChange("")
-                            newChecklistFocusRequester.requestFocus()
+                            coroutineScope.launch {
+                                awaitFrame()
+                                newChecklistFocusRequester.requestFocus()
+                            }
                         }
                     },
                     focusRequester = newChecklistFocusRequester,
+                    onInputBoundsChanged = { bounds ->
+                        onInputBoundsChanged("checklist:add", bounds)
+                    },
+                    onKeepFocusBoundsChanged = { bounds ->
+                        onInputBoundsChanged("checklist:addButton", bounds)
+                    },
                 )
             }
         }
@@ -152,6 +186,9 @@ internal fun PlaceReminderContentFormPage(
             state = state,
             onPickAttachments = onPickAttachments,
             onRemoveAttachment = { onAction(PlaceReminderEditAction.RemoveAttachment(it)) },
+            hiddenAttachmentId = hiddenAttachmentId,
+            onAttachmentBoundsChanged = onAttachmentBoundsChanged,
+            onAttachmentClick = onAttachmentClick,
         )
     }
 }

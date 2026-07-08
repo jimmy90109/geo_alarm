@@ -5,6 +5,8 @@ import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
+import androidx.compose.foundation.gestures.awaitEachGesture
+import androidx.compose.foundation.gestures.awaitFirstDown
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
@@ -20,6 +22,7 @@ import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.navigationBars
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.statusBars
@@ -43,6 +46,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateMapOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -50,11 +54,20 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Rect
+import androidx.compose.ui.input.pointer.PointerEventPass
+import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.layout.boundsInRoot
+import androidx.compose.ui.layout.onGloballyPositioned
+import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.platform.LocalLayoutDirection
+import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import com.github.jimmy90109.geoalarm.R
 import com.github.jimmy90109.geoalarm.data.PlaceReminderType
+import com.github.jimmy90109.geoalarm.ui.components.MediaPreviewSelection
 import com.github.jimmy90109.geoalarm.ui.viewmodel.PlaceReminderEditAction
 import com.github.jimmy90109.geoalarm.ui.viewmodel.PlaceReminderEditUiState
 import com.github.jimmy90109.geoalarm.ui.components.TopAppBar as GeoTopAppBar
@@ -150,12 +163,18 @@ internal fun PlaceReminderEditContent(
     onAction: (PlaceReminderEditAction) -> Unit,
     onSelectPlace: () -> Unit,
     onPickAttachments: () -> Unit,
+    hiddenAttachmentId: String?,
+    onAttachmentBoundsChanged: (String, Rect) -> Unit,
+    onAttachmentClick: (MediaPreviewSelection) -> Unit,
     pagerState: PagerState,
     isLandscape: Boolean,
     modifier: Modifier = Modifier,
 ) {
     var newChecklistText by remember { mutableStateOf("") }
     val newChecklistFocusRequester = remember { FocusRequester() }
+    val focusManager = LocalFocusManager.current
+    val keyboardController = LocalSoftwareKeyboardController.current
+    val inputBoundsById = remember { mutableStateMapOf<String, Rect>() }
     val navInsets = WindowInsets.navigationBars.asPaddingValues()
     val cutoutInsets = WindowInsets.displayCutout.asPaddingValues()
     val layoutDirection = LocalLayoutDirection.current
@@ -205,10 +224,28 @@ internal fun PlaceReminderEditContent(
             beyondViewportPageCount = PlaceReminderRetainedOffscreenPageCount,
             userScrollEnabled = false,
         ) { page ->
+            var pageContainerBounds by remember(page) { mutableStateOf<Rect?>(null) }
             BoxWithConstraints(
-                modifier = Modifier.fillMaxSize(),
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(
+                        start = pageStartPadding,
+                        end = pageEndPadding,
+                    )
+                    .onGloballyPositioned { coordinates ->
+                        pageContainerBounds = coordinates.boundsInRoot()
+                    }
+                    .clearFocusOnTapOutsideFocusedInput(
+                        inputBounds = inputBoundsById.values.toList(),
+                        containerBounds = pageContainerBounds,
+                    ) {
+                        focusManager.clearFocus(force = true)
+                        keyboardController?.hide()
+                    },
                 contentAlignment = Alignment.Center,
             ) {
+                val pageViewportHeight = maxHeight
+                val contentWidth = minOf(maxWidth, pageMaxWidth)
                 val contentPageExtraVerticalPadding = if (!isLandscape && page == PlaceReminderContentPageIndex) {
                     maxHeight * 0.2f
                 } else {
@@ -216,23 +253,14 @@ internal fun PlaceReminderEditContent(
                 }
                 Box(
                     modifier = Modifier
-                        .padding(
-                            start = pageStartPadding,
-                            end = pageEndPadding,
-                        )
-                        .widthIn(max = pageMaxWidth)
-                        .fillMaxSize(),
+                        .fillMaxSize()
+                        .verticalScroll(rememberScrollState()),
                     contentAlignment = Alignment.Center,
                 ) {
-                    Box(
-                        modifier = Modifier
-                            .fillMaxSize()
-                            .verticalScroll(rememberScrollState()),
-                        contentAlignment = Alignment.Center,
-                    ) {
                         Box(
                             modifier = Modifier
-                                .fillMaxWidth()
+                                .width(contentWidth)
+                                .heightIn(min = pageViewportHeight)
                                 .padding(
                                     top = contentTopPadding + contentPageExtraVerticalPadding,
                                     bottom = contentBottomPadding + contentPageExtraVerticalPadding,
@@ -248,13 +276,41 @@ internal fun PlaceReminderEditContent(
                                     onNewChecklistTextChange = { newChecklistText = it },
                                     newChecklistFocusRequester = newChecklistFocusRequester,
                                     onPickAttachments = onPickAttachments,
+                                    hiddenAttachmentId = hiddenAttachmentId,
+                                    onAttachmentBoundsChanged = onAttachmentBoundsChanged,
+                                    onAttachmentClick = onAttachmentClick,
+                                    onInputBoundsChanged = { id, bounds ->
+                                        if (bounds == null) {
+                                            inputBoundsById.remove(id)
+                                        } else {
+                                            inputBoundsById[id] = bounds
+                                        }
+                                    },
                                 )
                                 else -> PlaceReminderTriggerFormPage(state = state, onAction = onAction)
                             }
                         }
                     }
-                }
             }
+        }
+    }
+}
+
+private fun Modifier.clearFocusOnTapOutsideFocusedInput(
+    inputBounds: List<Rect>,
+    containerBounds: Rect?,
+    onClearFocus: () -> Unit,
+): Modifier = pointerInput(inputBounds, containerBounds, onClearFocus) {
+    awaitEachGesture {
+        val down = awaitFirstDown(requireUnconsumed = false, pass = PointerEventPass.Initial)
+        if (inputBounds.isEmpty()) return@awaitEachGesture
+        val container = containerBounds ?: return@awaitEachGesture
+        val rootPosition = Offset(
+            x = container.left + down.position.x,
+            y = container.top + down.position.y,
+        )
+        if (inputBounds.none { it.contains(rootPosition) }) {
+            onClearFocus()
         }
     }
 }

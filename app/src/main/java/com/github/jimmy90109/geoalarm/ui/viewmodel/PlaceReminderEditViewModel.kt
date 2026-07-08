@@ -179,6 +179,8 @@ class PlaceReminderEditViewModel @Inject constructor(
     private var autocompleteSessionId: String? = null
     private val draftReminderId = UUID.randomUUID().toString()
     private var originalAttachmentIds: Set<String> = emptySet()
+    private var loadingReminderId: String? = null
+    private var loadedReminderId: String? = null
 
     init {
         viewModelScope.launch {
@@ -240,16 +242,25 @@ class PlaceReminderEditViewModel @Inject constructor(
     private fun load(reminderId: String?) {
         viewModelScope.launch {
             if (reminderId == null) {
+                loadingReminderId = null
+                loadedReminderId = null
                 _uiState.value = _uiState.value.copy(isLoading = false)
                 return@launch
             }
+            if (loadedReminderId == reminderId || loadingReminderId == reminderId) return@launch
+            loadingReminderId = reminderId
+            _uiState.value = _uiState.value.copy(isLoading = true)
+
             val reminderWithItems = repository.getReminder(reminderId)
             val reminder = reminderWithItems?.reminder
             if (reminder == null) {
+                loadingReminderId = null
                 _uiState.value = _uiState.value.copy(isLoading = false)
                 return@launch
             }
             originalAttachmentIds = reminderWithItems.sortedAttachments.map { it.id }.toSet()
+            loadedReminderId = reminder.id
+            loadingReminderId = null
             _uiState.value = _uiState.value.copy(
                 reminderId = reminder.id,
                 isLoading = false,

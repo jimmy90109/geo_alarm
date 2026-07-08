@@ -3,6 +3,7 @@ package com.github.jimmy90109.geoalarm.data
 import android.content.ContentResolver
 import android.content.Context
 import android.database.Cursor
+import android.media.MediaMetadataRetriever
 import android.net.Uri
 import android.provider.OpenableColumns
 import dagger.hilt.android.qualifiers.ApplicationContext
@@ -46,7 +47,11 @@ class LocalPlaceReminderAttachmentStore @Inject constructor(
             mimeType = mimeType,
             displayName = metadata.displayName.ifBlank { fileName },
             sizeBytes = metadata.sizeBytes.takeIf { it >= 0L } ?: target.length(),
-            durationMillis = null,
+            durationMillis = if (type == PlaceReminderAttachmentType.VIDEO) {
+                target.videoDurationMillis()
+            } else {
+                null
+            },
             width = null,
             height = null,
             sortOrder = sortOrder,
@@ -69,6 +74,20 @@ class LocalPlaceReminderAttachmentStore @Inject constructor(
             "video/mp4" -> ".mp4"
             "video/webm" -> ".webm"
             else -> if (mimeType.startsWith("image/")) ".jpg" else ".mp4"
+        }
+    }
+
+    private fun File.videoDurationMillis(): Long? {
+        val retriever = MediaMetadataRetriever()
+        return try {
+            retriever.setDataSource(absolutePath)
+            retriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_DURATION)
+                ?.toLongOrNull()
+                ?.takeIf { it > 0L }
+        } catch (_: RuntimeException) {
+            null
+        } finally {
+            retriever.release()
         }
     }
 

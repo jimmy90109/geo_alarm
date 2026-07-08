@@ -26,6 +26,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.withFrameNanos
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -50,8 +51,10 @@ import com.google.maps.android.compose.MarkerState
 import com.google.maps.android.compose.rememberCameraPositionState
 import kotlin.math.cos
 import kotlin.math.log2
+import kotlinx.coroutines.delay
 
 private val PlaceReminderPreviewMapHeight = 180.dp
+private const val PlaceReminderPreviewMapDeferMillis = 180L
 
 @Composable
 internal fun PlaceReminderSelectedPlaceSection(
@@ -82,18 +85,11 @@ internal fun PlaceReminderSelectedPlaceSection(
             mapHeightPx = mapHeightPx,
         )
     }
-    var mapProperties by remember { mutableStateOf(MapProperties()) }
-    LaunchedEffect(darkTheme) {
-        mapProperties = if (darkTheme) {
-            MapProperties(
-                mapStyleOptions = MapStyleOptions.loadRawResourceStyle(
-                    context,
-                    R.raw.map_style_dark,
-                ),
-            )
-        } else {
-            MapProperties(mapStyleOptions = null)
-        }
+    var showPreviewMap by remember(position, state.radiusMeters, darkTheme) { mutableStateOf(false) }
+    LaunchedEffect(position, state.radiusMeters, darkTheme) {
+        withFrameNanos { }
+        delay(PlaceReminderPreviewMapDeferMillis)
+        showPreviewMap = true
     }
     val previewMapUiSettings = remember {
         MapUiSettings(
@@ -115,7 +111,7 @@ internal fun PlaceReminderSelectedPlaceSection(
             .fillMaxWidth()
             .clickable(onClick = onSelectPlace),
         shape = RoundedCornerShape(24.dp),
-            color = MaterialTheme.colorScheme.surfaceContainerHigh,
+        color = MaterialTheme.colorScheme.surfaceContainerHigh,
     ) {
         Column {
             Row(
@@ -145,31 +141,48 @@ internal fun PlaceReminderSelectedPlaceSection(
                 Icon(Icons.Filled.ChevronRight, contentDescription = stringResource(R.string.place_reminder_edit_place))
             }
 
-            val cameraPositionState = rememberCameraPositionState {
-                this.position = CameraPosition.fromLatLngZoom(position, previewZoom)
-            }
-            LaunchedEffect(position, previewZoom) {
-                cameraPositionState.animate(CameraUpdateFactory.newLatLngZoom(position, previewZoom))
-            }
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(PlaceReminderPreviewMapHeight),
             ) {
-                GoogleMap(
-                    modifier = Modifier.fillMaxSize(),
-                    cameraPositionState = cameraPositionState,
-                    properties = mapProperties,
-                    uiSettings = previewMapUiSettings,
-                ) {
-                    Marker(state = MarkerState(position = position), title = state.placeName)
-                    Circle(
-                        center = position,
-                        radius = state.radiusMeters.toDouble(),
-                        strokeColor = Color(0xFF607D8B).copy(alpha = 0.8f),
-                        strokeWidth = 2f,
-                        fillColor = Color(0xFF607D8B).copy(alpha = 0.14f),
-                    )
+                if (showPreviewMap) {
+                    var mapProperties by remember { mutableStateOf(MapProperties()) }
+                    LaunchedEffect(darkTheme) {
+                        mapProperties = if (darkTheme) {
+                            MapProperties(
+                                mapStyleOptions = MapStyleOptions.loadRawResourceStyle(
+                                    context,
+                                    R.raw.map_style_dark,
+                                ),
+                            )
+                        } else {
+                            MapProperties(mapStyleOptions = null)
+                        }
+                    }
+                    val cameraPositionState = rememberCameraPositionState {
+                        this.position = CameraPosition.fromLatLngZoom(position, previewZoom)
+                    }
+                    LaunchedEffect(position, previewZoom) {
+                        cameraPositionState.animate(CameraUpdateFactory.newLatLngZoom(position, previewZoom))
+                    }
+                    GoogleMap(
+                        modifier = Modifier.fillMaxSize(),
+                        cameraPositionState = cameraPositionState,
+                        properties = mapProperties,
+                        uiSettings = previewMapUiSettings,
+                    ) {
+                        Marker(state = MarkerState(position = position), title = state.placeName)
+                        Circle(
+                            center = position,
+                            radius = state.radiusMeters.toDouble(),
+                            strokeColor = Color(0xFF607D8B).copy(alpha = 0.8f),
+                            strokeWidth = 2f,
+                            fillColor = Color(0xFF607D8B).copy(alpha = 0.14f),
+                        )
+                    }
+                } else {
+                    PlaceReminderPreviewMapPlaceholder(modifier = Modifier.matchParentSize())
                 }
                 Box(
                     modifier = Modifier
@@ -178,6 +191,16 @@ internal fun PlaceReminderSelectedPlaceSection(
                 )
             }
         }
+    }
+}
+
+@Composable
+private fun PlaceReminderPreviewMapPlaceholder(modifier: Modifier = Modifier) {
+    Surface(
+        modifier = modifier,
+        color = MaterialTheme.colorScheme.surfaceContainer,
+    ) {
+        Box(modifier = Modifier.fillMaxSize())
     }
 }
 

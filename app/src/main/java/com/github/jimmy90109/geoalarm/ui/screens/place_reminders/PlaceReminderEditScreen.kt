@@ -17,13 +17,21 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateMapOf
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.res.stringResource
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.github.jimmy90109.geoalarm.R
+import com.github.jimmy90109.geoalarm.ui.components.MediaPreviewOverlay
+import com.github.jimmy90109.geoalarm.ui.components.MediaPreviewPreloader
+import com.github.jimmy90109.geoalarm.ui.components.MediaPreviewSelection
 import com.github.jimmy90109.geoalarm.ui.screens.AlarmEditLandscapeLayout
 import com.github.jimmy90109.geoalarm.ui.screens.AlarmEditPortraitLayout
 import com.github.jimmy90109.geoalarm.ui.screens.place_reminders.components.PlaceReminderEditBottomBar
@@ -31,6 +39,7 @@ import com.github.jimmy90109.geoalarm.ui.screens.place_reminders.components.Plac
 import com.github.jimmy90109.geoalarm.ui.screens.place_reminders.components.PlaceReminderEditLandscapeControls
 import com.github.jimmy90109.geoalarm.ui.screens.place_reminders.components.PlaceReminderEditTopBar
 import com.github.jimmy90109.geoalarm.ui.screens.place_reminders.components.canProceedFromPlaceReminderPage
+import com.github.jimmy90109.geoalarm.ui.screens.place_reminders.components.toMediaPreviewItem
 import com.github.jimmy90109.geoalarm.ui.viewmodel.AlarmEditControlMode
 import com.github.jimmy90109.geoalarm.ui.viewmodel.AlarmEditStep
 import com.github.jimmy90109.geoalarm.ui.viewmodel.PlaceReminderEditAction
@@ -73,6 +82,14 @@ fun PlaceReminderEditScreen(
     }
     val configuration = LocalConfiguration.current
     val isLandscape = configuration.orientation == Configuration.ORIENTATION_LANDSCAPE
+    var selectedPreview by remember { mutableStateOf<MediaPreviewSelection?>(null) }
+    var activePreviewItemId by remember { mutableStateOf<String?>(null) }
+    val previewSourceBounds = remember { mutableStateMapOf<String, Rect>() }
+    val previewItems = remember(uiState.attachments) {
+        uiState.attachments
+            .sortedBy { it.sortOrder }
+            .map { it.toMediaPreviewItem() }
+    }
     LaunchedEffect(reminderId) {
         viewModel.onAction(PlaceReminderEditAction.Load(reminderId))
     }
@@ -82,6 +99,12 @@ fun PlaceReminderEditScreen(
                 is PlaceReminderEditEffect.NavigateBack -> onBack(effect.reminderId)
             }
         }
+    }
+
+    val isInitialLoading = reminderId != null && uiState.isLoading
+    if (isInitialLoading) {
+        PlaceReminderInitialLoadPlaceholder(modifier = Modifier.fillMaxSize())
+        return
     }
 
     val formPagerState = rememberPagerState(pageCount = { PlaceReminderEditPageCount })
@@ -101,6 +124,7 @@ fun PlaceReminderEditScreen(
     }
 
     Box(modifier = Modifier.fillMaxSize()) {
+        MediaPreviewPreloader(items = previewItems)
         PlaceReminderEditContent(
             state = uiState,
             onAction = viewModel::onAction,
@@ -115,6 +139,14 @@ fun PlaceReminderEditScreen(
                         PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageAndVideo)
                     )
                 }
+            },
+            hiddenAttachmentId = activePreviewItemId ?: selectedPreview?.item?.id,
+            onAttachmentBoundsChanged = { id, bounds ->
+                previewSourceBounds[id] = bounds
+            },
+            onAttachmentClick = { selection ->
+                selectedPreview = selection
+                activePreviewItemId = selection.item.id
             },
             pagerState = formPagerState,
             isLandscape = isLandscape,
@@ -161,7 +193,26 @@ fun PlaceReminderEditScreen(
                 )
             }
         }
+        selectedPreview?.let { selection ->
+            MediaPreviewOverlay(
+                selection = selection,
+                items = previewItems.ifEmpty { listOf(selection.item) },
+                sourceBoundsById = previewSourceBounds.toMap(),
+                onActiveItemChanged = { item ->
+                    activePreviewItemId = item.id
+                },
+                onDismiss = {
+                    selectedPreview = null
+                    activePreviewItemId = null
+                },
+            )
+        }
     }
+}
+
+@Composable
+private fun PlaceReminderInitialLoadPlaceholder(modifier: Modifier = Modifier) {
+    Box(modifier = modifier)
 }
 
 private suspend fun PagerState.animateToPlaceReminderPage(page: Int) {
@@ -185,9 +236,24 @@ fun PlaceReminderPlacePickerScreen(
     val configuration = LocalConfiguration.current
     val isLandscape = configuration.orientation == Configuration.ORIENTATION_LANDSCAPE
     val locationUiState = uiState.alarmEditUiState
+    LaunchedEffect(reminderId) {
+        if (reminderId != null) {
+            viewModel.onAction(PlaceReminderEditAction.Load(reminderId))
+        }
+    }
+
+    val isInitialLoading = reminderId != null && uiState.isLoading
+    if (isInitialLoading) {
+        PlaceReminderInitialLoadPlaceholder(modifier = Modifier.fillMaxSize())
+        return
+    }
+
     val cameraPositionState = rememberCameraPositionState {
+        val initialPosition = uiState.selectedPosition
+            ?: uiState.currentLocation
+            ?: DefaultPlaceReminderMapPosition
         position = CameraPosition.fromLatLngZoom(
-            uiState.selectedPosition ?: uiState.currentLocation ?: DefaultPlaceReminderMapPosition,
+            initialPosition,
             if (uiState.selectedPosition != null || uiState.currentLocation != null) 15f else 13f,
         )
     }

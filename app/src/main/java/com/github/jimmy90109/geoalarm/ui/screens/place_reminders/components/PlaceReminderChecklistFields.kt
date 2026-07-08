@@ -26,6 +26,7 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextField
 import androidx.compose.material3.TextFieldDefaults
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -35,7 +36,10 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.focus.onFocusChanged
+import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.layout.boundsInRoot
+import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import com.github.jimmy90109.geoalarm.R
@@ -48,8 +52,12 @@ internal fun ChecklistEditRow(
     onValueChange: (String) -> Unit,
     onRemove: () -> Unit,
     dragHandleModifier: Modifier,
+    onInputBoundsChanged: (Rect?) -> Unit = {},
 ) {
     var isFocused by remember { mutableStateOf(false) }
+    DisposableEffect(Unit) {
+        onDispose { onInputBoundsChanged(null) }
+    }
 
     Row(verticalAlignment = Alignment.CenterVertically) {
         Icon(
@@ -63,7 +71,10 @@ internal fun ChecklistEditRow(
             onValueChange = onValueChange,
             modifier = Modifier
                 .weight(1f)
-                .onFocusChanged { isFocused = it.isFocused },
+                .onGloballyPositioned { onInputBoundsChanged(it.boundsInRoot()) }
+                .onFocusChanged {
+                    isFocused = it.isFocused
+                },
             singleLine = true,
             shape = PlaceReminderTextFieldShape,
         )
@@ -95,8 +106,13 @@ internal fun ChecklistAddRow(
     onValueChange: (String) -> Unit,
     onAdd: () -> Unit,
     focusRequester: FocusRequester,
+    onInputBoundsChanged: (Rect?) -> Unit = {},
+    onKeepFocusBoundsChanged: (Rect?) -> Unit = {},
 ) {
     val canAdd = value.trim().isNotEmpty()
+    DisposableEffect(Unit) {
+        onDispose { onInputBoundsChanged(null) }
+    }
 
     Row(verticalAlignment = Alignment.CenterVertically) {
         TextField(
@@ -104,7 +120,8 @@ internal fun ChecklistAddRow(
             onValueChange = onValueChange,
             modifier = Modifier
                 .weight(1f)
-                .focusRequester(focusRequester),
+                .focusRequester(focusRequester)
+                .onGloballyPositioned { onInputBoundsChanged(it.boundsInRoot()) },
             singleLine = true,
             placeholder = { Text(stringResource(R.string.place_reminder_new_item)) },
             colors = TextFieldDefaults.colors(
@@ -125,7 +142,15 @@ internal fun ChecklistAddRow(
                 shrinkTowards = Alignment.Start,
             ) + fadeOut(animationSpec = tween(durationMillis = 100)),
         ) {
-            IconButton(onClick = onAdd) {
+            DisposableEffect(Unit) {
+                onDispose { onKeepFocusBoundsChanged(null) }
+            }
+            IconButton(
+                onClick = onAdd,
+                modifier = Modifier.onGloballyPositioned {
+                    onKeepFocusBoundsChanged(it.boundsInRoot())
+                },
+            ) {
                 Surface(
                     shape = CircleShape,
                     color = MaterialTheme.colorScheme.primaryContainer,
