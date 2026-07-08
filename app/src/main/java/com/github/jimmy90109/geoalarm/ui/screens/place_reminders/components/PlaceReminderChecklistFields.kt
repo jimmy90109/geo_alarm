@@ -66,7 +66,7 @@ internal fun ChecklistEditRow(
             modifier = dragHandleModifier.padding(end = 8.dp),
             tint = MaterialTheme.colorScheme.onSurfaceVariant,
         )
-        OutlinedTextField(
+        TextField(
             value = value,
             onValueChange = onValueChange,
             modifier = Modifier
@@ -77,6 +77,16 @@ internal fun ChecklistEditRow(
                 },
             singleLine = true,
             shape = PlaceReminderTextFieldShape,
+            colors = TextFieldDefaults.colors(
+                focusedContainerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
+                unfocusedContainerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
+                disabledContainerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
+                errorContainerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
+                focusedIndicatorColor = Color.Transparent,
+                unfocusedIndicatorColor = Color.Transparent,
+                disabledIndicatorColor = Color.Transparent,
+                errorIndicatorColor = Color.Transparent,
+            ),
         )
         AnimatedVisibility(
             visible = isFocused,
@@ -89,12 +99,25 @@ internal fun ChecklistEditRow(
                 shrinkTowards = Alignment.Start,
             ) + fadeOut(animationSpec = tween(durationMillis = 100)),
         ) {
-            IconButton(onClick = onRemove) {
-                Icon(
-                    Icons.Filled.Delete,
-                    contentDescription = stringResource(R.string.delete),
-                    tint = MaterialTheme.colorScheme.error,
-                )
+            IconButton(
+                onClick = onRemove,
+                modifier = Modifier.padding(start = 8.dp),
+            ) {
+                Surface(
+                    shape = CircleShape,
+                    color = MaterialTheme.colorScheme.errorContainer,
+                ) {
+                    Box(
+                        modifier = Modifier.size(40.dp),
+                        contentAlignment = Alignment.Center,
+                    ) {
+                        Icon(
+                            Icons.Filled.Delete,
+                            contentDescription = stringResource(R.string.delete),
+                            tint = MaterialTheme.colorScheme.onErrorContainer,
+                        )
+                    }
+                }
             }
         }
     }
@@ -115,7 +138,7 @@ internal fun ChecklistAddRow(
     }
 
     Row(verticalAlignment = Alignment.CenterVertically) {
-        TextField(
+        OutlinedTextField(
             value = value,
             onValueChange = onValueChange,
             modifier = Modifier
@@ -124,12 +147,7 @@ internal fun ChecklistAddRow(
                 .onGloballyPositioned { onInputBoundsChanged(it.boundsInRoot()) },
             singleLine = true,
             placeholder = { Text(stringResource(R.string.place_reminder_new_item)) },
-            colors = TextFieldDefaults.colors(
-                focusedContainerColor = Color.Transparent,
-                unfocusedContainerColor = Color.Transparent,
-                disabledContainerColor = Color.Transparent,
-                errorContainerColor = Color.Transparent,
-            ),
+            shape = PlaceReminderTextFieldShape,
         )
         AnimatedVisibility(
             visible = canAdd,
@@ -147,9 +165,11 @@ internal fun ChecklistAddRow(
             }
             IconButton(
                 onClick = onAdd,
-                modifier = Modifier.onGloballyPositioned {
-                    onKeepFocusBoundsChanged(it.boundsInRoot())
-                },
+                modifier = Modifier
+                    .padding(start = 8.dp)
+                    .onGloballyPositioned {
+                        onKeepFocusBoundsChanged(it.boundsInRoot())
+                    },
             ) {
                 Surface(
                     shape = CircleShape,

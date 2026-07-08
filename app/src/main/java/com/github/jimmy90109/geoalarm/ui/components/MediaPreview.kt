@@ -1,6 +1,9 @@
 package com.github.jimmy90109.geoalarm.ui.components
 
 import android.content.Context
+import android.graphics.BitmapFactory
+import android.media.ExifInterface
+import android.media.MediaMetadataRetriever
 import android.net.Uri
 import androidx.activity.compose.BackHandler
 import androidx.compose.animation.core.Animatable
@@ -81,8 +84,11 @@ import coil.request.ImageRequest
 import com.github.jimmy90109.geoalarm.data.MaxPlaceReminderAttachments
 import com.github.jimmy90109.geoalarm.R
 import java.io.File
+import java.io.IOException
 import kotlinx.coroutines.launch
 import me.saket.telephoto.zoomable.coil.ZoomableAsyncImage
+import me.saket.telephoto.zoomable.rememberZoomableImageState
+import me.saket.telephoto.zoomable.rememberZoomableState
 import kotlin.math.abs
 
 private const val MediaPreviewTransitionMillis = 360
@@ -279,8 +285,23 @@ fun MediaPreviewOverlay(
                 1f - (dismissProgress * 0.16f)
             }
         }
-        val targetBounds = remember(maxWidthPx, maxHeightPx) {
-            Rect(left = 0f, top = 0f, right = maxWidthPx, bottom = maxHeightPx)
+        val mediaAspectRatio = remember(
+            activeItem.id,
+            activeItem.localPath,
+            activeItem.type,
+            activeItem.width,
+            activeItem.height,
+        ) {
+            activeItem.resolveAspectRatio()
+        }
+        val targetBounds = remember(maxWidthPx, maxHeightPx, mediaAspectRatio) {
+            mediaAspectRatio?.let { aspectRatio ->
+                mediaFitBounds(
+                    maxWidthPx = maxWidthPx,
+                    maxHeightPx = maxHeightPx,
+                    mediaAspectRatio = aspectRatio,
+                )
+            } ?: Rect(left = 0f, top = 0f, right = maxWidthPx, bottom = maxHeightPx)
         }
         val draggedTargetBounds = remember(targetBounds, viewerScale, dragOffsetY.value) {
             targetBounds
@@ -290,6 +311,15 @@ fun MediaPreviewOverlay(
         val sourceBounds = sourceBoundsById[activeItem.id] ?: selection.sourceBounds
         val animatedBounds = remember(sourceBounds, draggedTargetBounds, transitionProgress.value) {
             lerp(sourceBounds, draggedTargetBounds, transitionProgress.value)
+        }
+        val fullScreenBounds = remember(maxWidthPx, maxHeightPx) {
+            Rect(left = 0f, top = 0f, right = maxWidthPx, bottom = maxHeightPx)
+        }
+        val useFullScreenCanvas = transitionProgress.value > 0.98f && !isDragging && !hasDismissed
+        val displayBounds = if (useFullScreenCanvas) {
+            fullScreenBounds
+        } else {
+            animatedBounds
         }
         val animatedCornerRadius = with(density) {
             lerpFloat(
@@ -302,8 +332,9 @@ fun MediaPreviewOverlay(
                 fraction = transitionProgress.value,
             ).toDp()
         }
-        val animatedWidth = with(density) { animatedBounds.width.toDp() }
-        val animatedHeight = with(density) { animatedBounds.height.toDp() }
+        val displayCornerRadius = if (useFullScreenCanvas) 0.dp else animatedCornerRadius
+        val displayWidth = with(density) { displayBounds.width.toDp() }
+        val displayHeight = with(density) { displayBounds.height.toDp() }
         val controlsAlpha by animateFloatAsState(
             targetValue = if (transitionProgress.value > 0.98f && !isDragging && !hasDismissed) {
                 1f - dismissProgress
@@ -313,11 +344,10 @@ fun MediaPreviewOverlay(
             animationSpec = tween(120),
             label = "mediaPreviewControlsAlpha",
         )
-        val imageContentScale = when {
-            isActiveVideo && transitionProgress.value > 0.18f -> ContentScale.Fit
-            isActiveVideo -> ContentScale.Crop
-            transitionProgress.value > 0.18f -> ContentScale.Fit
-            else -> ContentScale.Crop
+        val mediaContentScale = if (useFullScreenCanvas) {
+            ContentScale.Fit
+        } else {
+            ContentScale.Crop
         }
         Box(
             modifier = Modifier
@@ -343,37 +373,46 @@ fun MediaPreviewOverlay(
                             isDragging = true
                         },
                         onVerticalDrag = { change, dragAmount ->
-                            if (transitionProgress.value < 1f) return@detectVerticalDragGestures
+                            if (!isDragging || transitionProgress.value < 1f) {
+                                return@detectVerticalDragGestures
+                            }
                             change.consume()
                             scope.launch {
                                 dragOffsetY.snapTo(dragOffsetY.value + dragAmount)
                             }
                         },
                         onDragCancel = {
-                            isDragging = false
                             scope.launch {
-                                dragOffsetY.animateTo(
-                                    targetValue = 0f,
-                                    animationSpec = spring(
-                                        dampingRatio = Spring.DampingRatioNoBouncy,
-                                        stiffness = Spring.StiffnessMediumLow,
-                                    ),
-                                )
+                                try {
+                                    dragOffsetY.animateTo(
+                                        targetValue = 0f,
+                                        animationSpec = spring(
+                                            dampingRatio = Spring.DampingRatioNoBouncy,
+                                            stiffness = Spring.StiffnessMediumLow,
+                                        ),
+                                    )
+                                } finally {
+                                    isDragging = false
+                                }
                             }
                         },
                         onDragEnd = {
-                            isDragging = false
+                            if (!isDragging) return@detectVerticalDragGestures
                             if (abs(dragOffsetY.value) > dismissThresholdPx) {
                                 requestDismiss()
                             } else {
                                 scope.launch {
-                                    dragOffsetY.animateTo(
-                                        targetValue = 0f,
-                                        animationSpec = spring(
-                                            dampingRatio = Spring.DampingRatioMediumBouncy,
-                                            stiffness = Spring.StiffnessMediumLow,
-                                        ),
-                                    )
+                                    try {
+                                        dragOffsetY.animateTo(
+                                            targetValue = 0f,
+                                            animationSpec = spring(
+                                                dampingRatio = Spring.DampingRatioMediumBouncy,
+                                                stiffness = Spring.StiffnessMediumLow,
+                                            ),
+                                        )
+                                    } finally {
+                                        isDragging = false
+                                    }
                                 }
                             }
                         },
@@ -384,11 +423,11 @@ fun MediaPreviewOverlay(
             Box(
                 modifier = Modifier
                     .graphicsLayer {
-                        translationX = animatedBounds.left
-                        translationY = animatedBounds.top
+                        translationX = displayBounds.left
+                        translationY = displayBounds.top
                     }
-                    .size(width = animatedWidth, height = animatedHeight)
-                    .clip(RoundedCornerShape(animatedCornerRadius)),
+                    .size(width = displayWidth, height = displayHeight)
+                    .clip(RoundedCornerShape(displayCornerRadius)),
             ) {
                 if (transitionProgress.value > 0.98f && previewItems.size > 1) {
                     HorizontalPager(
@@ -400,7 +439,7 @@ fun MediaPreviewOverlay(
                             item = previewItems[page],
                             active = page == pagerState.settledPage,
                             complete = true,
-                            imageContentScale = ContentScale.Fit,
+                            imageContentScale = mediaContentScale,
                         )
                     }
                 } else {
@@ -408,7 +447,7 @@ fun MediaPreviewOverlay(
                         item = activeItem,
                         active = true,
                         complete = transitionProgress.value > 0.98f,
-                        imageContentScale = imageContentScale,
+                        imageContentScale = mediaContentScale,
                     )
                 }
             }
@@ -496,23 +535,33 @@ private fun MediaPreviewImagePage(
     complete: Boolean,
     contentScale: ContentScale,
 ) {
+    val zoomableImageState = rememberZoomableImageState(rememberZoomableState())
     var hasShownZoomable by remember(imageRequest) { mutableStateOf(false) }
     LaunchedEffect(complete) {
         if (complete) {
             hasShownZoomable = true
         }
     }
+    val zoomableImageDisplayed = hasShownZoomable && zoomableImageState.isImageDisplayed
+    val bottomImageAlpha by animateFloatAsState(
+        targetValue = if (zoomableImageDisplayed) 0f else 1f,
+        animationSpec = tween(140),
+        label = "mediaPreviewImageFallbackAlpha",
+    )
     val zoomableAlpha by animateFloatAsState(
-        targetValue = if (hasShownZoomable) 1f else 0f,
+        targetValue = if (zoomableImageDisplayed) 1f else 0f,
         animationSpec = tween(140),
         label = "mediaPreviewImageZoomableAlpha",
     )
-
     Box(modifier = Modifier.fillMaxSize()) {
         AsyncImage(
             model = imageRequest,
             contentDescription = contentDescription,
-            modifier = Modifier.fillMaxSize(),
+            modifier = Modifier
+                .fillMaxSize()
+                .graphicsLayer {
+                    alpha = bottomImageAlpha
+                },
             contentScale = contentScale,
         )
         if (hasShownZoomable) {
@@ -524,6 +573,7 @@ private fun MediaPreviewImagePage(
                     .graphicsLayer {
                         alpha = zoomableAlpha
                     },
+                state = zoomableImageState,
                 contentScale = contentScale,
             )
         }
@@ -769,6 +819,103 @@ private fun Rect.scaleAroundCenter(scale: Float): Rect {
 
 private fun Rect.translate(x: Float = 0f, y: Float = 0f): Rect =
     Rect(left = left + x, top = top + y, right = right + x, bottom = bottom + y)
+
+private fun mediaFitBounds(
+    maxWidthPx: Float,
+    maxHeightPx: Float,
+    mediaAspectRatio: Float,
+): Rect {
+    val screenAspectRatio = maxWidthPx / maxHeightPx
+    val targetWidth: Float
+    val targetHeight: Float
+    if (mediaAspectRatio > screenAspectRatio) {
+        targetWidth = maxWidthPx
+        targetHeight = maxWidthPx / mediaAspectRatio
+    } else {
+        targetHeight = maxHeightPx
+        targetWidth = maxHeightPx * mediaAspectRatio
+    }
+    val left = (maxWidthPx - targetWidth) / 2f
+    val top = (maxHeightPx - targetHeight) / 2f
+    return Rect(
+        left = left,
+        top = top,
+        right = left + targetWidth,
+        bottom = top + targetHeight,
+    )
+}
+
+private fun MediaPreviewItem.resolveAspectRatio(): Float? {
+    val storedAspectRatio = aspectRatioFromSize(width = width, height = height)
+    if (storedAspectRatio != null) return storedAspectRatio
+
+    return when (type) {
+        MediaPreviewType.IMAGE -> imageAspectRatio(localPath)
+        MediaPreviewType.VIDEO -> videoAspectRatio(localPath)
+    }
+}
+
+private fun aspectRatioFromSize(width: Int?, height: Int?): Float? {
+    val safeWidth = width?.takeIf { it > 0 } ?: return null
+    val safeHeight = height?.takeIf { it > 0 } ?: return null
+    return safeWidth.toFloat() / safeHeight.toFloat()
+}
+
+private fun imageAspectRatio(localPath: String): Float? {
+    val options = BitmapFactory.Options().apply {
+        inJustDecodeBounds = true
+    }
+    BitmapFactory.decodeFile(localPath, options)
+    val width = options.outWidth.takeIf { it > 0 } ?: return null
+    val height = options.outHeight.takeIf { it > 0 } ?: return null
+    val rotated = try {
+        val orientation = ExifInterface(localPath)
+            .getAttributeInt(
+                ExifInterface.TAG_ORIENTATION,
+                ExifInterface.ORIENTATION_NORMAL,
+            )
+        orientation == ExifInterface.ORIENTATION_ROTATE_90 ||
+            orientation == ExifInterface.ORIENTATION_ROTATE_270 ||
+            orientation == ExifInterface.ORIENTATION_TRANSPOSE ||
+            orientation == ExifInterface.ORIENTATION_TRANSVERSE
+    } catch (_: IOException) {
+        false
+    } catch (_: RuntimeException) {
+        false
+    }
+    return if (rotated) {
+        height.toFloat() / width.toFloat()
+    } else {
+        width.toFloat() / height.toFloat()
+    }
+}
+
+private fun videoAspectRatio(localPath: String): Float? {
+    val retriever = MediaMetadataRetriever()
+    return try {
+        retriever.setDataSource(localPath)
+        val width = retriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_VIDEO_WIDTH)
+            ?.toIntOrNull()
+            ?.takeIf { it > 0 }
+            ?: return null
+        val height = retriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_VIDEO_HEIGHT)
+            ?.toIntOrNull()
+            ?.takeIf { it > 0 }
+            ?: return null
+        val rotation = retriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_VIDEO_ROTATION)
+            ?.toIntOrNull()
+            ?: 0
+        if (rotation == 90 || rotation == 270) {
+            height.toFloat() / width.toFloat()
+        } else {
+            width.toFloat() / height.toFloat()
+        }
+    } catch (_: RuntimeException) {
+        null
+    } finally {
+        retriever.release()
+    }
+}
 
 private fun mediaPreviewImageRequest(
     context: Context,

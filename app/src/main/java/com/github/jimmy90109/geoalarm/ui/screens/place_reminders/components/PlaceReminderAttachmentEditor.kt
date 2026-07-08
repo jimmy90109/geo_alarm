@@ -117,7 +117,12 @@ private fun AttachmentGrid(
         val tileSize = (
             maxWidth - PlaceReminderAttachmentGridGap * (PlaceReminderAttachmentGridColumns - 1)
             ) / PlaceReminderAttachmentGridColumns
-        val tiles = attachments.map { AttachmentGridTile.Preview(it) } + AttachmentGridTile.Add
+        val tiles = attachments.map { AttachmentGridTile.Preview(it) } +
+            if (attachments.size < MaxPlaceReminderAttachments) {
+                listOf(AttachmentGridTile.Add)
+            } else {
+                emptyList()
+            }
 
         Column(verticalArrangement = Arrangement.spacedBy(PlaceReminderAttachmentGridGap)) {
             tiles.chunked(PlaceReminderAttachmentGridColumns).forEach { rowTiles ->
