@@ -298,14 +298,16 @@
     <string name="place_reminder_trigger_area">提醒範圍</string>
     <string name="place_reminder_edit_action">編輯</string>
     <string name="place_reminder_reset_checklist">重設清單</string>
+    <string name="place_reminder_reset_checklist_title">要重設清單嗎？</string>
+    <string name="place_reminder_reset_checklist_message">已勾選的項目會全部改回未完成。</string>
     <string name="place_reminder_not_found">找不到這個提醒。</string>
     <string name="place_reminder_delete_title">刪除提醒</string>
     <string name="place_reminder_delete_message">確定要刪除這個地點提醒嗎？</string>
     <string name="place_reminder_channel_name">地點提醒</string>
     <string name="place_reminder_channel_description">抵達已設定地點時顯示提醒</string>
     <string name="place_reminder_notification_title">到達%s</string>
-    <string name="place_reminder_notification_attachment_body">這個地點有 %1$d 張照片和 %2$d 部影片</string>
+    <string name="place_reminder_notification_attachment_body">到這裡記得查看「%1$s」的附件：%2$d 張照片、%3$d 部影片</string>
     <plurals name="place_reminder_notification_checklist_body">
-        <item quantity="other">購物清單有 %d 項待買</item>
+        <item quantity="other">到這裡記得查看「%1$s」：%2$d 項待處理</item>
     </plurals>
 </resources>

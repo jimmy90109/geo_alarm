@@ -165,6 +165,9 @@ fun PlaceReminderEditScreen(
                 state = uiState,
                 onBack = ::handleFormBack,
                 onNext = onNextPage,
+                onPreviewNotification = {
+                    viewModel.onAction(PlaceReminderEditAction.PreviewNotificationClicked)
+                },
                 onSave = { viewModel.onAction(PlaceReminderEditAction.SaveClicked) },
                 modifier = Modifier.align(Alignment.CenterEnd),
             )
@@ -189,6 +192,9 @@ fun PlaceReminderEditScreen(
                     pagerState = formPagerState,
                     state = uiState,
                     onNext = onNextPage,
+                    onPreviewNotification = {
+                        viewModel.onAction(PlaceReminderEditAction.PreviewNotificationClicked)
+                    },
                     onSave = { viewModel.onAction(PlaceReminderEditAction.SaveClicked) },
                 )
             }

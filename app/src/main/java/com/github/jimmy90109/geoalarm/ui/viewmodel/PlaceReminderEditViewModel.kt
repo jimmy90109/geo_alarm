@@ -11,12 +11,14 @@ import com.github.jimmy90109.geoalarm.data.PlaceReminderAttachmentStore
 import com.github.jimmy90109.geoalarm.data.PlaceReminderDataRepository
 import com.github.jimmy90109.geoalarm.data.PlaceReminderItem
 import com.github.jimmy90109.geoalarm.data.PlaceReminderType
+import com.github.jimmy90109.geoalarm.data.PlaceReminderWithItems
 import com.github.jimmy90109.geoalarm.data.PlaceTriggerType
 import com.github.jimmy90109.geoalarm.data.location.CurrentLocationRepository
 import com.github.jimmy90109.geoalarm.data.places.PlaceAutocompleteService
 import com.github.jimmy90109.geoalarm.data.places.PlaceCandidate
 import com.github.jimmy90109.geoalarm.data.places.PlaceSearchService
 import com.github.jimmy90109.geoalarm.data.places.PlaceSuggestion
+import com.github.jimmy90109.geoalarm.service.PlaceReminderNotifier
 import com.google.android.gms.maps.model.LatLng
 import dagger.hilt.android.lifecycle.HiltViewModel
 import java.util.UUID
@@ -150,6 +152,7 @@ sealed interface PlaceReminderEditAction {
     data class CooldownMinutesChanged(val minutes: Int) : PlaceReminderEditAction
     data class AttachmentsSelected(val uris: List<Uri>) : PlaceReminderEditAction
     data class RemoveAttachment(val attachmentId: String) : PlaceReminderEditAction
+    data object PreviewNotificationClicked : PlaceReminderEditAction
     data object SaveClicked : PlaceReminderEditAction
 }
 
@@ -164,6 +167,7 @@ class PlaceReminderEditViewModel @Inject constructor(
     private val currentLocationRepository: CurrentLocationRepository,
     private val placeSearchService: PlaceSearchService,
     private val placeAutocompleteService: PlaceAutocompleteService,
+    private val placeReminderNotifier: PlaceReminderNotifier,
 ) : ViewModel() {
     private val _uiState = MutableStateFlow(PlaceReminderEditUiState())
     val uiState: StateFlow<PlaceReminderEditUiState> = _uiState.asStateFlow()
@@ -235,6 +239,7 @@ class PlaceReminderEditViewModel @Inject constructor(
             is PlaceReminderEditAction.CooldownMinutesChanged -> update { it.copy(cooldownMinutes = action.minutes) }
             is PlaceReminderEditAction.AttachmentsSelected -> addAttachments(action.uris)
             is PlaceReminderEditAction.RemoveAttachment -> removeAttachment(action.attachmentId)
+            PlaceReminderEditAction.PreviewNotificationClicked -> previewNotification()
             PlaceReminderEditAction.SaveClicked -> save()
         }
     }
@@ -753,6 +758,66 @@ class PlaceReminderEditViewModel @Inject constructor(
             _uiState.value = state.copy(savedReminderId = reminderId)
             _effects.emit(PlaceReminderEditEffect.NavigateBack(reminderId))
         }
+    }
+
+    private fun previewNotification() {
+        val state = _uiState.value
+        val reminderWithItems = state.toDraftReminderWithItems(
+            reminderId = state.reminderId ?: draftReminderId,
+            now = System.currentTimeMillis(),
+        ) ?: return
+        placeReminderNotifier.notifyPreview(
+            reminderWithItems = reminderWithItems,
+            openReminderId = state.reminderId,
+        )
+    }
+
+    private fun PlaceReminderEditUiState.toDraftReminderWithItems(
+        reminderId: String,
+        now: Long,
+    ): PlaceReminderWithItems? {
+        val position = selectedPosition ?: return null
+        if (!canSave) return null
+        val reminder = PlaceReminder(
+            id = reminderId,
+            title = title.trim(),
+            type = type,
+            content = if (type == PlaceReminderType.TEXT) content.trim() else "",
+            placeName = placeName.ifBlank { title.trim() },
+            address = address,
+            iconKey = selectedIconKey,
+            latitude = position.latitude,
+            longitude = position.longitude,
+            radiusMeters = radiusMeters,
+            triggerType = triggerType,
+            dwellMinutes = if (triggerType == PlaceTriggerType.DWELL) dwellMinutes else null,
+            cooldownMinutes = cooldownMinutes,
+            enabled = false,
+            lastTriggeredAt = null,
+            createdAt = now,
+            updatedAt = now,
+        )
+        val items = if (type == PlaceReminderType.CHECKLIST) {
+            checklistItems.filter { it.text.trim().isNotEmpty() }
+                .mapIndexed { index, item ->
+                    PlaceReminderItem(
+                        id = item.id,
+                        reminderId = reminderId,
+                        text = item.text.trim(),
+                        checked = false,
+                        sortOrder = index,
+                    )
+                }
+        } else {
+            emptyList()
+        }
+        return PlaceReminderWithItems(
+            reminder = reminder,
+            items = items,
+            attachments = attachments.mapIndexed { index, attachment ->
+                attachment.copy(reminderId = reminderId, sortOrder = index)
+            },
+        )
     }
 
     private inline fun update(block: (PlaceReminderEditUiState) -> PlaceReminderEditUiState) {

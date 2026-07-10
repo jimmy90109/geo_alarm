@@ -44,7 +44,11 @@ class PlaceReminderRepository @Inject constructor(
         items: List<PlaceReminderItem>,
         attachments: List<PlaceReminderAttachment>?,
     ) {
-        dao.upsertReminder(reminder)
+        if (dao.getReminder(reminder.id) == null) {
+            dao.upsertReminder(reminder)
+        } else {
+            dao.updateReminder(reminder)
+        }
         dao.deleteItemsForReminder(reminder.id)
         dao.upsertItems(items)
         if (attachments != null) {

@@ -83,6 +83,19 @@ class PlaceReminderRepositoryTest {
         assertEquals(listOf("Milk", "Eggs"), saved.sortedItems.map { it.text })
         assertEquals(listOf("photo.jpg"), saved.sortedAttachments.map { it.displayName })
 
+        repository.save(
+            saved.reminder,
+            saved.sortedItems + PlaceReminderItem(
+                reminderId = saved.reminder.id,
+                text = "Bread",
+                checked = false,
+                sortOrder = saved.sortedItems.size,
+            ),
+        )
+        val withAddedItem = repository.getReminder(reminder.id)!!
+        assertEquals(listOf("Milk", "Eggs", "Bread"), withAddedItem.sortedItems.map { it.text })
+        assertEquals(listOf("photo.jpg"), withAddedItem.sortedAttachments.map { it.displayName })
+
         repository.updateItem(saved.sortedItems.first().copy(checked = true))
         val updated = repository.getReminder(reminder.id)!!
         assertTrue(updated.sortedItems.first().checked)

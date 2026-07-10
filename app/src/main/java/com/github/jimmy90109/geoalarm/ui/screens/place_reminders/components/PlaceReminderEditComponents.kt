@@ -4,6 +4,10 @@ import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.tween
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.scaleIn
+import androidx.compose.animation.scaleOut
 import androidx.compose.foundation.background
 import androidx.compose.foundation.gestures.awaitEachGesture
 import androidx.compose.foundation.gestures.awaitFirstDown
@@ -37,11 +41,14 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.FilledIconButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.IconButtonDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -80,6 +87,7 @@ private const val PlaceReminderContentPageIndex = 1
 private const val PlaceReminderEditPageCount = 3
 private const val PlaceReminderRetainedOffscreenPageCount = PlaceReminderEditPageCount - 1
 private const val PlaceReminderPageIndicatorAnimationMillis = 300
+private const val PlaceReminderPreviewButtonAnimationMillis = 260
 
 @Composable
 internal fun PlaceReminderEditTopBar(
@@ -124,6 +132,7 @@ internal fun PlaceReminderEditLandscapeControls(
     state: PlaceReminderEditUiState,
     onBack: () -> Unit,
     onNext: () -> Unit,
+    onPreviewNotification: () -> Unit,
     onSave: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
@@ -150,6 +159,7 @@ internal fun PlaceReminderEditLandscapeControls(
                 pagerState = pagerState,
                 state = state,
                 onNext = onNext,
+                onPreviewNotification = onPreviewNotification,
                 onSave = onSave,
                 modifier = Modifier.fillMaxWidth(),
             )
@@ -320,6 +330,7 @@ internal fun PlaceReminderEditBottomBar(
     pagerState: PagerState,
     state: PlaceReminderEditUiState,
     onNext: () -> Unit,
+    onPreviewNotification: () -> Unit,
     onSave: () -> Unit,
 ) {
     val navInsets = WindowInsets.navigationBars.asPaddingValues()
@@ -334,6 +345,7 @@ internal fun PlaceReminderEditBottomBar(
             pagerState = pagerState,
             state = state,
             onNext = onNext,
+            onPreviewNotification = onPreviewNotification,
             onSave = onSave,
             modifier = Modifier
                 .widthIn(max = PlaceReminderOverlayMaxWidth)
@@ -347,10 +359,12 @@ private fun PlaceReminderEditActionCard(
     pagerState: PagerState,
     state: PlaceReminderEditUiState,
     onNext: () -> Unit,
+    onPreviewNotification: () -> Unit,
     onSave: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val isLastPage = pagerState.currentPage == PlaceReminderEditPageCount - 1
+    val showPreviewNotification = canProceedFromPlaceReminderPage(PlaceReminderContentPageIndex, state)
     val actionEnabled = if (isLastPage) {
         state.canSave
     } else {
@@ -371,25 +385,116 @@ private fun PlaceReminderEditActionCard(
                 pageCount = PlaceReminderEditPageCount,
                 currentPage = pagerState.currentPage,
             )
-            Button(
-                onClick = {
+            PlaceReminderEditPrimaryActions(
+                showPreviewNotification = showPreviewNotification,
+                actionEnabled = actionEnabled,
+                isLastPage = isLastPage,
+                isEditMode = state.isEditMode,
+                onPreviewNotification = onPreviewNotification,
+                onPrimaryAction = {
                     if (isLastPage) onSave() else onNext()
                 },
+            )
+        }
+    }
+}
+
+@Composable
+private fun PlaceReminderEditPrimaryActions(
+    showPreviewNotification: Boolean,
+    actionEnabled: Boolean,
+    isLastPage: Boolean,
+    isEditMode: Boolean,
+    onPreviewNotification: () -> Unit,
+    onPrimaryAction: () -> Unit,
+) {
+    val previewLabel = stringResource(R.string.preview)
+    val primaryLabel = if (!isLastPage) {
+        stringResource(R.string.next_step)
+    } else if (isEditMode) {
+        stringResource(R.string.save)
+    } else {
+        stringResource(R.string.place_reminder_create_button)
+    }
+    BoxWithConstraints(modifier = Modifier.fillMaxWidth()) {
+        val previewButtonWidth = 48.dp
+        val buttonGap = 8.dp
+        val animatedPreviewSlotWidth by animateDpAsState(
+            targetValue = if (showPreviewNotification) previewButtonWidth + buttonGap else 0.dp,
+            animationSpec = tween(
+                durationMillis = PlaceReminderPreviewButtonAnimationMillis,
+                easing = FastOutSlowInEasing,
+            ),
+            label = "placeReminderPreviewSlotWidth",
+        )
+        val animatedPrimaryWidth by animateDpAsState(
+            targetValue = (maxWidth - animatedPreviewSlotWidth).coerceAtLeast(0.dp),
+            animationSpec = tween(
+                durationMillis = PlaceReminderPreviewButtonAnimationMillis,
+                easing = FastOutSlowInEasing,
+            ),
+            label = "placeReminderPrimaryActionWidth",
+        )
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Box(
+                modifier = Modifier
+                    .width(animatedPreviewSlotWidth)
+                    .height(56.dp),
+                contentAlignment = Alignment.CenterStart,
+            ) {
+                val previewAlphaEnter = fadeIn(
+                    animationSpec = tween(
+                        durationMillis = PlaceReminderPreviewButtonAnimationMillis,
+                        easing = FastOutSlowInEasing,
+                    ),
+                ) + scaleIn(
+                    animationSpec = tween(
+                        durationMillis = PlaceReminderPreviewButtonAnimationMillis,
+                        easing = FastOutSlowInEasing,
+                    ),
+                )
+                val previewAlphaExit = fadeOut(
+                    animationSpec = tween(
+                        durationMillis = PlaceReminderPreviewButtonAnimationMillis / 2,
+                        easing = FastOutSlowInEasing,
+                    ),
+                ) + scaleOut(
+                    animationSpec = tween(
+                        durationMillis = PlaceReminderPreviewButtonAnimationMillis / 2,
+                        easing = FastOutSlowInEasing,
+                    ),
+                )
+                androidx.compose.animation.AnimatedVisibility(
+                    visible = showPreviewNotification,
+                    enter = previewAlphaEnter,
+                    exit = previewAlphaExit,
+                ) {
+                    FilledIconButton(
+                        onClick = onPreviewNotification,
+                        modifier = Modifier
+                            .width(previewButtonWidth)
+                            .height(56.dp),
+                        colors = IconButtonDefaults.filledIconButtonColors(
+                            containerColor = MaterialTheme.colorScheme.primaryContainer,
+                            contentColor = MaterialTheme.colorScheme.onPrimaryContainer,
+                        ),
+                    ) {
+                        Icon(Icons.Filled.PlayArrow, contentDescription = previewLabel)
+                    }
+                }
+            }
+            Button(
+                onClick = onPrimaryAction,
                 enabled = actionEnabled,
                 modifier = Modifier
-                    .fillMaxWidth()
+                    .width(animatedPrimaryWidth)
                     .height(56.dp),
                 shape = CircleShape,
             ) {
-                Text(
-                    if (!isLastPage) {
-                        stringResource(R.string.next_step)
-                    } else if (state.isEditMode) {
-                        stringResource(R.string.save)
-                    } else {
-                        stringResource(R.string.place_reminder_create_button)
-                    }
-                )
+                Text(primaryLabel)
             }
         }
     }
