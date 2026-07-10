@@ -38,8 +38,10 @@ import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.layout.boundsInRoot
 import androidx.compose.ui.layout.onGloballyPositioned
+import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import com.github.jimmy90109.geoalarm.R
@@ -55,6 +57,7 @@ internal fun ChecklistEditRow(
     onInputBoundsChanged: (Rect?) -> Unit = {},
 ) {
     var isFocused by remember { mutableStateOf(false) }
+    val haptic = LocalHapticFeedback.current
     DisposableEffect(Unit) {
         onDispose { onInputBoundsChanged(null) }
     }
@@ -100,7 +103,10 @@ internal fun ChecklistEditRow(
             ) + fadeOut(animationSpec = tween(durationMillis = 100)),
         ) {
             IconButton(
-                onClick = onRemove,
+                onClick = {
+                    haptic.performHapticFeedback(HapticFeedbackType.Reject)
+                    onRemove()
+                },
                 modifier = Modifier.padding(start = 8.dp),
             ) {
                 Surface(
@@ -133,6 +139,7 @@ internal fun ChecklistAddRow(
     onKeepFocusBoundsChanged: (Rect?) -> Unit = {},
 ) {
     val canAdd = value.trim().isNotEmpty()
+    val haptic = LocalHapticFeedback.current
     DisposableEffect(Unit) {
         onDispose { onInputBoundsChanged(null) }
     }
@@ -164,7 +171,10 @@ internal fun ChecklistAddRow(
                 onDispose { onKeepFocusBoundsChanged(null) }
             }
             IconButton(
-                onClick = onAdd,
+                onClick = {
+                    haptic.performHapticFeedback(HapticFeedbackType.ContextClick)
+                    onAdd()
+                },
                 modifier = Modifier
                     .padding(start = 8.dp)
                     .onGloballyPositioned {

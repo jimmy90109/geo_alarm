@@ -30,8 +30,10 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.Alignment
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
@@ -62,6 +64,7 @@ fun PlaceReminderListScreen(
     var showBackgroundLocationDialog by remember { mutableStateOf(false) }
     var showReminderInfoSheet by remember { mutableStateOf(false) }
     val context = LocalContext.current
+    val haptic = LocalHapticFeedback.current
     val lifecycleOwner = LocalLifecycleOwner.current
     val scrollBehavior = TopAppBarDefaults.exitUntilCollapsedScrollBehavior()
     lateinit var requestEnableReminder: (String) -> Unit
@@ -147,7 +150,10 @@ fun PlaceReminderListScreen(
             LargeFlexibleTopAppBar(
                 title = { PlaceReminderTitle() },
                 actions = {
-                    IconButton(onClick = { showReminderInfoSheet = true }) {
+                    IconButton(onClick = {
+                        haptic.performHapticFeedback(HapticFeedbackType.ContextClick)
+                        showReminderInfoSheet = true
+                    }) {
                         Icon(
                             Icons.AutoMirrored.Outlined.HelpOutline,
                             contentDescription = stringResource(R.string.place_reminder_help_title),
@@ -174,12 +180,22 @@ fun PlaceReminderListScreen(
                 top = innerPadding.calculateTopPadding(),
             ),
             onPermissionPrimaryAction = {
+                haptic.performHapticFeedback(HapticFeedbackType.ContextClick)
                 listState.reminders.firstOrNull { it.reminder.enabled }?.reminder?.id
                     ?.let(requestEnableReminder)
             },
-            onAddReminder = onAddReminder,
-            onReminderClick = onReminderClick,
+            onAddReminder = {
+                haptic.performHapticFeedback(HapticFeedbackType.ContextClick)
+                onAddReminder()
+            },
+            onReminderClick = {
+                haptic.performHapticFeedback(HapticFeedbackType.ContextClick)
+                onReminderClick(it)
+            },
             onReminderEnabledChange = { reminderId, enabled ->
+                haptic.performHapticFeedback(
+                    if (enabled) HapticFeedbackType.ToggleOn else HapticFeedbackType.ToggleOff
+                )
                 if (enabled) {
                     requestEnableReminder(reminderId)
                 } else {

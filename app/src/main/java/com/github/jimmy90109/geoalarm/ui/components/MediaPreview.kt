@@ -66,6 +66,7 @@ import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.lifecycle.Lifecycle
@@ -107,6 +108,7 @@ data class MediaPreviewItem(
     val type: MediaPreviewType,
     val width: Int? = null,
     val height: Int? = null,
+    val durationMillis: Long? = null,
 )
 
 data class MediaPreviewSelection(
@@ -188,20 +190,35 @@ fun MediaPreviewThumbnail(
                 contentScale = ContentScale.Crop,
             )
             if (isVideo) {
-                Box(
+                val durationMillis = item.durationMillis ?: rememberMediaPreviewVideoDurationMillis(item.localPath)
+                MediaPreviewVideoDurationBadge(
+                    durationMillis = durationMillis,
                     modifier = Modifier
-                        .fillMaxSize()
-                        .padding(4.dp),
-                    contentAlignment = Alignment.BottomEnd,
-                ) {
-                    Icon(
-                        Icons.Filled.Videocam,
-                        contentDescription = null,
-                        tint = Color.White,
-                    )
-                }
+                        .align(Alignment.BottomStart)
+                        .padding(8.dp),
+                )
             }
         }
+    }
+}
+
+@Composable
+private fun MediaPreviewVideoDurationBadge(
+    durationMillis: Long?,
+    modifier: Modifier = Modifier,
+) {
+    Box(
+        modifier = modifier
+            .clip(RoundedCornerShape(8.dp))
+            .background(Color.Black.copy(alpha = 0.68f)),
+    ) {
+        Text(
+            text = formatMediaPreviewVideoDuration(durationMillis),
+            modifier = Modifier.padding(horizontal = 6.dp, vertical = 3.dp),
+            style = MaterialTheme.typography.labelSmall,
+            color = Color.White,
+            fontWeight = FontWeight.SemiBold,
+        )
     }
 }
 
@@ -931,6 +948,39 @@ private fun mediaPreviewImageRequest(
             }
         }
         .build()
+
+@Composable
+private fun rememberMediaPreviewVideoDurationMillis(localPath: String): Long? {
+    return remember(localPath) {
+        val retriever = MediaMetadataRetriever()
+        try {
+            retriever.setDataSource(localPath)
+            retriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_DURATION)
+                ?.toLongOrNull()
+                ?.takeIf { it > 0L }
+        } catch (_: RuntimeException) {
+            null
+        } finally {
+            retriever.release()
+        }
+    }
+}
+
+private fun formatMediaPreviewVideoDuration(durationMillis: Long?): String {
+    val totalSeconds = durationMillis
+        ?.coerceAtLeast(0L)
+        ?.let { (it + 999L) / 1_000L }
+        ?: return "--:--"
+    val seconds = totalSeconds % 60L
+    val totalMinutes = totalSeconds / 60L
+    val minutes = totalMinutes % 60L
+    val hours = totalMinutes / 60L
+    return if (hours > 0L) {
+        "%d:%02d:%02d".format(hours, minutes, seconds)
+    } else {
+        "%d:%02d".format(minutes, seconds)
+    }
+}
 
 private fun formatPlaybackTime(millis: Long): String {
     val totalSeconds = millis.coerceAtLeast(0L) / 1_000L

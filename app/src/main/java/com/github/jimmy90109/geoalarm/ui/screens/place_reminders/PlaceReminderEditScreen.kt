@@ -28,8 +28,10 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Rect
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.res.stringResource
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -73,6 +75,7 @@ fun PlaceReminderEditScreen(
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val remainingAttachmentSlots = uiState.remainingAttachmentSlots
     val context = LocalContext.current
+    val haptic = LocalHapticFeedback.current
     var showNotificationPermissionDialog by remember { mutableStateOf(false) }
     val singleAttachmentPicker = rememberLauncherForActivityResult(
         ActivityResultContracts.PickVisualMedia()
@@ -143,8 +146,12 @@ fun PlaceReminderEditScreen(
         PlaceReminderEditContent(
             state = uiState,
             onAction = viewModel::onAction,
-            onSelectPlace = onSelectPlace,
+            onSelectPlace = {
+                haptic.performHapticFeedback(HapticFeedbackType.ContextClick)
+                onSelectPlace()
+            },
             onPickAttachments = {
+                haptic.performHapticFeedback(HapticFeedbackType.ContextClick)
                 when (remainingAttachmentSlots) {
                     0 -> Unit
                     1 -> singleAttachmentPicker.launch(
@@ -160,6 +167,7 @@ fun PlaceReminderEditScreen(
                 previewSourceBounds[id] = bounds
             },
             onAttachmentClick = { selection ->
+                haptic.performHapticFeedback(HapticFeedbackType.ContextClick)
                 selectedPreview = selection
                 activePreviewItemId = selection.item.id
             },
@@ -169,19 +177,32 @@ fun PlaceReminderEditScreen(
         )
         val onNextPage = {
             if (canProceedFromPlaceReminderPage(formPagerState.currentPage, uiState)) {
+                haptic.performHapticFeedback(HapticFeedbackType.Confirm)
                 formScope.launch {
                     formPagerState.animateToPlaceReminderPage(formPagerState.currentPage + 1)
                 }
             }
         }
+        val onFormBack = {
+            haptic.performHapticFeedback(HapticFeedbackType.ContextClick)
+            handleFormBack()
+        }
+        val onPreviewNotification = {
+            haptic.performHapticFeedback(HapticFeedbackType.ContextClick)
+            previewNotification()
+        }
+        val onSaveReminder = {
+            haptic.performHapticFeedback(HapticFeedbackType.Confirm)
+            viewModel.onAction(PlaceReminderEditAction.SaveClicked)
+        }
         if (isLandscape) {
             PlaceReminderEditLandscapeControls(
                 pagerState = formPagerState,
                 state = uiState,
-                onBack = ::handleFormBack,
+                onBack = onFormBack,
                 onNext = onNextPage,
-                onPreviewNotification = ::previewNotification,
-                onSave = { viewModel.onAction(PlaceReminderEditAction.SaveClicked) },
+                onPreviewNotification = onPreviewNotification,
+                onSave = onSaveReminder,
                 modifier = Modifier.align(Alignment.CenterEnd),
             )
         } else {
@@ -193,7 +214,7 @@ fun PlaceReminderEditScreen(
                 PlaceReminderEditTopBar(
                     isEditMode = uiState.isEditMode,
                     isLandscape = false,
-                    onBack = ::handleFormBack,
+                    onBack = onFormBack,
                 )
             }
             Box(
@@ -205,8 +226,8 @@ fun PlaceReminderEditScreen(
                     pagerState = formPagerState,
                     state = uiState,
                     onNext = onNextPage,
-                    onPreviewNotification = ::previewNotification,
-                    onSave = { viewModel.onAction(PlaceReminderEditAction.SaveClicked) },
+                    onPreviewNotification = onPreviewNotification,
+                    onSave = onSaveReminder,
                 )
             }
         }

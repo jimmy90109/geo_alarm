@@ -84,6 +84,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Rect
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.input.pointer.PointerEventPass
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.boundsInRoot
@@ -91,6 +92,7 @@ import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalFocusManager
+import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.res.stringResource
@@ -145,6 +147,7 @@ fun PlaceReminderDetailScreen(
     var showResetChecklistDialog by remember { mutableStateOf(false) }
     var newItemText by remember { mutableStateOf("") }
     val context = LocalContext.current
+    val haptic = LocalHapticFeedback.current
     val configuration = LocalConfiguration.current
     val isLandscape = configuration.orientation == Configuration.ORIENTATION_LANDSCAPE
     val lifecycleOwner = LocalLifecycleOwner.current
@@ -250,6 +253,18 @@ fun PlaceReminderDetailScreen(
             attachment.toMediaPreviewItem()
         } ?: emptyList()
     }
+    val handleBack = {
+        haptic.performHapticFeedback(HapticFeedbackType.ContextClick)
+        onBack()
+    }
+    val handleEdit = {
+        haptic.performHapticFeedback(HapticFeedbackType.ContextClick)
+        onEdit(reminderId)
+    }
+    val handleDelete = {
+        haptic.performHapticFeedback(HapticFeedbackType.Reject)
+        showDeleteDialog = true
+    }
     Box(modifier = Modifier.fillMaxSize()) {
         MediaPreviewPreloader(items = previewItems)
         if (current == null) {
@@ -265,9 +280,18 @@ fun PlaceReminderDetailScreen(
                 reminderWithItems = current,
                 newItemText = newItemText,
                 onNewItemTextChange = { newItemText = it },
-                onResetChecklist = { showResetChecklistDialog = true },
-                onItemCheckedChange = { item, checked -> viewModel.setItemChecked(item, checked) },
+                onResetChecklist = {
+                    haptic.performHapticFeedback(HapticFeedbackType.Confirm)
+                    showResetChecklistDialog = true
+                },
+                onItemCheckedChange = { item, checked ->
+                    haptic.performHapticFeedback(
+                        if (checked) HapticFeedbackType.ToggleOn else HapticFeedbackType.ToggleOff
+                    )
+                    viewModel.setItemChecked(item, checked)
+                },
                 onAddItem = {
+                    haptic.performHapticFeedback(HapticFeedbackType.ContextClick)
                     viewModel.addItem(reminder.id, newItemText)
                     newItemText = ""
                 },
@@ -276,6 +300,7 @@ fun PlaceReminderDetailScreen(
                     previewSourceBounds[id] = bounds
                 },
                 onAttachmentClick = { selection ->
+                    haptic.performHapticFeedback(HapticFeedbackType.ContextClick)
                     selectedPreview = selection
                     activePreviewItemId = selection.item.id
                 },
@@ -293,24 +318,24 @@ fun PlaceReminderDetailScreen(
             PlaceReminderDetailLandscapeControls(
                 title = current?.reminder?.title ?: stringResource(R.string.place_reminder_detail_title),
                 lastTriggeredAt = current?.reminder?.lastTriggeredAt,
-                onBack = onBack,
-                onEdit = { onEdit(reminderId) },
-                onDelete = { showDeleteDialog = true },
+                onBack = handleBack,
+                onEdit = handleEdit,
+                onDelete = handleDelete,
                 actionEnabled = current != null,
                 modifier = Modifier.align(Alignment.CenterEnd),
             )
         } else {
             PlaceReminderDetailTopBar(
                 title = current?.reminder?.title ?: stringResource(R.string.place_reminder_detail_title),
-                onBack = onBack,
+                onBack = handleBack,
                 modifier = Modifier.align(Alignment.TopCenter),
             )
 
             if (current != null) {
                 PlaceReminderDetailActionBar(
                     lastTriggeredAt = current.reminder.lastTriggeredAt,
-                    onEdit = { onEdit(reminderId) },
-                    onDelete = { showDeleteDialog = true },
+                    onEdit = handleEdit,
+                    onDelete = handleDelete,
                     modifier = Modifier.align(Alignment.BottomCenter),
                 )
             }
@@ -340,6 +365,7 @@ fun PlaceReminderDetailScreen(
             confirmButton = {
                 Button(
                     onClick = {
+                        haptic.performHapticFeedback(HapticFeedbackType.Reject)
                         viewModel.delete()
                         showDeleteDialog = false
                     },
@@ -351,7 +377,10 @@ fun PlaceReminderDetailScreen(
                 }
             },
             dismissButton = {
-                TextButton(onClick = { showDeleteDialog = false }) {
+                TextButton(onClick = {
+                    haptic.performHapticFeedback(HapticFeedbackType.ContextClick)
+                    showDeleteDialog = false
+                }) {
                     Text(stringResource(R.string.cancel))
                 }
             },
@@ -367,6 +396,7 @@ fun PlaceReminderDetailScreen(
             confirmButton = {
                 Button(
                     onClick = {
+                        haptic.performHapticFeedback(HapticFeedbackType.Confirm)
                         reminder?.let { viewModel.resetChecklist(it.id) }
                         showResetChecklistDialog = false
                     },
@@ -375,7 +405,10 @@ fun PlaceReminderDetailScreen(
                 }
             },
             dismissButton = {
-                TextButton(onClick = { showResetChecklistDialog = false }) {
+                TextButton(onClick = {
+                    haptic.performHapticFeedback(HapticFeedbackType.ContextClick)
+                    showResetChecklistDialog = false
+                }) {
                     Text(stringResource(R.string.cancel))
                 }
             },
@@ -998,4 +1031,5 @@ private fun PlaceReminderAttachment.toMediaPreviewItem(): MediaPreviewItem =
         },
         width = width,
         height = height,
+        durationMillis = durationMillis,
     )

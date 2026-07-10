@@ -37,10 +37,12 @@ import androidx.compose.ui.graphics.PathEffect
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.layout.boundsInRoot
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -170,6 +172,7 @@ private fun AttachmentPreviewTile(
     val previewItem = remember(attachment) { attachment.toMediaPreviewItem() }
     var itemBounds by remember(attachment.id) { mutableStateOf<Rect?>(null) }
     val context = LocalContext.current
+    val haptic = LocalHapticFeedback.current
     val imageRequest = remember(attachment.localPath, isVideo) {
         ImageRequest.Builder(context)
             .data(attachment.localPath)
@@ -213,7 +216,10 @@ private fun AttachmentPreviewTile(
             )
         }
         Surface(
-            onClick = onRemove,
+            onClick = {
+                haptic.performHapticFeedback(HapticFeedbackType.Reject)
+                onRemove()
+            },
             modifier = Modifier
                 .align(Alignment.TopEnd)
                 .padding(6.dp)
@@ -243,6 +249,7 @@ internal fun PlaceReminderAttachment.toMediaPreviewItem(): MediaPreviewItem =
         },
         width = width,
         height = height,
+        durationMillis = durationMillis,
     )
 
 @Composable

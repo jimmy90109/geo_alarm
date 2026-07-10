@@ -26,8 +26,10 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.geometry.Rect
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.layout.boundsInRoot
 import androidx.compose.ui.layout.onGloballyPositioned
+import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
@@ -280,6 +282,7 @@ private fun <T> ExpressiveOptionButtons(
     selected: T,
     onSelected: (T) -> Unit,
 ) {
+    val haptic = LocalHapticFeedback.current
     ButtonGroup(
         overflowIndicator = { menuState ->
             ButtonGroupDefaults.OverflowIndicator(menuState = menuState)
@@ -293,7 +296,10 @@ private fun <T> ExpressiveOptionButtons(
                 buttonGroupContent = {
                     ToggleButton(
                         checked = isSelected,
-                        onCheckedChange = { onSelected(value) },
+                        onCheckedChange = {
+                            haptic.performHapticFeedback(HapticFeedbackType.ToggleOn)
+                            onSelected(value)
+                        },
                         modifier = with(buttonGroupScope) { Modifier.weight(1f) },
                         shapes = ToggleButtonDefaults.shapes(
                             shape = RoundedCornerShape(14.dp),
@@ -317,6 +323,7 @@ private fun <T> ExpressiveOptionButtons(
                     DropdownMenuItem(
                         text = { Text(label) },
                         onClick = {
+                            haptic.performHapticFeedback(HapticFeedbackType.ToggleOn)
                             onSelected(value)
                             menuState.dismiss()
                         },
@@ -376,6 +383,7 @@ private fun ExpressiveSingleOptionButton(
     selected: Boolean,
     onClick: () -> Unit,
 ) {
+    val haptic = LocalHapticFeedback.current
     ButtonGroup(
         overflowIndicator = { menuState ->
             ButtonGroupDefaults.OverflowIndicator(menuState = menuState)
@@ -387,7 +395,10 @@ private fun ExpressiveSingleOptionButton(
             buttonGroupContent = {
                 ToggleButton(
                     checked = selected,
-                    onCheckedChange = { onClick() },
+                    onCheckedChange = {
+                        haptic.performHapticFeedback(HapticFeedbackType.ToggleOn)
+                        onClick()
+                    },
                     modifier = with(buttonGroupScope) {
                         Modifier
                             .weight(1f)
@@ -415,6 +426,7 @@ private fun ExpressiveSingleOptionButton(
                 DropdownMenuItem(
                     text = { Text(label) },
                     onClick = {
+                        haptic.performHapticFeedback(HapticFeedbackType.ToggleOn)
                         onClick()
                         menuState.dismiss()
                     },
