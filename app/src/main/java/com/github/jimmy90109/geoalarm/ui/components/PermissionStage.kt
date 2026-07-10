@@ -3,6 +3,7 @@ package com.github.jimmy90109.geoalarm.ui.components
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.RepeatMode
+import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.animateFloat
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.infiniteRepeatable
@@ -22,6 +23,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.selection.selectable
 import androidx.compose.foundation.shape.CircleShape
@@ -44,8 +46,11 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
+import androidx.compose.ui.layout.onSizeChanged
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextAlign
@@ -108,7 +113,9 @@ private fun PermissionActionButtons(
     modifier: Modifier = Modifier
 ) {
     val haptic = LocalHapticFeedback.current
+    val density = LocalDensity.current
     var startGrantedExpand by remember { mutableStateOf(false) }
+    var measuredLeftWidth by remember { mutableStateOf(88.dp) }
     LaunchedEffect(isGranted) {
         if (isGranted) {
             startGrantedExpand = false
@@ -118,18 +125,21 @@ private fun PermissionActionButtons(
             startGrantedExpand = false
         }
     }
-    val leftWeight by animateFloatAsState(
-        targetValue = if (isGranted && startGrantedExpand) 0.0001f else 1f,
-        animationSpec = tween(durationMillis = motionConfig.permissionExpandDurationMs, easing = FastOutSlowInEasing),
-        label = "PermissionLeftWeight"
+    val leftWidth by animateDpAsState(
+        targetValue = if (startGrantedExpand) 0.dp else measuredLeftWidth,
+        animationSpec = tween(
+            durationMillis = motionConfig.permissionExpandDurationMs,
+            easing = FastOutSlowInEasing
+        ),
+        label = "PermissionLeftWidth"
     )
     val leftAlpha by animateFloatAsState(
-        targetValue = if (isGranted && startGrantedExpand) 0f else 1f,
+        targetValue = if (startGrantedExpand) 0f else 1f,
         animationSpec = tween(durationMillis = motionConfig.permissionFadeDurationMs, easing = FastOutSlowInEasing),
         label = "PermissionLeftAlpha"
     )
-    val buttonSpacing by androidx.compose.animation.core.animateDpAsState(
-        targetValue = if (isGranted && startGrantedExpand) 0.dp else 8.dp,
+    val buttonSpacing by animateDpAsState(
+        targetValue = if (startGrantedExpand) 0.dp else 8.dp,
         animationSpec = tween(durationMillis = motionConfig.permissionSpacingDurationMs, easing = FastOutSlowInEasing),
         label = "PermissionButtonSpacing"
     )
@@ -138,22 +148,57 @@ private fun PermissionActionButtons(
         modifier = modifier.height(48.dp),
         horizontalArrangement = Arrangement.spacedBy(buttonSpacing)
     ) {
-        TextButton(
-            onClick = {
-                haptic.performHapticFeedback(HapticFeedbackType.ContextClick)
-                onSecondary()
-            },
-            enabled = !isGranted,
-            modifier = Modifier
-                .fillMaxHeight()
-                .then(if (isGranted) Modifier.weight(leftWeight) else Modifier.widthIn(min = 88.dp))
-                .graphicsLayer { alpha = leftAlpha }
-        ) {
-            Text(
-                text = androidx.compose.ui.res.stringResource(R.string.onboarding_set_later),
-                style = MaterialTheme.typography.bodyLarge,
-                color = MaterialTheme.colorScheme.primary
-            )
+        if (isGranted) {
+            Box(
+                modifier = Modifier
+                    .fillMaxHeight()
+                    .width(leftWidth)
+                    .clipToBounds()
+                    .graphicsLayer { alpha = leftAlpha }
+            ) {
+                TextButton(
+                    onClick = {},
+                    enabled = false,
+                    modifier = Modifier
+                        .fillMaxHeight()
+                        .width(measuredLeftWidth)
+                ) {
+                    Text(
+                        text = androidx.compose.ui.res.stringResource(R.string.onboarding_set_later),
+                        maxLines = 1,
+                        softWrap = false,
+                        overflow = TextOverflow.Clip,
+                        style = MaterialTheme.typography.bodyLarge,
+                        color = MaterialTheme.colorScheme.primary
+                    )
+                }
+            }
+        } else {
+            TextButton(
+                onClick = {
+                    haptic.performHapticFeedback(HapticFeedbackType.ContextClick)
+                    onSecondary()
+                },
+                modifier = Modifier
+                    .fillMaxHeight()
+                    .widthIn(min = 88.dp)
+                    .onSizeChanged { size ->
+                        measuredLeftWidth = maxOf(
+                            88.dp,
+                            with(density) { size.width.toDp() }
+                        )
+                    }
+                    .graphicsLayer { alpha = leftAlpha }
+            ) {
+                Text(
+                    text = androidx.compose.ui.res.stringResource(R.string.onboarding_set_later),
+                    maxLines = 1,
+                    softWrap = false,
+                    overflow = TextOverflow.Ellipsis,
+                    style = MaterialTheme.typography.bodyLarge,
+                    color = MaterialTheme.colorScheme.primary
+                )
+            }
         }
         Button(
             onClick = {
