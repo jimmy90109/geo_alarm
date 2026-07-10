@@ -149,12 +149,12 @@ fun PlaceReminderCard(
     reminderWithItems: PlaceReminderWithItems,
     onClick: () -> Unit,
     onEnabledChange: (Boolean) -> Unit,
+    modifier: Modifier = Modifier,
 ) {
     val reminder = reminderWithItems.reminder
     Card(
         onClick = onClick,
-        modifier = Modifier
-            .fillMaxWidth(),
+        modifier = modifier.fillMaxWidth(),
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainer),
     ) {
         Row(

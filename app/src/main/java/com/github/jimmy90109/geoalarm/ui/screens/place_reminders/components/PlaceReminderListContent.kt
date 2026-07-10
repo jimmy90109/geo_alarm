@@ -109,7 +109,10 @@ fun PlaceReminderListContent(
                     horizontalArrangement = Arrangement.spacedBy(12.dp),
                 ) {
                     if (enabledReminders.isNotEmpty() && !permissionState.canEnableReminder) {
-                        item(span = { GridItemSpan(maxLineSpan) }) {
+                        item(
+                            key = "place_reminder_permission_banner",
+                            span = { GridItemSpan(maxLineSpan) },
+                        ) {
                             PlaceReminderPermissionBanner(
                                 permissionState = permissionState,
                                 onPrimaryAction = onPermissionPrimaryAction,
@@ -117,7 +120,10 @@ fun PlaceReminderListContent(
                         }
                     }
                     if (enabledReminders.isNotEmpty()) {
-                        item(span = { GridItemSpan(maxLineSpan) }) {
+                        item(
+                            key = "place_reminder_section_enabled",
+                            span = { GridItemSpan(maxLineSpan) },
+                        ) {
                             PlaceReminderSectionHeader(text = stringResource(R.string.place_reminder_section_enabled))
                         }
                         items(enabledReminders, key = { it.reminder.id }) { reminder ->
@@ -127,11 +133,15 @@ fun PlaceReminderListContent(
                                 onEnabledChange = { enabled ->
                                     onReminderEnabledChange(reminder.reminder.id, enabled)
                                 },
+                                modifier = Modifier.animateItem(),
                             )
                         }
                     }
                     if (state.reminders.isNotEmpty()) {
-                        item(span = { GridItemSpan(maxLineSpan) }) {
+                        item(
+                            key = "place_reminder_section_saved",
+                            span = { GridItemSpan(maxLineSpan) },
+                        ) {
                             PlaceReminderSectionHeader(text = stringResource(R.string.place_reminder_section_saved))
                         }
                     }
@@ -143,17 +153,21 @@ fun PlaceReminderListContent(
                                 onEnabledChange = { enabled ->
                                     onReminderEnabledChange(reminder.reminder.id, enabled)
                                 },
+                                modifier = Modifier.animateItem(),
                             )
                         }
                     }
                     if (state.reminders.isNotEmpty()) {
-                        item(span = {
-                            if (savedReminders.isEmpty()) {
-                                GridItemSpan(maxLineSpan)
-                            } else {
-                                GridItemSpan(1)
-                            }
-                        }) {
+                        item(
+                            key = "place_reminder_add",
+                            span = {
+                                if (savedReminders.isEmpty()) {
+                                    GridItemSpan(maxLineSpan)
+                                } else {
+                                    GridItemSpan(1)
+                                }
+                            },
+                        ) {
                             DashedAddListItem(
                                 text = stringResource(R.string.place_reminder_add),
                                 onClick = onAddReminder,

@@ -1,5 +1,6 @@
 package com.github.jimmy90109.geoalarm.ui.viewmodel
 
+import android.app.Application
 import android.net.Uri
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
@@ -18,6 +19,7 @@ import com.github.jimmy90109.geoalarm.data.places.PlaceAutocompleteService
 import com.github.jimmy90109.geoalarm.data.places.PlaceCandidate
 import com.github.jimmy90109.geoalarm.data.places.PlaceSearchService
 import com.github.jimmy90109.geoalarm.data.places.PlaceSuggestion
+import com.github.jimmy90109.geoalarm.service.PlaceReminderGeofenceManager
 import com.github.jimmy90109.geoalarm.service.PlaceReminderNotifier
 import com.google.android.gms.maps.model.LatLng
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -162,6 +164,7 @@ sealed interface PlaceReminderEditEffect {
 
 @HiltViewModel
 class PlaceReminderEditViewModel @Inject constructor(
+    private val application: Application,
     private val repository: PlaceReminderDataRepository,
     private val attachmentStore: PlaceReminderAttachmentStore,
     private val currentLocationRepository: CurrentLocationRepository,
@@ -755,6 +758,9 @@ class PlaceReminderEditViewModel @Inject constructor(
                 attachment.copy(reminderId = reminderId, sortOrder = index)
             }
             repository.save(reminder, items, attachments)
+            if (reminder.enabled) {
+                PlaceReminderGeofenceManager(application, repository).syncReminder(reminderId)
+            }
             _uiState.value = state.copy(savedReminderId = reminderId)
             _effects.emit(PlaceReminderEditEffect.NavigateBack(reminderId))
         }

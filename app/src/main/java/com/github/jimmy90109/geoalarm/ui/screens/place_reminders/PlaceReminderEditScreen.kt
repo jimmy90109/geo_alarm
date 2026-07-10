@@ -1,6 +1,9 @@
 package com.github.jimmy90109.geoalarm.ui.screens.place_reminders
 
+import android.Manifest
+import android.content.pm.PackageManager
 import android.content.res.Configuration
+import android.os.Build
 import androidx.activity.compose.BackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.PickVisualMediaRequest
@@ -26,12 +29,15 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.platform.LocalConfiguration
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
+import androidx.core.content.ContextCompat
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.github.jimmy90109.geoalarm.R
 import com.github.jimmy90109.geoalarm.ui.components.MediaPreviewOverlay
 import com.github.jimmy90109.geoalarm.ui.components.MediaPreviewPreloader
 import com.github.jimmy90109.geoalarm.ui.components.MediaPreviewSelection
+import com.github.jimmy90109.geoalarm.ui.components.NotificationPermissionDialog
 import com.github.jimmy90109.geoalarm.ui.screens.AlarmEditLandscapeLayout
 import com.github.jimmy90109.geoalarm.ui.screens.AlarmEditPortraitLayout
 import com.github.jimmy90109.geoalarm.ui.screens.place_reminders.components.PlaceReminderEditBottomBar
@@ -66,6 +72,8 @@ fun PlaceReminderEditScreen(
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val remainingAttachmentSlots = uiState.remainingAttachmentSlots
+    val context = LocalContext.current
+    var showNotificationPermissionDialog by remember { mutableStateOf(false) }
     val singleAttachmentPicker = rememberLauncherForActivityResult(
         ActivityResultContracts.PickVisualMedia()
     ) { uri ->
@@ -122,6 +130,13 @@ fun PlaceReminderEditScreen(
     BackHandler(enabled = formPagerState.currentPage > 0) {
         handleFormBack()
     }
+    fun previewNotification() {
+        if (!context.hasNotificationPermission()) {
+            showNotificationPermissionDialog = true
+            return
+        }
+        viewModel.onAction(PlaceReminderEditAction.PreviewNotificationClicked)
+    }
 
     Box(modifier = Modifier.fillMaxSize()) {
         MediaPreviewPreloader(items = previewItems)
@@ -165,9 +180,7 @@ fun PlaceReminderEditScreen(
                 state = uiState,
                 onBack = ::handleFormBack,
                 onNext = onNextPage,
-                onPreviewNotification = {
-                    viewModel.onAction(PlaceReminderEditAction.PreviewNotificationClicked)
-                },
+                onPreviewNotification = ::previewNotification,
                 onSave = { viewModel.onAction(PlaceReminderEditAction.SaveClicked) },
                 modifier = Modifier.align(Alignment.CenterEnd),
             )
@@ -192,9 +205,7 @@ fun PlaceReminderEditScreen(
                     pagerState = formPagerState,
                     state = uiState,
                     onNext = onNextPage,
-                    onPreviewNotification = {
-                        viewModel.onAction(PlaceReminderEditAction.PreviewNotificationClicked)
-                    },
+                    onPreviewNotification = ::previewNotification,
                     onSave = { viewModel.onAction(PlaceReminderEditAction.SaveClicked) },
                 )
             }
@@ -211,6 +222,12 @@ fun PlaceReminderEditScreen(
                     selectedPreview = null
                     activePreviewItemId = null
                 },
+            )
+        }
+        if (showNotificationPermissionDialog) {
+            NotificationPermissionDialog(
+                context = context,
+                onDismiss = { showNotificationPermissionDialog = false },
             )
         }
     }
@@ -230,6 +247,13 @@ private suspend fun PagerState.animateToPlaceReminderPage(page: Int) {
         ),
     )
 }
+
+private fun android.content.Context.hasNotificationPermission(): Boolean =
+    Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU ||
+        ContextCompat.checkSelfPermission(
+            this,
+            Manifest.permission.POST_NOTIFICATIONS,
+        ) == PackageManager.PERMISSION_GRANTED
 
 @Composable
 fun PlaceReminderPlacePickerScreen(
