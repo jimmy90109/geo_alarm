@@ -303,6 +303,8 @@ class GeoAlarmGlanceWidget : GlanceAppWidget() {
             "bike" -> R.drawable.ic_widget_bike
             "car" -> R.drawable.ic_widget_car
             "gym" -> R.drawable.ic_widget_gym
+            "supermarket" -> R.drawable.ic_widget_shopping_cart
+            "post_office" -> R.drawable.ic_widget_post_office
             else -> R.drawable.ic_widget_location
         }
     }
