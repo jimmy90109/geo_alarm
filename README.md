@@ -1,7 +1,5 @@
 # GeoAlarm
 
-![GeoAlarm cover](docs/assets/geoalarm-cover.png)
-
 ![Downloads](https://img.shields.io/github/downloads/jimmy90109/geo_alarm/total)
 ![GitHub release (latest by date)](https://img.shields.io/github/v/release/jimmy90109/geo_alarm)
 ![GitHub last commit](https://img.shields.io/github/last-commit/jimmy90109/geo_alarm)
@@ -11,6 +9,8 @@
 ![Target SDK](https://img.shields.io/badge/Target%20SDK-36-green.svg)
 ![Language: Kotlin](https://img.shields.io/badge/Language-Kotlin-purple.svg)
 ![UI: Jetpack Compose](https://img.shields.io/badge/UI-Jetpack%20Compose-blue.svg)
+
+![GeoAlarm cover](docs/assets/geoalarm-cover.png)
 
 <a href="https://play.google.com/store/apps/details?id=com.github.jimmy90109.geoalarm">
   <img alt="Get it on Google Play" src="https://play.google.com/intl/en_us/badges/static/images/badges/en_badge_web_generic.png" width="180">
