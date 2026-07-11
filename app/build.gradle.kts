@@ -49,7 +49,8 @@ android {
             manifestPlaceholders["ADMOB_APP_ID"] = releaseAdMobAppId
             buildConfigField("String", "HOME_NATIVE_AD_UNIT_ID", "\"$releaseHomeNativeAdUnitId\"")
             buildConfigField("Boolean", "ADS_ENABLED", "${releaseAdMobAppId.isNotBlank() && releaseHomeNativeAdUnitId.isNotBlank()}")
-            isMinifyEnabled = false
+            isMinifyEnabled = true
+            isShrinkResources = true
             proguardFiles(
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro"
@@ -97,6 +98,14 @@ android {
 kotlin {
     compilerOptions {
         jvmTarget.set(JvmTarget.JVM_17)
+    }
+}
+
+configurations.matching { it.name == "composeMappingProducerClasspath" }.configureEach {
+    resolutionStrategy.eachDependency {
+        if (requested.group == "org.jetbrains.kotlin" && requested.name == "compose-group-mapping") {
+            useVersion(libs.versions.kotlin.get())
+        }
     }
 }
 
