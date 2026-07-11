@@ -123,6 +123,7 @@ fun SettingsScreen(
     val coroutineScope = rememberCoroutineScope()
     val languageSheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
     val ringtonePickerTitle = stringResource(R.string.ringtone_select)
+    val openSourceLicensesTitle = stringResource(R.string.open_source_licenses)
     var canUseFullScreenIntent by remember {
         mutableStateOf(FullScreenIntentPermissionHelper.canUseFullScreenIntent(context))
     }
@@ -141,7 +142,7 @@ fun SettingsScreen(
     }
 
     fun openOpenSourceLicenses() {
-        OssLicensesMenuActivity.setActivityTitle(context.getString(R.string.open_source_licenses))
+        OssLicensesMenuActivity.setActivityTitle(openSourceLicensesTitle)
         context.startActivity(Intent(context, OssLicensesMenuActivity::class.java))
     }
 
