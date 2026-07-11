@@ -18,7 +18,7 @@
     <string name="onboarding_intro_privacy_item_3">We do not upload location data to any server</string>
     <string name="onboarding_intro_privacy_item_4">Enable permission with confidence for precise reminders</string>
     <string name="onboarding_location_permission_title">Allow Precise Location</string>
-    <string name="onboarding_location_permission_body">Geo Alarm uses precise location to set destinations. When an alarm is enabled, Geo Alarm also accesses location while the app is closed or not in use to detect when you enter the alarm area. Background access will be requested only when you enable an alarm.</string>
+    <string name="onboarding_location_permission_body">Geo Alarm collects precise location data to let you set destinations and enable destination alarms, even when the app is closed or not in use. Location data is processed on this device to detect when you enter the alarm area. It is not sent to Geo Alarm servers or used for advertising. Background location access is requested only when you enable an alarm.</string>
     <string name="onboarding_notification_permission_title">Notification Permission Required</string>
     <string name="onboarding_notification_permission_body">Notification permission is needed so we can alert you right when you enter the target area.</string>
     <string name="onboarding_notification_retry_message">Notification permission was not granted. Please try again.</string>
@@ -39,6 +39,7 @@
     <string name="enter_alarm_name">Enter Alarm Name</string>
     <string name="select_alarm_icon">Select Alarm Icon</string>
     <string name="next_step">Next</string>
+    <string name="tap_map_to_select_place">Tap map to select place</string>
     <string name="back_to_map_step">Back to map</string>
     <string name="radius_label">Radius: %s m</string>
     <string name="save">Save</string>
@@ -51,6 +52,8 @@
     <string name="language">Language</string>
     <string name="locale_en">English</string>
     <string name="locale_zh">中文 (繁體)</string>
+    <string name="language_switching_title">Switching language</string>
+    <string name="language_switching_body">Updating Geo Alarm. This will only take a moment.</string>
     <string name="ok">OK</string>
     <string name="alarm_deleted">Alarm deleted</string>
     <string name="undo">Undo</string>
@@ -69,7 +72,7 @@
     <string name="already_at_destination_title">Already at Destination</string>
     <string name="already_at_destination_message">You are already within the alarm radius. The alarm will trigger immediately if enabled.</string>
     <string name="background_location_title">Background Location Required</string>
-    <string name="background_location_message">To enable this alarm, Geo Alarm must access your location while the app is closed or not in use so it can detect when you enter the alarm area. Go to Settings and choose "Allow all the time".</string>
+    <string name="background_location_message">Geo Alarm collects location data to enable this destination alarm, even when the app is closed or not in use. Location data is processed on this device to detect when you enter the alarm area. It is not sent to Geo Alarm servers or used for advertising. To continue, go to Settings and choose "Allow all the time".</string>
     <string name="precise_location_title">Precise Location Required</string>
     <string name="precise_location_message">Precise location is required for reliable alarm-area detection. Go to Settings, allow location access, and turn on precise location before enabling this alarm.</string>
     <string name="go_to_settings">Go to Settings</string>
@@ -81,9 +84,9 @@
     <string name="notification_retry_message">Notifications are essential for alerts. Please allow access.</string>
     <string name="retry">Retry</string>
     <string name="preview">Preview</string>
-    <string name="battery_optimization_banner_message">Strongly recommended: turn off battery optimization for reliable alarms.</string>
-    <string name="battery_optimization_allow_now">Allow now</string>
-    <string name="battery_optimization_success_message">Battery optimization turned off</string>
+    <string name="battery_optimization_banner_message">Alarms still work with battery optimization on. On some devices, allowing unrestricted battery use may improve background location reliability.</string>
+    <string name="battery_optimization_allow_now">Improve reliability</string>
+    <string name="battery_optimization_success_message">Unrestricted battery use enabled</string>
     <string name="fullscreen_intent_banner_message">When the screen is off, show the arrival screen over the lock screen so the Turn Off button is easier to reach.</string>
     <string name="fullscreen_intent_allow_now">Allow now</string>
     <string name="fullscreen_intent_skip">Not now</string>
@@ -129,6 +132,7 @@
     <string name="monitoring_method">Monitoring Method</string>
     <string name="monitoring_method_locked">Cannot change method while alarm is active</string>
     <string name="tab_alarms">Alarms</string>
+    <string name="tab_reminders">Reminders</string>
     <string name="settings_section_general">General</string>
     <string name="settings_section_alarm">Alarm</string>
     <string name="settings_section_privacy_improvement">Privacy &amp; Improvements</string>
@@ -154,9 +158,12 @@
     <string name="analytics_disabled">Off</string>
     <string name="privacy_policy">Privacy Policy</string>
     <string name="view">View</string>
+    <string name="manage">Manage</string>
+    <string name="ad_privacy_options">Ad privacy options</string>
 
     <!-- About -->
     <string name="section_about">About</string>
+    <string name="open_source_licenses">Open source licenses</string>
     <string name="settings_version_label">Version %s</string>
 
     <!--  Monitoring Screen  -->
@@ -165,6 +172,7 @@
     <string name="arrived_status">Arrived</string>
     <string name="section_all_alarm">All alarms</string>
     <string name="section_schedules">Schedules</string>
+    <string name="ad_label">Ad</string>
     <string name="new_alarm">New Alarm</string>
     <string name="new_schedule">New Schedule</string>
     <string name="edit_schedule">Edit Schedule</string>
@@ -210,4 +218,97 @@
     <string name="widget_selection_limit">You can select at most 2 alarms.</string>
     <string name="open_widget_picker">Add widget</string>
     <string name="widget_pin_not_supported">Your launcher does not support adding widgets from apps.</string>
+
+    <!-- Place reminders -->
+    <string name="place_reminders_title">Place Reminders</string>
+    <string name="place_reminder_beta_tag">Beta</string>
+    <string name="place_reminder_add">Add place reminder</string>
+    <string name="place_reminder_section_enabled">Active</string>
+    <string name="place_reminder_section_saved">Saved</string>
+    <string name="place_reminder_empty_title">Let places bring up what matters</string>
+    <string name="place_reminder_empty_body">Save notes, checklists, photos, or videos to a place. GeoAlarm keeps a 24/7 watch and reminds you when you arrive.</string>
+    <string name="place_reminder_empty_cta">Add place reminder</string>
+    <string name="place_reminder_help_title">Alarms vs reminders</string>
+    <string name="place_reminder_help_body">Both can use location, but they are meant for different moments.</string>
+    <string name="place_reminder_help_alarm_title">Location alarms</string>
+    <string name="place_reminder_help_alarm_body">Use an alarm when you want one active trip monitor that vibrates and keeps tracking until you stop it.</string>
+    <string name="place_reminder_help_reminder_title">Place reminders</string>
+    <string name="place_reminder_help_reminder_body">Use a reminder when you want saved content to appear at a place, even while you are not actively watching a trip.</string>
+    <string name="place_reminder_help_done">Got it</string>
+    <string name="place_reminder_permission_title">Permissions needed for reliable reminders</string>
+    <string name="place_reminder_permission_body">GeoAlarm needs background location to remind you when you arrive at saved places. Your route is not stored or uploaded.</string>
+    <string name="place_reminder_missing_precise">Precise location is off</string>
+    <string name="place_reminder_missing_background">Allow background location so reminders can still trigger after you leave the app</string>
+    <string name="place_reminder_missing_notifications">Notifications are off</string>
+    <string name="place_reminder_missing_location_service">System location is off</string>
+    <string name="place_reminder_allow_location">Allow location</string>
+    <string name="place_reminder_allow_notifications">Allow notifications</string>
+    <string name="place_reminder_refresh_status">Refresh</string>
+    <string name="place_reminder_dashboard_title">Place notes ready for arrival</string>
+    <string name="place_reminder_enabled_count">%d active</string>
+    <string name="place_reminder_ready_status">Ready</string>
+    <string name="place_reminder_needs_attention">Needs attention</string>
+    <string name="place_reminder_no_recent_trigger">No recent reminders yet.</string>
+    <string name="place_reminder_fix_permissions">Fix permissions</string>
+    <string name="place_reminder_last_triggered">%s reminded</string>
+    <string name="place_reminder_create_title">New Place Reminder</string>
+    <string name="place_reminder_edit_title">Edit Place Reminder</string>
+    <string name="place_reminder_detail_title">Place Reminder</string>
+    <string name="place_reminder_create_button">Create reminder</string>
+    <string name="place_reminder_step_place">Place</string>
+    <string name="place_reminder_step_content">What to show</string>
+    <string name="place_reminder_step_trigger">When to remind</string>
+    <string name="place_reminder_name">Reminder name</string>
+    <string name="place_reminder_name_placeholder">Example: Grocery list</string>
+    <string name="place_reminder_type">Reminder type</string>
+    <string name="place_reminder_type_text">Single reminder</string>
+    <string name="place_reminder_type_checklist">Checklist</string>
+    <string name="place_reminder_content">Reminder content</string>
+    <string name="place_reminder_add_item">Add item</string>
+    <string name="place_reminder_new_item">New item</string>
+    <string name="place_reminder_place">Place</string>
+    <string name="place_reminder_place_name">Place Name</string>
+    <string name="place_reminder_place_name_placeholder">Name this place</string>
+    <string name="place_reminder_select_place_icon">Select Place Icon</string>
+    <string name="place_reminder_edit_place">Edit place</string>
+    <string name="place_reminder_place_required">Search or tap the map to choose a place.</string>
+    <string name="place_reminder_trigger_type">Trigger</string>
+    <string name="place_reminder_trigger_enter">On arrival</string>
+    <string name="place_reminder_trigger_dwell">After staying</string>
+    <string name="place_reminder_trigger_enter_summary">Remind on arrival</string>
+    <string name="place_reminder_trigger_dwell_summary">Remind after staying %d minutes</string>
+    <string name="place_reminder_dwell_time">Stay duration (min)</string>
+    <string name="place_reminder_minutes">%d min</string>
+    <string name="place_reminder_radius">Reminder range</string>
+    <string name="place_reminder_radius_hint">A range that is too small may make reminders less reliable.</string>
+    <string name="place_reminder_cooldown">Cooldown (hr)</string>
+    <string name="place_reminder_hours">%d hr</string>
+    <string name="place_reminder_cooldown_today">Once per day</string>
+    <string name="place_reminder_checklist_summary">%1$s and %2$d items</string>
+    <string name="place_reminder_checklist_progress">%1$d/%2$d done</string>
+    <string name="place_reminder_attachment_summary">%1$d photos · %2$d videos</string>
+    <string name="place_reminder_more_attachments">+%d</string>
+    <string name="place_reminder_attachments">Attachments</string>
+    <string name="place_reminder_add_attachment">Add media</string>
+    <string name="place_reminder_adding_attachments">Adding media…</string>
+    <string name="place_reminder_attachments_limit">Up to %d attachments</string>
+    <string name="place_reminder_attachments_limit_reached">Attachment limit reached (%d)</string>
+    <string name="place_reminder_attachments_hint">Add photos or videos that should be available when you arrive.</string>
+    <string name="place_reminder_attachment_local">Saved on this device</string>
+    <string name="place_reminder_trigger_area">Trigger area</string>
+    <string name="place_reminder_edit_action">Edit</string>
+    <string name="place_reminder_reset_checklist">Reset checklist</string>
+    <string name="place_reminder_reset_checklist_title">Reset checklist?</string>
+    <string name="place_reminder_reset_checklist_message">All checked items will be marked as not done.</string>
+    <string name="place_reminder_not_found">Reminder not found.</string>
+    <string name="place_reminder_delete_title">Delete reminder</string>
+    <string name="place_reminder_delete_message">Delete this place reminder?</string>
+    <string name="place_reminder_channel_name">Place reminders</string>
+    <string name="place_reminder_channel_description">Reminders shown when you arrive at saved places</string>
+    <string name="place_reminder_notification_title">Arrived at %s</string>
+    <string name="place_reminder_notification_attachment_body">Review %1$s attachments here: %2$d photos, %3$d videos</string>
+    <plurals name="place_reminder_notification_checklist_body">
+        <item quantity="one">Review %1$s here: %2$d item to review</item>
+        <item quantity="other">Review %1$s here: %2$d items to review</item>
+    </plurals>
 </resources>

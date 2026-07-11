@@ -10,7 +10,10 @@ import com.github.jimmy90109.geoalarm.appfunctions.AppFunctionsEntryPoint
 import com.github.jimmy90109.geoalarm.appfunctions.GeoAlarmFunctions
 import com.github.jimmy90109.geoalarm.data.AppDatabase
 import com.github.jimmy90109.geoalarm.data.AlarmRepository
+import com.github.jimmy90109.geoalarm.data.LocalPlaceReminderAttachmentStore
+import com.github.jimmy90109.geoalarm.data.PlaceReminderRepository
 import com.github.jimmy90109.geoalarm.data.SettingsRepository
+import com.github.jimmy90109.geoalarm.service.PlaceReminderGeofenceManager
 import dagger.hilt.android.EntryPointAccessors
 import com.google.android.libraries.places.api.Places
 import com.github.jimmy90109.geoalarm.widget.GeoAlarmGlanceWidget
@@ -29,6 +32,9 @@ class GeoAlarmApplication : Application(), AppFunctionConfiguration.Provider {
     }
     val database by lazy { AppDatabase.getDatabase(this) }
     val repository by lazy { AlarmRepository(database.alarmDao(), database.scheduleDao()) }
+    val placeReminderRepository by lazy {
+        PlaceReminderRepository(database.placeReminderDao(), LocalPlaceReminderAttachmentStore(this))
+    }
     val settingsRepository by lazy { SettingsRepository(this) }
     private val appScope by lazy { CoroutineScope(SupervisorJob() + Dispatchers.IO) }
 
@@ -50,6 +56,7 @@ class GeoAlarmApplication : Application(), AppFunctionConfiguration.Provider {
         }
 
         createNotificationChannel()
+        PlaceReminderGeofenceManager(this, placeReminderRepository).syncEnabledReminders()
         observeAlarmChangesAndRefreshWidgets()
     }
 

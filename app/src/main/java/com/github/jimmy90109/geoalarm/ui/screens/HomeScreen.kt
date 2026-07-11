@@ -28,13 +28,11 @@ import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.size
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.Icon
 import androidx.compose.material3.LargeFlexibleTopAppBar
-import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBarDefaults
@@ -46,7 +44,6 @@ import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.input.nestedscroll.nestedScroll
@@ -58,25 +55,25 @@ import androidx.compose.ui.zIndex
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.HelpOutline
+import androidx.compose.ui.Alignment
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import com.github.jimmy90109.geoalarm.BuildConfig
 import com.github.jimmy90109.geoalarm.R
 import com.github.jimmy90109.geoalarm.data.Alarm
 import com.github.jimmy90109.geoalarm.data.ScheduleWithAlarm
-import com.github.jimmy90109.geoalarm.ui.components.AlarmList
 import com.github.jimmy90109.geoalarm.ui.components.AlreadyAtDestinationDialog
 import com.github.jimmy90109.geoalarm.ui.components.BackgroundLocationPermissionDialog
 import com.github.jimmy90109.geoalarm.ui.components.DeleteErrorDialog
 import com.github.jimmy90109.geoalarm.ui.components.EditDisabledDialog
 import com.github.jimmy90109.geoalarm.ui.components.ExactAlarmPermissionDialog
-import com.github.jimmy90109.geoalarm.ui.components.HomeFabMenu
 import com.github.jimmy90109.geoalarm.ui.components.NotificationPermissionDialog
 import com.github.jimmy90109.geoalarm.ui.components.NotificationRationaleDialog
 import com.github.jimmy90109.geoalarm.ui.components.PreciseLocationPermissionDialog
 import com.github.jimmy90109.geoalarm.ui.components.ScheduleConflictDialog
 import com.github.jimmy90109.geoalarm.ui.components.SingleAlarmDialog
 import com.github.jimmy90109.geoalarm.util.FullScreenIntentPermissionHelper
+import com.github.jimmy90109.geoalarm.ads.HomeNativeAdState
 import com.github.jimmy90109.geoalarm.ui.viewmodel.HomeAction
 import com.github.jimmy90109.geoalarm.ui.viewmodel.HomeUiState
 import com.github.jimmy90109.geoalarm.ui.viewmodel.HomeViewModel
@@ -104,12 +101,15 @@ fun HomeScreen(
     onAlarmClick: (Alarm) -> Unit,
     onAddSchedule: () -> Unit,
     onScheduleClick: (ScheduleWithAlarm) -> Unit,
-    onOpenOnboarding: () -> Unit
+    onOpenOnboarding: () -> Unit,
+    isLandscape: Boolean = false,
 ) {
-    val alarms by viewModel.alarms.collectAsStateWithLifecycle(initialValue = emptyList())
-    val schedules by viewModel.schedules.collectAsStateWithLifecycle(initialValue = emptyList())
+    val homeListState by viewModel.homeListState.collectAsStateWithLifecycle()
+    val alarms = homeListState.alarms
+    val schedules = homeListState.schedules
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val paymentShortcut by viewModel.paymentShortcut.collectAsStateWithLifecycle()
+    val homeNativeAdState by viewModel.homeNativeAdState.collectAsStateWithLifecycle()
     val fullscreenIntentPromptHandled by viewModel.fullscreenIntentPromptHandled.collectAsStateWithLifecycle()
     val context = LocalContext.current
     val lifecycleOwner = LocalLifecycleOwner.current
@@ -172,8 +172,6 @@ fun HomeScreen(
     var pendingAlarm by remember { mutableStateOf<Alarm?>(null) }
     lateinit var continueAlarmEnable: (Alarm) -> Unit
 
-    // FAB Menu State
-    var showFabMenu by remember { mutableStateOf(false) }
     var showPaymentShortcutSheet by remember { mutableStateOf(false) }
 
     // Helper: Check location permission -> Enable Alarm
@@ -266,7 +264,6 @@ fun HomeScreen(
 
     // Check for active alarm
     val activeAlarm = uiState.testActiveAlarm ?: alarms.find { it.isEnabled }
-
     Scaffold(
         modifier = Modifier.nestedScroll(scrollBehavior.nestedScrollConnection),
         topBar = {
@@ -309,43 +306,8 @@ fun HomeScreen(
                 }
             )
         },
-        floatingActionButton = {
-            // Only show FAB if no alarm is active
-            if (activeAlarm == null) {
-                // FAB Menu (Expressive)
-                HomeFabMenu(
-                    modifier = Modifier.offset(y = 16.dp),
-                    expanded = showFabMenu,
-                    onToggle = { showFabMenu = !showFabMenu },
-                    alarms = alarms,
-                    onAddSchedule = {
-                        showFabMenu = false
-                        onAddSchedule()
-                    },
-                    onAddAlarm = {
-                        showFabMenu = false
-                        onAddAlarm()
-                    })
-            }
-        },
-
         ) { innerPadding ->
         Box {
-            // Scrim for FAB Menu
-            if (showFabMenu) {
-                Box(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .clickable(
-                            indication = null,
-                            interactionSource = remember { MutableInteractionSource() },
-                        ) {
-                            showFabMenu = false
-                        }
-                        .zIndex(1f) // Ensure it sits above content but below FAB if FAB is in Scaffold (it is)
-                )
-            }
-
             AnimatedContent(
                 targetState = activeAlarm,
                 transitionSpec = {
@@ -417,61 +379,51 @@ fun HomeScreen(
                         },
                     )
                 } else {
-                    Box(modifier = Modifier.fillMaxSize()) {
-                        if (alarms.isEmpty() && schedules.isEmpty()) {
-                            Box(
-                                modifier = Modifier.fillMaxSize(),
-                                contentAlignment = Alignment.Center,
-                            ) {
-                                Text(
-                                    stringResource(R.string.no_alarms),
-                                    style = MaterialTheme.typography.bodyLarge,
-                                )
+                    val bottomListPadding = if (isLandscape) 16.dp else 96.dp
+                    HomeListContent(
+                        state = homeListState,
+                        contentPadding = PaddingValues(
+                            top = innerPadding.calculateTopPadding() + 16.dp,
+                            bottom = innerPadding.calculateBottomPadding() + bottomListPadding,
+                            start = 16.dp,
+                            end = 16.dp,
+                        ),
+                        loadingTopPadding = PaddingValues(
+                            top = innerPadding.calculateTopPadding() + 24.dp,
+                        ),
+                        onAlarmClick = { alarm ->
+                            if (alarm.isEnabled) {
+                                viewModel.onAction(HomeAction.EditDisabledDialogRequested)
+                            } else {
+                                onAlarmClick(alarm)
                             }
-                        } else {
-                            AlarmList(
-                                alarms = alarms,
-                                schedules = schedules,
-                                // Add extra padding at bottom for the floating bar
-                                contentPadding = PaddingValues(
-                                    top = innerPadding.calculateTopPadding() + 16.dp,
-                                    bottom = innerPadding.calculateBottomPadding() + 100.dp,
-                                    start = 16.dp,
-                                    end = 16.dp,
-                                ),
-                                onAlarmClick = { alarm ->
-                                    if (alarm.isEnabled) {
-                                        viewModel.onAction(HomeAction.EditDisabledDialogRequested)
-                                    } else {
-                                        onAlarmClick(alarm)
-                                    }
-                                },
-                                onToggleAlarm = handleAlarmToggle,
-                                onScheduleClick = { schedule -> onScheduleClick(schedule) },
-                                onToggleSchedule = { schedule, isEnabled ->
-                                    viewModel.onAction(HomeAction.ScheduleToggled(schedule, isEnabled))
-                                },
-                                onAddSchedule = onAddSchedule,
-                                onOpenWidgetPicker = {
-                                    val appWidgetManager = AppWidgetManager.getInstance(context)
-                                    val provider = ComponentName(context, GeoAlarmGlanceWidgetReceiver::class.java)
-                                    val supported = appWidgetManager.isRequestPinAppWidgetSupported
-                                    if (supported) {
-                                        appWidgetManager.requestPinAppWidget(provider, null, null)
-                                    } else {
-                                        android.widget.Toast.makeText(
-                                            context,
-                                            R.string.widget_pin_not_supported,
-                                            android.widget.Toast.LENGTH_SHORT
-                                        ).show()
-                                    }
-                                },
-                                highlightedAlarmId = uiState.highlightedAlarmId,
-                                highlightedScheduleId = uiState.highlightedScheduleId,
-                                onHighlightFinished = { viewModel.onAction(HomeAction.HighlightCleared) },
-                            )
-                        }
-                    }
+                        },
+                        onToggleAlarm = handleAlarmToggle,
+                        onScheduleClick = { schedule -> onScheduleClick(schedule) },
+                        onToggleSchedule = { schedule, isEnabled ->
+                            viewModel.onAction(HomeAction.ScheduleToggled(schedule, isEnabled))
+                        },
+                        onAddAlarm = onAddAlarm,
+                        onAddSchedule = onAddSchedule,
+                        onOpenWidgetPicker = {
+                            val appWidgetManager = AppWidgetManager.getInstance(context)
+                            val provider = ComponentName(context, GeoAlarmGlanceWidgetReceiver::class.java)
+                            val supported = appWidgetManager.isRequestPinAppWidgetSupported
+                            if (supported) {
+                                appWidgetManager.requestPinAppWidget(provider, null, null)
+                            } else {
+                                android.widget.Toast.makeText(
+                                    context,
+                                    R.string.widget_pin_not_supported,
+                                    android.widget.Toast.LENGTH_SHORT
+                                ).show()
+                            }
+                        },
+                        highlightedAlarmId = uiState.highlightedAlarmId,
+                        highlightedScheduleId = uiState.highlightedScheduleId,
+                        homeNativeAd = (homeNativeAdState as? HomeNativeAdState.Loaded)?.nativeAd,
+                        onHighlightFinished = { viewModel.onAction(HomeAction.HighlightCleared) },
+                    )
                 }
             }
         }

@@ -16,9 +16,14 @@ class SharedPreferenceManager @Inject constructor(
     companion object {
         private const val PREF_NAME = "geo_alarm_prefs"
         private const val KEY_SEEN_SCHEDULE_ONBOARDING = "seen_schedule_onboarding"
+        private const val KEY_SEEN_PLACE_REMINDER_TAB = "seen_place_reminder_tab"
     }
 
     var hasSeenScheduleOnboarding: Boolean
         get() = prefs.getBoolean(KEY_SEEN_SCHEDULE_ONBOARDING, false)
         set(value) = prefs.edit { putBoolean(KEY_SEEN_SCHEDULE_ONBOARDING, value) }
+
+    var hasSeenPlaceReminderTab: Boolean
+        get() = prefs.getBoolean(KEY_SEEN_PLACE_REMINDER_TAB, false)
+        set(value) = prefs.edit { putBoolean(KEY_SEEN_PLACE_REMINDER_TAB, value) }
 }

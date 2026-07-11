@@ -9,7 +9,9 @@ import androidx.compose.material.icons.filled.DirectionsCar
 import androidx.compose.material.icons.filled.FitnessCenter
 import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.LocationOn
+import androidx.compose.material.icons.filled.LocalPostOffice
 import androidx.compose.material.icons.filled.School
+import androidx.compose.material.icons.filled.ShoppingCart
 import androidx.compose.material.icons.filled.Train
 import androidx.compose.material.icons.filled.Work
 import androidx.compose.material3.Icon
@@ -35,7 +37,9 @@ val AlarmIconOptions = listOf(
     AlarmIconOption(key = "walk", icon = Icons.AutoMirrored.Filled.DirectionsWalk),
     AlarmIconOption(key = "bike", icon = Icons.AutoMirrored.Filled.DirectionsBike),
     AlarmIconOption(key = "car", icon = Icons.Default.DirectionsCar),
-    AlarmIconOption(key = "gym", icon = Icons.Default.FitnessCenter)
+    AlarmIconOption(key = "gym", icon = Icons.Default.FitnessCenter),
+    AlarmIconOption(key = "supermarket", icon = Icons.Default.ShoppingCart),
+    AlarmIconOption(key = "post_office", icon = Icons.Default.LocalPostOffice)
 )
 
 fun alarmIconForKey(key: String): AlarmIconOption {
@@ -45,20 +49,7 @@ fun alarmIconForKey(key: String): AlarmIconOption {
 
 fun normalizeAlarmIconKey(rawKey: String): String {
     val key = rawKey.trim().lowercase()
-    if (key.isEmpty()) return DEFAULT_ALARM_ICON_KEY
-    return when {
-        key == DEFAULT_ALARM_ICON_KEY || key.contains("location") || key.contains("marker") -> DEFAULT_ALARM_ICON_KEY
-        key == "home" || key.contains("house") -> "home"
-        key == "work" || key.contains("briefcase") || key.contains("office") -> "work"
-        key == "school" || key.contains("class") || key.contains("education") -> "school"
-        key == "bus" || key.contains("directions_bus") -> "bus"
-        key == "train" || key.contains("rail") || key.contains("subway") -> "train"
-        key == "walk" || key.contains("directions_walk") || key.contains("walking") -> "walk"
-        key == "bike" || key.contains("bicycle") || key.contains("directions_bike") -> "bike"
-        key == "car" || key.contains("auto") || key.contains("drive") || key.contains("directions_car") -> "car"
-        key == "gym" || key.contains("fitness") || key.contains("dumbbell") -> "gym"
-        else -> DEFAULT_ALARM_ICON_KEY
-    }
+    return AlarmIconOptions.firstOrNull { it.key == key }?.key ?: DEFAULT_ALARM_ICON_KEY
 }
 
 @Composable

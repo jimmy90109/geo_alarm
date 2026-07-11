@@ -11,12 +11,19 @@ import com.github.jimmy90109.geoalarm.appactions.GeocodingService
 import com.github.jimmy90109.geoalarm.appactions.ScheduleGateway
 import com.github.jimmy90109.geoalarm.analytics.AppAnalytics
 import com.github.jimmy90109.geoalarm.analytics.TelemetryDeckAppAnalytics
+import com.github.jimmy90109.geoalarm.ads.AdsEntitlementRepository
+import com.github.jimmy90109.geoalarm.ads.DefaultAdsEntitlementRepository
 import com.github.jimmy90109.geoalarm.data.AlarmDao
 import com.github.jimmy90109.geoalarm.data.AlarmDataRepository
 import com.github.jimmy90109.geoalarm.data.AnalyticsPreferencesRepository
 import com.github.jimmy90109.geoalarm.data.AnalyticsPreferencesStore
 import com.github.jimmy90109.geoalarm.data.AlarmRepository
 import com.github.jimmy90109.geoalarm.data.AppDatabase
+import com.github.jimmy90109.geoalarm.data.PlaceReminderDao
+import com.github.jimmy90109.geoalarm.data.PlaceReminderDataRepository
+import com.github.jimmy90109.geoalarm.data.PlaceReminderAttachmentStore
+import com.github.jimmy90109.geoalarm.data.PlaceReminderRepository
+import com.github.jimmy90109.geoalarm.data.LocalPlaceReminderAttachmentStore
 import com.github.jimmy90109.geoalarm.data.ScheduleDao
 import com.github.jimmy90109.geoalarm.data.location.AndroidCurrentLocationClient
 import com.github.jimmy90109.geoalarm.data.location.AndroidAlarmActivationPermissionChecker
@@ -56,6 +63,9 @@ object DatabaseModule {
 
     @Provides
     fun provideScheduleDao(database: AppDatabase): ScheduleDao = database.scheduleDao()
+
+    @Provides
+    fun providePlaceReminderDao(database: AppDatabase): PlaceReminderDao = database.placeReminderDao()
 }
 
 @Module
@@ -66,6 +76,18 @@ abstract class RepositoryModule {
     abstract fun bindAlarmDataRepository(
         repository: AlarmRepository
     ): AlarmDataRepository
+
+    @Binds
+    @Singleton
+    abstract fun bindPlaceReminderDataRepository(
+        repository: PlaceReminderRepository
+    ): PlaceReminderDataRepository
+
+    @Binds
+    @Singleton
+    abstract fun bindPlaceReminderAttachmentStore(
+        store: LocalPlaceReminderAttachmentStore
+    ): PlaceReminderAttachmentStore
 
     @Binds
     @Singleton
@@ -108,6 +130,12 @@ abstract class RepositoryModule {
     abstract fun bindAnalyticsPreferencesStore(
         repository: AnalyticsPreferencesRepository
     ): AnalyticsPreferencesStore
+
+    @Binds
+    @Singleton
+    abstract fun bindAdsEntitlementRepository(
+        repository: DefaultAdsEntitlementRepository
+    ): AdsEntitlementRepository
 
     @Binds
     @Singleton

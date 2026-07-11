@@ -17,6 +17,7 @@ import com.github.jimmy90109.geoalarm.appactions.AppActionResult
 import com.github.jimmy90109.geoalarm.appactions.CreateGeoAlarmUseCase
 import com.github.jimmy90109.geoalarm.appactions.CreateScheduleUseCase
 import com.github.jimmy90109.geoalarm.appactions.StartAlarmUseCase
+import com.github.jimmy90109.geoalarm.ads.AdConsentManager
 import com.github.jimmy90109.geoalarm.navigation.AppRoutes
 import androidx.navigation.compose.rememberNavController
 import com.github.jimmy90109.geoalarm.data.OnboardingRepository
@@ -40,7 +41,10 @@ class MainActivity : AppCompatActivity() {
     companion object {
         private const val TAG = "MainActivity"
         const val ACTION_ENABLE_ALARM_FROM_WIDGET = "ENABLE_ALARM_FROM_WIDGET"
+        const val ACTION_OPEN_PLACE_REMINDER = "OPEN_PLACE_REMINDER"
+        const val ACTION_OPEN_PLACE_REMINDER_PREVIEW = "OPEN_PLACE_REMINDER_PREVIEW"
         const val EXTRA_WIDGET_ALARM_ID = "WIDGET_ALARM_ID"
+        const val EXTRA_PLACE_REMINDER_ID = "PLACE_REMINDER_ID"
     }
 
     @Inject
@@ -60,6 +64,9 @@ class MainActivity : AppCompatActivity() {
 
     @Inject
     lateinit var currentLocationRepository: CurrentLocationRepository
+
+    @Inject
+    lateinit var adConsentManager: AdConsentManager
 
     private val homeViewModel: HomeViewModel by viewModels()
 
@@ -93,6 +100,7 @@ class MainActivity : AppCompatActivity() {
         lifecycleScope.launch {
             currentLocationRepository.warmUp()
         }
+        adConsentManager.requestConsentUpdate(this)
     }
 
     override fun onNewIntent(intent: Intent) {
@@ -116,6 +124,11 @@ class MainActivity : AppCompatActivity() {
                     alarmTurnOffUseCase(alarmId, isArrivedTurnOff)
                 }
             }
+        } else if (intent.action == ACTION_OPEN_PLACE_REMINDER) {
+            recreate()
+            return
+        } else if (intent.action == ACTION_OPEN_PLACE_REMINDER_PREVIEW) {
+            return
         } else if (intent.action == AppActionContract.ACTION_CREATE_GEO_ALARM) {
             handleCreateGeoAlarmIntent(intent)
         } else if (intent.action == AppActionContract.ACTION_CREATE_SCHEDULE) {
@@ -234,6 +247,14 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun resolveRequestedRoute(intent: Intent): AppRoutes? {
+        if (intent.action == ACTION_OPEN_PLACE_REMINDER) {
+            val reminderId = intent.getStringExtra(EXTRA_PLACE_REMINDER_ID)
+            if (!reminderId.isNullOrBlank()) return AppRoutes.PlaceReminderDetail(reminderId)
+        }
+        if (intent.action == ACTION_OPEN_PLACE_REMINDER_PREVIEW) {
+            val reminderId = intent.getStringExtra(EXTRA_PLACE_REMINDER_ID)
+            if (!reminderId.isNullOrBlank()) return AppRoutes.PlaceReminderEdit(reminderId)
+        }
         resolveSharedPlaceRoute(intent)?.let { return it }
 
         val data = intent.data ?: return null

@@ -61,7 +61,7 @@ class TelemetryTrackerTest {
 private class FakeAnalytics : AppAnalytics {
     val events = mutableListOf<String>()
 
-    override fun signal(eventName: String): Boolean {
+    override suspend fun signal(eventName: String): Boolean {
         events += eventName
         return true
     }

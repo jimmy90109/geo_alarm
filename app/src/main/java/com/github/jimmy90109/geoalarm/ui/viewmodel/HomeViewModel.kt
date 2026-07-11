@@ -15,11 +15,17 @@ import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.github.jimmy90109.geoalarm.BuildConfig
 import com.github.jimmy90109.geoalarm.R
+import com.github.jimmy90109.geoalarm.ads.AdConsentManager
+import com.github.jimmy90109.geoalarm.ads.AdsEligibility
+import com.github.jimmy90109.geoalarm.ads.AdsEntitlementRepository
+import com.github.jimmy90109.geoalarm.ads.HomeNativeAdManager
+import com.github.jimmy90109.geoalarm.ads.HomeNativeAdState
 import com.github.jimmy90109.geoalarm.appactions.AlarmTurnOffUseCase
 import com.github.jimmy90109.geoalarm.data.Alarm
 import com.github.jimmy90109.geoalarm.data.AlarmDataRepository
 import com.github.jimmy90109.geoalarm.data.AlarmSchedule
 import com.github.jimmy90109.geoalarm.data.PaymentShortcut
+import com.github.jimmy90109.geoalarm.data.ScheduleWithAlarm
 import com.github.jimmy90109.geoalarm.data.SettingsRepository
 import com.github.jimmy90109.geoalarm.data.location.AlarmActivationPermissionChecker
 import com.github.jimmy90109.geoalarm.service.GeoAlarmService
@@ -34,6 +40,8 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
@@ -57,6 +65,12 @@ data class HomeUiState(
     val alarmToDelete: Alarm? = null, // Alarm pending deletion (shows confirmation dialog if not null)
     val highlightedAlarmId: String? = null, // Alarm ID to highlight (flash animation)
     val highlightedScheduleId: String? = null, // Schedule ID to highlight (flash animation)
+)
+
+data class HomeListUiState(
+    val isLoading: Boolean = true,
+    val alarms: List<Alarm> = emptyList(),
+    val schedules: List<ScheduleWithAlarm> = emptyList(),
 )
 
 sealed interface HomeAction {
@@ -112,6 +126,9 @@ class HomeViewModel @Inject constructor(
     private val alarmTurnOffUseCase: AlarmTurnOffUseCase,
     private val settingsRepository: SettingsRepository,
     private val activationPermissionChecker: AlarmActivationPermissionChecker,
+    private val adConsentManager: AdConsentManager,
+    private val adsEntitlementRepository: AdsEntitlementRepository,
+    private val homeNativeAdManager: HomeNativeAdManager,
 ) : AndroidViewModel(application) {
     private enum class ActivationSettingsKind {
         PRECISE,
@@ -164,6 +181,7 @@ class HomeViewModel @Inject constructor(
         } catch (e: Exception) {
             // Receiver might not be registered
         }
+        homeNativeAdManager.clear()
     }
 
     private val _uiState = MutableStateFlow(HomeUiState())
@@ -186,11 +204,45 @@ class HomeViewModel @Inject constructor(
         SharingStarted.WhileSubscribed(5000),
         emptyList()
     )
+    val homeListState: StateFlow<HomeListUiState> = combine(
+        repository.allAlarms,
+        repository.allSchedulesWithAlarm,
+    ) { alarms, schedules ->
+        HomeListUiState(
+            isLoading = false,
+            alarms = alarms,
+            schedules = schedules,
+        )
+    }
+        .stateIn(
+            viewModelScope,
+            SharingStarted.WhileSubscribed(5000),
+            HomeListUiState(),
+        )
     val paymentShortcut = settingsRepository.paymentShortcutFlow.stateIn(
         viewModelScope,
         SharingStarted.WhileSubscribed(5000),
         null
     )
+    val homeNativeAdState: StateFlow<HomeNativeAdState> = homeNativeAdManager.state
+
+    init {
+        viewModelScope.launch {
+            combine(
+                alarms,
+                adConsentManager.state,
+                adsEntitlementRepository.hasAdsRemoved,
+            ) { alarms, consentState, hasAdsRemoved ->
+                AdsEligibility.shouldShowHomeNativeAd(
+                    canRequestAds = consentState.canRequestAds,
+                    hasAdsRemoved = hasAdsRemoved,
+                    hasHomeContent = alarms.isNotEmpty(),
+                )
+            }
+                .distinctUntilChanged()
+                .collect { eligible -> homeNativeAdManager.setEligible(eligible) }
+        }
+    }
 
     fun onAction(action: HomeAction) {
         when (action) {

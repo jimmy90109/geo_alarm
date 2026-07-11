@@ -11,10 +11,12 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Alarm
+import androidx.compose.material.icons.filled.Notifications
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
+import androidx.compose.material3.FloatingToolbarDefaults
 import androidx.compose.material3.HorizontalFloatingToolbar
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
@@ -38,9 +40,9 @@ import com.github.jimmy90109.geoalarm.ui.theme.GeoAlarmTheme
 enum class NavTab(
     @StringRes val labelRes: Int, val iconVec: ImageVector
 ) {
-    HOME(R.string.tab_alarms, Icons.Filled.Alarm), SETTINGS(
-        R.string.settings, Icons.Filled.Settings
-    )
+    HOME(R.string.tab_alarms, Icons.Filled.Alarm),
+    REMINDERS(R.string.tab_reminders, Icons.Filled.Notifications),
+    SETTINGS(R.string.settings, Icons.Filled.Settings)
 }
 
 @OptIn(ExperimentalMaterial3ExpressiveApi::class)
@@ -49,12 +51,19 @@ fun BottomNavBar(
     modifier: Modifier = Modifier,
     currentTab: NavTab,
     onHomeClick: () -> Unit,
+    onRemindersClick: () -> Unit,
     onSettingsClick: () -> Unit,
-    showSettingsUpdateDot: Boolean = false,
+    showRemindersBadge: Boolean = false,
 ) {
     HorizontalFloatingToolbar(
         expanded = true,
         modifier = modifier,
+        colors = FloatingToolbarDefaults.standardFloatingToolbarColors().copy(
+            toolbarContainerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
+            toolbarContentColor = MaterialTheme.colorScheme.onSurfaceVariant,
+        ),
+        expandedShadowElevation = 6.dp,
+        collapsedShadowElevation = 6.dp,
     ) {
         val tabs = NavTab.entries.toTypedArray()
         val haptic = LocalHapticFeedback.current
@@ -62,6 +71,7 @@ fun BottomNavBar(
             val selected = currentTab == tab
             val onClick = when (tab) {
                 NavTab.HOME -> onHomeClick
+                NavTab.REMINDERS -> onRemindersClick
                 NavTab.SETTINGS -> onSettingsClick
             }
 
@@ -73,8 +83,8 @@ fun BottomNavBar(
                             onClick()
                         },
                         colors = ButtonDefaults.buttonColors(
-                            containerColor = MaterialTheme.colorScheme.primaryContainer,
-                            contentColor = MaterialTheme.colorScheme.onPrimaryContainer
+                            containerColor = MaterialTheme.colorScheme.primary,
+                            contentColor = MaterialTheme.colorScheme.onPrimary
                         ),
                         contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
                     ) {
@@ -108,7 +118,7 @@ fun BottomNavBar(
                         )
                     }
                 }
-                if (tab == NavTab.SETTINGS && showSettingsUpdateDot) {
+                if (tab == NavTab.REMINDERS && showRemindersBadge) {
                     Surface(
                         color = MaterialTheme.colorScheme.error,
                         shape = CircleShape,
@@ -129,12 +139,17 @@ fun AppNavigationRail(
     modifier: Modifier = Modifier,
     currentTab: NavTab,
     onHomeClick: () -> Unit,
+    onRemindersClick: () -> Unit,
     onSettingsClick: () -> Unit,
-    showSettingsUpdateDot: Boolean = false,
+    showRemindersBadge: Boolean = false,
 ) {
     VerticalFloatingToolbar(
         expanded = true,
         modifier = modifier.padding(16.dp),
+        colors = FloatingToolbarDefaults.standardFloatingToolbarColors().copy(
+            toolbarContainerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
+            toolbarContentColor = MaterialTheme.colorScheme.onSurfaceVariant,
+        ),
     ) {
         val haptic = LocalHapticFeedback.current
         val tabs = NavTab.entries.toTypedArray()
@@ -143,6 +158,7 @@ fun AppNavigationRail(
             val selected = currentTab == tab
             val onClick = when (tab) {
                 NavTab.HOME -> onHomeClick
+                NavTab.REMINDERS -> onRemindersClick
                 NavTab.SETTINGS -> onSettingsClick
             }
 
@@ -154,8 +170,8 @@ fun AppNavigationRail(
                             onClick()
                         },
                         colors = ButtonDefaults.buttonColors(
-                            containerColor = MaterialTheme.colorScheme.primaryContainer,
-                            contentColor = MaterialTheme.colorScheme.onPrimaryContainer
+                            containerColor = MaterialTheme.colorScheme.primary,
+                            contentColor = MaterialTheme.colorScheme.onPrimary
                         ),
                         contentPadding = PaddingValues(horizontal = 16.dp, vertical = 16.dp),
                     ) {
@@ -173,7 +189,7 @@ fun AppNavigationRail(
                         },
                         colors = ButtonDefaults.buttonColors(
                             containerColor = Color.Transparent,
-                            contentColor = MaterialTheme.colorScheme.onPrimaryContainer
+                            contentColor = MaterialTheme.colorScheme.onSurfaceVariant
                         ),
                         contentPadding = PaddingValues(
                             horizontal = 16.dp, vertical = 16.dp
@@ -186,7 +202,7 @@ fun AppNavigationRail(
                         )
                     }
                 }
-                if (tab == NavTab.SETTINGS && showSettingsUpdateDot) {
+                if (tab == NavTab.REMINDERS && showRemindersBadge) {
                     Surface(
                         color = MaterialTheme.colorScheme.error,
                         shape = CircleShape,
@@ -209,8 +225,9 @@ private fun BottomNavBarPreview() {
             BottomNavBar(
                 currentTab = NavTab.HOME,
                 onHomeClick = {},
+                onRemindersClick = {},
                 onSettingsClick = {},
-                showSettingsUpdateDot = true
+                showRemindersBadge = true,
             )
         }
     }
@@ -223,8 +240,9 @@ private fun NavigationRailPreview() {
         AppNavigationRail(
             currentTab = NavTab.HOME,
             onHomeClick = {},
+            onRemindersClick = {},
             onSettingsClick = {},
-            showSettingsUpdateDot = true
+            showRemindersBadge = true,
         )
     }
 }

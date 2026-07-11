@@ -1,6 +1,8 @@
 package com.github.jimmy90109.geoalarm.ui.screens
 
 import android.app.Activity
+import android.content.Context
+import android.content.ContextWrapper
 import android.content.Intent
 import android.content.res.Configuration
 import android.media.RingtoneManager
@@ -62,6 +64,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -92,9 +95,11 @@ import com.github.jimmy90109.geoalarm.ui.viewmodel.SettingsAction
 import com.github.jimmy90109.geoalarm.ui.viewmodel.SettingsViewModel
 import com.github.jimmy90109.geoalarm.utils.AudioUtils
 import com.github.jimmy90109.geoalarm.utils.PaymentShortcutNotifier
+import com.google.android.gms.oss.licenses.v2.OssLicensesMenuActivity
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.LocalLifecycleOwner
+import kotlinx.coroutines.launch
 import kotlin.math.PI
 import kotlin.math.sin
 
@@ -110,11 +115,15 @@ fun SettingsScreen(
     val ringtoneSettings by viewModel.ringtoneSettings.collectAsStateWithLifecycle()
     val paymentShortcut by viewModel.paymentShortcut.collectAsStateWithLifecycle()
     val analyticsEnabled by viewModel.analyticsEnabled.collectAsStateWithLifecycle()
+    val adConsentState by viewModel.adConsentState.collectAsStateWithLifecycle()
     val currentLanguage = viewModel.currentLanguage
     val context = LocalContext.current
     val lifecycleOwner = LocalLifecycleOwner.current
     val uriHandler = LocalUriHandler.current
+    val coroutineScope = rememberCoroutineScope()
+    val languageSheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
     val ringtonePickerTitle = stringResource(R.string.ringtone_select)
+    val openSourceLicensesTitle = stringResource(R.string.open_source_licenses)
     var canUseFullScreenIntent by remember {
         mutableStateOf(FullScreenIntentPermissionHelper.canUseFullScreenIntent(context))
     }
@@ -130,6 +139,11 @@ fun SettingsScreen(
         }.onFailure {
             context.startActivity(FullScreenIntentPermissionHelper.createAppDetailsIntent(context))
         }
+    }
+
+    fun openOpenSourceLicenses() {
+        OssLicensesMenuActivity.setActivityTitle(openSourceLicensesTitle)
+        context.startActivity(Intent(context, OssLicensesMenuActivity::class.java))
     }
 
     DisposableEffect(lifecycleOwner) {
@@ -222,12 +236,19 @@ fun SettingsScreen(
                     ) {
                         SettingsPrivacySection(
                             analyticsEnabled = analyticsEnabled,
+                            showAdPrivacyOptions = adConsentState.isPrivacyOptionsRequired,
                             onPrivacyClick = { viewModel.onAction(SettingsAction.AnalyticsSheetRequested) },
+                            onAdPrivacyOptionsClick = {
+                                context.findActivity()?.let {
+                                    viewModel.onAction(SettingsAction.AdPrivacyOptionsRequested(it))
+                                }
+                            },
                             onPrivacyPolicyClick = { uriHandler.openUri(PRIVACY_POLICY_URL) },
                         )
                         Spacer(modifier = Modifier.height(16.dp))
                         SettingsAboutSection(
                             currentVersion = viewModel.currentVersion,
+                            onOpenSourceLicensesClick = ::openOpenSourceLicenses,
                         )
                     }
                 }
@@ -262,12 +283,19 @@ fun SettingsScreen(
                     Spacer(modifier = Modifier.height(16.dp))
                     SettingsPrivacySection(
                         analyticsEnabled = analyticsEnabled,
+                        showAdPrivacyOptions = adConsentState.isPrivacyOptionsRequired,
                         onPrivacyClick = { viewModel.onAction(SettingsAction.AnalyticsSheetRequested) },
+                        onAdPrivacyOptionsClick = {
+                            context.findActivity()?.let {
+                                viewModel.onAction(SettingsAction.AdPrivacyOptionsRequested(it))
+                            }
+                        },
                         onPrivacyPolicyClick = { uriHandler.openUri(PRIVACY_POLICY_URL) },
                     )
                     Spacer(modifier = Modifier.height(24.dp))
                     SettingsAboutSection(
                         currentVersion = viewModel.currentVersion,
+                        onOpenSourceLicensesClick = ::openOpenSourceLicenses,
                     )
                 }
             }
@@ -278,7 +306,7 @@ fun SettingsScreen(
     if (uiState.showLanguageSheet) {
         ModalBottomSheet(
             onDismissRequest = { viewModel.onAction(SettingsAction.LanguageSheetDismissed) },
-            sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true),
+            sheetState = languageSheetState,
         ) {
             Text(
                 text = stringResource(R.string.language),
@@ -295,14 +323,24 @@ fun SettingsScreen(
                     text = stringResource(R.string.locale_zh),
                     selected = currentLanguage == "zh",
                     enabled = true,
-                    onClick = { viewModel.onAction(SettingsAction.LocaleSelected("zh-TW")) },
+                    onClick = {
+                        coroutineScope.launch {
+                            languageSheetState.hide()
+                            viewModel.onAction(SettingsAction.LocaleSelected("zh-TW"))
+                        }
+                    },
                 )
                 HorizontalDivider(modifier = Modifier.padding(horizontal = 16.dp))
                 SettingsSelectionItem(
                     text = stringResource(R.string.locale_en),
                     selected = currentLanguage == "en",
                     enabled = true,
-                    onClick = { viewModel.onAction(SettingsAction.LocaleSelected("en")) },
+                    onClick = {
+                        coroutineScope.launch {
+                            languageSheetState.hide()
+                            viewModel.onAction(SettingsAction.LocaleSelected("en"))
+                        }
+                    },
                 )
             }
         }
@@ -927,7 +965,9 @@ private fun PaymentShortcutGridCard(
 @Composable
 private fun SettingsPrivacySection(
     analyticsEnabled: Boolean,
+    showAdPrivacyOptions: Boolean,
     onPrivacyClick: () -> Unit,
+    onAdPrivacyOptionsClick: () -> Unit,
     onPrivacyPolicyClick: () -> Unit,
 ) {
     SettingsSectionHeader(title = stringResource(R.string.settings_section_privacy_improvement))
@@ -940,6 +980,14 @@ private fun SettingsPrivacySection(
         },
         onClick = onPrivacyClick
     )
+    if (showAdPrivacyOptions) {
+        Spacer(modifier = Modifier.height(8.dp))
+        SettingsCard(
+            title = stringResource(R.string.ad_privacy_options),
+            value = stringResource(R.string.manage),
+            onClick = onAdPrivacyOptionsClick,
+        )
+    }
     Spacer(modifier = Modifier.height(8.dp))
     SettingsCard(
         title = stringResource(R.string.privacy_policy),
@@ -948,9 +996,19 @@ private fun SettingsPrivacySection(
     )
 }
 
+private fun Context.findActivity(): Activity? {
+    var context = this
+    while (context is ContextWrapper) {
+        if (context is Activity) return context
+        context = context.baseContext
+    }
+    return null
+}
+
 @Composable
 private fun SettingsAboutSection(
-    currentVersion: String
+    currentVersion: String,
+    onOpenSourceLicensesClick: () -> Unit,
 ) {
     SettingsSectionHeader(title = stringResource(R.string.section_about))
 
@@ -959,6 +1017,12 @@ private fun SettingsAboutSection(
         value = stringResource(R.string.settings_version_label, currentVersion),
         onClick = {},
         enabled = false,
+    )
+    Spacer(modifier = Modifier.height(8.dp))
+    SettingsCard(
+        title = stringResource(R.string.open_source_licenses),
+        value = stringResource(R.string.view),
+        onClick = onOpenSourceLicensesClick,
     )
 }
 

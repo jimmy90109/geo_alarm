@@ -7,11 +7,15 @@ plugins {
     alias(libs.plugins.hilt.android)
     alias(libs.plugins.compose.compiler)
     alias(libs.plugins.kotlin.serialization)
+    id("com.google.android.gms.oss-licenses-plugin")
 }
 
 android {
     namespace = "com.github.jimmy90109.geoalarm"
     compileSdk = 36
+
+    val debugAdMobAppId = "ca-app-pub-3940256099942544~3347511713"
+    val debugHomeNativeAdUnitId = "ca-app-pub-3940256099942544/2247696110"
 
     val localProperties = Properties()
     val localPropertiesFile = rootProject.file("local.properties")
@@ -23,28 +27,41 @@ android {
         applicationId = "com.github.jimmy90109.geoalarm"
         minSdk = 31
         targetSdk = 36
-        versionCode = 2606050
-        versionName = "1.2.0"
+        versionCode = 2607101
+        versionName = "1.4.0"
         
         manifestPlaceholders["GOOGLE_MAPS_API_KEY"] = localProperties.getProperty("maps.apiKey") ?: ""
+        manifestPlaceholders["ADMOB_APP_ID"] = localProperties.getProperty("admob.appId") ?: ""
         manifestPlaceholders["appName"] = "@string/app_name"
         buildConfigField("String", "GOOGLE_MAPS_API_KEY", "\"${localProperties.getProperty("maps.apiKey") ?: ""}\"")
         buildConfigField("String", "TELEMETRYDECK_APP_ID", "\"${localProperties.getProperty("telemetrydeck.appId") ?: ""}\"")
+        buildConfigField("String", "HOME_NATIVE_AD_UNIT_ID", "\"${localProperties.getProperty("admob.homeNativeAdUnitId") ?: ""}\"")
+        buildConfigField("Boolean", "ADS_ENABLED", "false")
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
 
     buildTypes {
         release {
+            manifestPlaceholders += mapOf()
+            val releaseAdMobAppId = localProperties.getProperty("admob.appId") ?: ""
+            val releaseHomeNativeAdUnitId = localProperties.getProperty("admob.homeNativeAdUnitId") ?: ""
+            manifestPlaceholders["ADMOB_APP_ID"] = releaseAdMobAppId
+            buildConfigField("String", "HOME_NATIVE_AD_UNIT_ID", "\"$releaseHomeNativeAdUnitId\"")
+            buildConfigField("Boolean", "ADS_ENABLED", "${releaseAdMobAppId.isNotBlank() && releaseHomeNativeAdUnitId.isNotBlank()}")
             isMinifyEnabled = false
             proguardFiles(
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro"
             )
+            signingConfig = signingConfigs.getByName("debug")
         }
         debug {
             applicationIdSuffix = ".debug"
             manifestPlaceholders["appName"] = "@string/app_name_debug"
+            manifestPlaceholders["ADMOB_APP_ID"] = debugAdMobAppId
+            buildConfigField("String", "HOME_NATIVE_AD_UNIT_ID", "\"$debugHomeNativeAdUnitId\"")
+            buildConfigField("Boolean", "ADS_ENABLED", "true")
         }
     }
     buildFeatures {
@@ -98,12 +115,15 @@ dependencies {
     implementation(platform(libs.androidx.compose.bom))
     implementation(libs.androidx.ui)
     implementation(libs.androidx.ui.graphics)
+    implementation(libs.androidx.graphics.path)
     implementation(libs.androidx.ui.tooling.preview)
     implementation(libs.androidx.material3)
     implementation(libs.androidx.material.icons.extended)
     implementation(libs.androidx.navigation.compose)
     implementation(libs.androidx.ui.text.google.fonts)
     implementation(libs.play.services.location)
+    implementation(libs.play.services.ads)
+    implementation(libs.play.services.oss.licenses)
     implementation(libs.maps.compose)
     implementation(libs.places)
     implementation(libs.accompanist.permissions)
@@ -112,6 +132,7 @@ dependencies {
     implementation(libs.androidx.appfunctions)
     implementation(libs.androidx.appfunctions.service)
     implementation(libs.telemetrydeck.kotlin.sdk)
+    implementation(libs.user.messaging.platform)
 
     // Compose
     implementation(libs.androidx.compose.foundation.layout)
@@ -128,6 +149,14 @@ dependencies {
 
     // HyperIsland ToolKit for Xiaomi Dynamic Island notifications
     implementation(libs.hyperisland.kit)
+
+    // Image/Video Previews & Reorderable List
+    implementation(libs.coil.compose)
+    implementation(libs.coil.video)
+    implementation(libs.reorderable)
+    implementation(libs.telephoto.zoomable.image.coil)
+    implementation(libs.media3.exoplayer)
+    implementation(libs.media3.ui)
 
     // Hilt
     implementation(libs.hilt.android)

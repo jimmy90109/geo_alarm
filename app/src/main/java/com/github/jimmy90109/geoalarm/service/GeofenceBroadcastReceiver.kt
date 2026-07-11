@@ -4,9 +4,13 @@ import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
 import android.util.Log
+import com.github.jimmy90109.geoalarm.GeoAlarmApplication
 import com.github.jimmy90109.geoalarm.utils.WakeLocker
 import com.google.android.gms.location.Geofence
 import com.google.android.gms.location.GeofencingEvent
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
 
 class GeofenceBroadcastReceiver : BroadcastReceiver() {
 
@@ -27,6 +31,14 @@ class GeofenceBroadcastReceiver : BroadcastReceiver() {
 
         val geofenceTransition = geofencingEvent.geofenceTransition
         Log.d("GeofenceReceiver", "Geofence Transition Detected: $geofenceTransition")
+
+        val placeReminderIds = geofencingEvent.triggeringGeofences
+            ?.mapNotNull { PlaceReminderGeofenceManager.reminderIdFromRequestId(it.requestId) }
+            .orEmpty()
+        if (placeReminderIds.isNotEmpty()) {
+            handlePlaceReminderGeofence(context, placeReminderIds)
+            return
+        }
 
         if (geofenceTransition == Geofence.GEOFENCE_TRANSITION_ENTER) {
             val triggeringGeofences = geofencingEvent.triggeringGeofences
@@ -75,6 +87,31 @@ class GeofenceBroadcastReceiver : BroadcastReceiver() {
             }
         } else {
             Log.d("GeofenceReceiver", "Unhandled transition type: $geofenceTransition")
+        }
+    }
+
+    private fun handlePlaceReminderGeofence(context: Context, reminderIds: List<String>) {
+        val pendingResult = goAsync()
+        CoroutineScope(Dispatchers.IO).launch {
+            try {
+                val app = context.applicationContext as GeoAlarmApplication
+                val repository = app.placeReminderRepository
+                val notifier = PlaceReminderNotifier(context)
+                val now = System.currentTimeMillis()
+                reminderIds.distinct().forEach { reminderId ->
+                    val reminderWithItems = repository.getReminder(reminderId) ?: return@forEach
+                    val reminder = reminderWithItems.reminder
+                    if (!reminder.enabled) return@forEach
+                    val lastTriggeredAt = reminder.lastTriggeredAt
+                    val isCoolingDown = lastTriggeredAt != null &&
+                        now - lastTriggeredAt < reminder.cooldownMinutes * 60_000L
+                    if (isCoolingDown) return@forEach
+                    repository.markTriggered(reminder.id, now)
+                    notifier.notify(reminderWithItems)
+                }
+            } finally {
+                pendingResult.finish()
+            }
         }
     }
 }

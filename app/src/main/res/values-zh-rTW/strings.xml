@@ -18,7 +18,7 @@
     <string name="onboarding_intro_privacy_item_3">不會上傳到任何伺服器</string>
     <string name="onboarding_intro_privacy_item_4">請放心開啟權限，讓提醒在最佳時機發生</string>
     <string name="onboarding_location_permission_title">允許精準定位</string>
-    <string name="onboarding_location_permission_body">Geo Alarm 會使用精準定位設定目的地。啟用鬧鐘後，即使 app 已關閉或未使用，Geo Alarm 仍會取得定位來判斷你是否進入鬧鐘範圍；背景定位將只在你啟用鬧鐘時要求。</string>
+    <string name="onboarding_location_permission_body">Geo Alarm 會取得精準定位資料，讓你設定目的地並啟用目的地鬧鐘；即使 app 已關閉或未使用，也會使用定位資料。定位資料會在此裝置上用於判斷你是否進入鬧鐘範圍，不會傳送至 Geo Alarm 伺服器或用於廣告。只有在你啟用鬧鐘時，才會要求背景定位權限。</string>
     <string name="onboarding_notification_permission_title">需要通知權限</string>
     <string name="onboarding_notification_permission_body">到達提醒範圍時會立即發送通知提醒你。</string>
     <string name="onboarding_notification_retry_message">尚未允許通知權限，請再試一次。</string>
@@ -39,6 +39,7 @@
     <string name="enter_alarm_name">輸入鬧鐘名稱</string>
     <string name="select_alarm_icon">選擇鬧鐘圖示</string>
     <string name="next_step">下一步</string>
+    <string name="tap_map_to_select_place">點擊地圖選定地點</string>
     <string name="back_to_map_step">返回地圖</string>
     <string name="radius_label">半徑: %s 公尺</string>
     <string name="save">儲存</string>
@@ -51,6 +52,8 @@
     <string name="language">語言</string>
     <string name="locale_en">English</string>
     <string name="locale_zh">中文 (繁體)</string>
+    <string name="language_switching_title">正在切換語言</string>
+    <string name="language_switching_body">正在套用新的語言設定，馬上就好。</string>
     <string name="ok">確定</string>
     <string name="alarm_deleted">鬧鐘已刪除</string>
     <string name="delete_alarm_title">刪除鬧鐘</string>
@@ -69,7 +72,7 @@
     <string name="already_at_destination_title">已在目的地</string>
     <string name="already_at_destination_message">您已在鬧鐘範圍內，啟用後會立即觸發。</string>
     <string name="background_location_title">需要背景定位權限</string>
-    <string name="background_location_message">若要啟用此鬧鐘，即使 app 已關閉或未使用，Geo Alarm 仍需取得定位來判斷你是否進入鬧鐘範圍。請前往設定並選擇「一律允許」。</string>
+    <string name="background_location_message">Geo Alarm 會取得定位資料，以啟用此目的地鬧鐘；即使 app 已關閉或未使用，也會使用定位資料。定位資料會在此裝置上用於判斷你是否進入鬧鐘範圍，不會傳送至 Geo Alarm 伺服器或用於廣告。若要繼續，請前往設定並選擇「一律允許」。</string>
     <string name="precise_location_title">需要精準定位</string>
     <string name="precise_location_message">精準定位是可靠判斷鬧鐘範圍的必要條件。請前往設定允許定位並開啟精準定位，再啟用此鬧鐘。</string>
     <string name="go_to_settings">前往設定</string>
@@ -81,9 +84,9 @@
     <string name="notification_retry_message">通知功能對於提醒到達目的地至關重要，請允許權限。</string>
     <string name="retry">重試</string>
     <string name="preview">預覽</string>
-    <string name="battery_optimization_banner_message">強烈建議關閉電池最佳化，確保鬧鐘可靠運作。</string>
-    <string name="battery_optimization_allow_now">立即允許</string>
-    <string name="battery_optimization_success_message">已關閉電池最佳化</string>
+    <string name="battery_optimization_banner_message">開啟電池最佳化時仍可使用鬧鐘；在部分裝置上，允許不受限制的電池用量可能改善背景定位的可靠性。</string>
+    <string name="battery_optimization_allow_now">提升可靠性</string>
+    <string name="battery_optimization_success_message">已允許不受限制的電池用量</string>
     <string name="fullscreen_intent_banner_message">螢幕關閉時抵達目的地，顯示全螢幕畫面，讓「關閉」按鈕更容易按到。</string>
     <string name="fullscreen_intent_allow_now">立即允許</string>
     <string name="fullscreen_intent_skip">先不用</string>
@@ -129,6 +132,7 @@
     <string name="monitoring_method">監聽方式</string>
     <string name="monitoring_method_locked">有鬧鐘正在執行時不能更改監聽方式</string>
     <string name="tab_alarms">鬧鐘</string>
+    <string name="tab_reminders">提醒</string>
     <string name="settings_section_general">一般</string>
     <string name="settings_section_alarm">鬧鐘</string>
     <string name="settings_section_privacy_improvement">隱私與改善</string>
@@ -154,9 +158,12 @@
     <string name="analytics_disabled">關閉</string>
     <string name="privacy_policy">隱私權政策</string>
     <string name="view">查看</string>
+    <string name="manage">管理</string>
+    <string name="ad_privacy_options">廣告隱私選項</string>
 
     <!-- About -->
     <string name="section_about">關於</string>
+    <string name="open_source_licenses">開放原始碼授權</string>
     <string name="settings_version_label">版本 %s</string>
 
     <!--  Monitoring Screen  -->
@@ -165,6 +172,7 @@
     <string name="arrived_status">已到站</string>
     <string name="section_all_alarm">所有鬧鐘</string>
     <string name="section_schedules">排程</string>
+    <string name="ad_label">廣告</string>
     <string name="new_alarm">新增鬧鐘</string>
     <string name="new_schedule">新增排程</string>
     <string name="edit_schedule">編輯排程</string>
@@ -210,4 +218,96 @@
     <string name="widget_selection_limit">最多只能選擇 2 個鬧鐘。</string>
     <string name="open_widget_picker">新增小工具</string>
     <string name="widget_pin_not_supported">目前的桌面啟動器不支援由 App 直接新增小工具。</string>
+
+    <!-- 地點提醒 -->
+    <string name="place_reminders_title">地點提醒</string>
+    <string name="place_reminder_beta_tag">Beta</string>
+    <string name="place_reminder_add">新增地點提醒</string>
+    <string name="place_reminder_section_enabled">啟用中</string>
+    <string name="place_reminder_section_saved">已儲存</string>
+    <string name="place_reminder_empty_title">讓地點帶出當下需要的內容</string>
+    <string name="place_reminder_empty_body">把備忘、清單、照片或影片存到指定地點，GeoAlarm 會全天候監聽範圍，抵達時提醒你打開。</string>
+    <string name="place_reminder_empty_cta">新增地點提醒</string>
+    <string name="place_reminder_help_title">鬧鐘 vs 提醒</string>
+    <string name="place_reminder_help_body">兩者都可以使用定位，但適合的情境不一樣。</string>
+    <string name="place_reminder_help_alarm_title">定位鬧鐘</string>
+    <string name="place_reminder_help_alarm_body">適合正在移動時使用，一次啟用一個行程監控，抵達後會大力震動，直到你手動關閉。</string>
+    <string name="place_reminder_help_reminder_title">地點提醒</string>
+    <string name="place_reminder_help_reminder_body">適合把內容存到某個地點，沒有開著行程監控時，也能在抵達附近提醒你打開。</string>
+    <string name="place_reminder_help_done">知道了</string>
+    <string name="place_reminder_permission_title">需要權限才能穩定提醒</string>
+    <string name="place_reminder_permission_body">GeoAlarm 需要背景定位，才能在你抵達指定地點時提醒你。我們不會持續顯示你的移動路線，只會用你設定的地點範圍判斷是否抵達。</string>
+    <string name="place_reminder_missing_precise">精準定位未開啟</string>
+    <string name="place_reminder_missing_background">允許背景定位，離開 App 後才能在抵達時提醒你</string>
+    <string name="place_reminder_missing_notifications">通知權限未開啟</string>
+    <string name="place_reminder_missing_location_service">系統定位服務已關閉</string>
+    <string name="place_reminder_allow_location">允許定位</string>
+    <string name="place_reminder_allow_notifications">允許通知</string>
+    <string name="place_reminder_refresh_status">重新檢查</string>
+    <string name="place_reminder_dashboard_title">抵達時可用的地點筆記</string>
+    <string name="place_reminder_enabled_count">%d 個啟用中</string>
+    <string name="place_reminder_ready_status">已就緒</string>
+    <string name="place_reminder_needs_attention">需要處理</string>
+    <string name="place_reminder_no_recent_trigger">還沒有近期提醒。</string>
+    <string name="place_reminder_fix_permissions">處理權限</string>
+    <string name="place_reminder_last_triggered">%s 已提醒</string>
+    <string name="place_reminder_create_title">新增地點提醒</string>
+    <string name="place_reminder_edit_title">編輯地點提醒</string>
+    <string name="place_reminder_detail_title">地點提醒</string>
+    <string name="place_reminder_create_button">建立提醒</string>
+    <string name="place_reminder_step_place">地點</string>
+    <string name="place_reminder_step_content">提醒內容</string>
+    <string name="place_reminder_step_trigger">觸發方式</string>
+    <string name="place_reminder_name">提醒名稱</string>
+    <string name="place_reminder_name_placeholder">例如：超市購物清單</string>
+    <string name="place_reminder_type">提醒類型</string>
+    <string name="place_reminder_type_text">單一提醒</string>
+    <string name="place_reminder_type_checklist">清單</string>
+    <string name="place_reminder_content">提醒內容</string>
+    <string name="place_reminder_add_item">新增項目</string>
+    <string name="place_reminder_new_item">新增項目</string>
+    <string name="place_reminder_place">地點</string>
+    <string name="place_reminder_place_name">地點名稱</string>
+    <string name="place_reminder_place_name_placeholder">為這個地點命名</string>
+    <string name="place_reminder_select_place_icon">選擇地點圖示</string>
+    <string name="place_reminder_edit_place">編輯地點</string>
+    <string name="place_reminder_place_required">搜尋地點，或在地圖上點選位置。</string>
+    <string name="place_reminder_trigger_type">觸發方式</string>
+    <string name="place_reminder_trigger_enter">抵達時</string>
+    <string name="place_reminder_trigger_dwell">停留後</string>
+    <string name="place_reminder_trigger_enter_summary">抵達時提醒</string>
+    <string name="place_reminder_trigger_dwell_summary">停留 %d 分鐘後提醒</string>
+    <string name="place_reminder_dwell_time">停留時間（分鐘）</string>
+    <string name="place_reminder_minutes">%d 分鐘</string>
+    <string name="place_reminder_radius">提醒範圍</string>
+    <string name="place_reminder_radius_hint">範圍太小可能導致提醒不穩定。</string>
+    <string name="place_reminder_cooldown">冷卻時間（小時）</string>
+    <string name="place_reminder_hours">%d 小時</string>
+    <string name="place_reminder_cooldown_today">當天只提醒一次</string>
+    <string name="place_reminder_checklist_summary">%1$s 等 %2$d 項</string>
+    <string name="place_reminder_checklist_progress">完成 %1$d/%2$d</string>
+    <string name="place_reminder_attachment_summary">%1$d 張照片 · %2$d 部影片</string>
+    <string name="place_reminder_more_attachments">+%d</string>
+    <string name="place_reminder_attachments">附件</string>
+    <string name="place_reminder_add_attachment">新增媒體</string>
+    <string name="place_reminder_adding_attachments">正在加入媒體…</string>
+    <string name="place_reminder_attachments_limit">最多 %d 個附件</string>
+    <string name="place_reminder_attachments_limit_reached">已達附件上限（%d 個）</string>
+    <string name="place_reminder_attachments_hint">加入抵達時可能會用到的照片或影片。</string>
+    <string name="place_reminder_attachment_local">已儲存在此裝置</string>
+    <string name="place_reminder_trigger_area">提醒範圍</string>
+    <string name="place_reminder_edit_action">編輯</string>
+    <string name="place_reminder_reset_checklist">重設清單</string>
+    <string name="place_reminder_reset_checklist_title">要重設清單嗎？</string>
+    <string name="place_reminder_reset_checklist_message">已勾選的項目會全部改回未完成。</string>
+    <string name="place_reminder_not_found">找不到這個提醒。</string>
+    <string name="place_reminder_delete_title">刪除提醒</string>
+    <string name="place_reminder_delete_message">確定要刪除這個地點提醒嗎？</string>
+    <string name="place_reminder_channel_name">地點提醒</string>
+    <string name="place_reminder_channel_description">抵達已設定地點時顯示提醒</string>
+    <string name="place_reminder_notification_title">到達%s</string>
+    <string name="place_reminder_notification_attachment_body">到這裡記得查看「%1$s」的附件：%2$d 張照片、%3$d 部影片</string>
+    <plurals name="place_reminder_notification_checklist_body">
+        <item quantity="other">到這裡記得查看「%1$s」：%2$d 項待處理</item>
+    </plurals>
 </resources>

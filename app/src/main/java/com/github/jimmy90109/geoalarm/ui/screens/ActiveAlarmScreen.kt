@@ -64,6 +64,10 @@ import com.github.jimmy90109.geoalarm.data.PaymentShortcut
 import com.github.jimmy90109.geoalarm.utils.DistanceFormatter
 import kotlinx.coroutines.delay
 import kotlin.math.sqrt
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.RowScope
+import com.github.jimmy90109.geoalarm.ui.components.ActionBanner
+import com.github.jimmy90109.geoalarm.ui.components.ActionBannerButton
 
 enum class ReliabilityBannerState {
     Hidden,
@@ -373,141 +377,55 @@ private fun ReliabilityBanner(
             if (darkTheme) Color(0xFFC8E6C9) else Color(0xFF0B3D16)
         ReliabilityBannerState.Hidden -> MaterialTheme.colorScheme.onSurface
     }
-    val containerColor by animateColorAsState(
-        targetValue = targetContainerColor,
-        animationSpec = tween(300),
-        label = "batteryBannerContainerColor",
-    )
-    val contentColor by animateColorAsState(
-        targetValue = targetContentColor,
-        animationSpec = tween(300),
-        label = "batteryBannerContentColor",
-    )
-    val buttonColors = ButtonDefaults.buttonColors(
-        containerColor = MaterialTheme.colorScheme.surfaceContainerHighest.copy(alpha = 0.62f),
-        contentColor = MaterialTheme.colorScheme.onSurface,
-    )
-
-    Surface(
-        modifier = modifier
-            .fillMaxWidth()
-            .animateContentSize(
-                animationSpec = tween(
-                    durationMillis = 300,
-                    easing = FastOutSlowInEasing,
-                ),
-            ),
-        shape = MaterialTheme.shapes.large,
-        color = containerColor,
-        contentColor = contentColor,
-        tonalElevation = 6.dp,
+    ActionBanner(
+        icon = when (state) {
+            ReliabilityBannerState.BatteryOptimizationWarning -> Icons.Default.BatteryAlert
+            ReliabilityBannerState.FullScreenIntentWarning -> Icons.Outlined.Info
+            else -> Icons.Default.CheckCircle
+        },
+        message = stringResource(
+            when (state) {
+                ReliabilityBannerState.BatteryOptimizationWarning ->
+                    R.string.battery_optimization_banner_message
+                ReliabilityBannerState.FullScreenIntentWarning ->
+                    R.string.fullscreen_intent_banner_message
+                ReliabilityBannerState.BatteryOptimizationSuccess ->
+                    R.string.battery_optimization_success_message
+                ReliabilityBannerState.Hidden ->
+                    R.string.battery_optimization_success_message
+            }
+        ),
+        containerColor = targetContainerColor,
+        contentColor = targetContentColor,
+        modifier = modifier,
     ) {
-        Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 16.dp, vertical = 14.dp),
-        ) {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                AnimatedContent(
-                    targetState = state,
-                    transitionSpec = {
-                        fadeIn(animationSpec = tween(180)).togetherWith(
-                            fadeOut(animationSpec = tween(120))
-                        )
-                    },
-                    label = "batteryBannerIcon",
-                ) { targetState ->
-                    Icon(
-                        imageVector = when (targetState) {
-                            ReliabilityBannerState.BatteryOptimizationWarning -> Icons.Default.BatteryAlert
-                            ReliabilityBannerState.FullScreenIntentWarning -> Icons.Outlined.Info
-                            else -> Icons.Default.CheckCircle
-                        },
-                        contentDescription = null,
-                        modifier = Modifier.size(24.dp),
-                    )
-                }
-                Text(
-                    text = stringResource(
-                        when (state) {
-                            ReliabilityBannerState.BatteryOptimizationWarning ->
-                                R.string.battery_optimization_banner_message
-                            ReliabilityBannerState.FullScreenIntentWarning ->
-                                R.string.fullscreen_intent_banner_message
-                            ReliabilityBannerState.BatteryOptimizationSuccess ->
-                                R.string.battery_optimization_success_message
-                            ReliabilityBannerState.Hidden ->
-                                R.string.battery_optimization_success_message
-                        }
-                    ),
-                    style = MaterialTheme.typography.bodyMedium,
-                    fontWeight = FontWeight.SemiBold,
-                    modifier = Modifier
-                        .padding(start = 12.dp)
-                        .weight(1f),
-                )
-            }
-            AnimatedVisibility(
-                visible = state == ReliabilityBannerState.BatteryOptimizationWarning ||
-                    state == ReliabilityBannerState.FullScreenIntentWarning,
-                enter = fadeIn(animationSpec = tween(180)),
-                exit = fadeOut(animationSpec = tween(140)) + shrinkVertically(
-                    animationSpec = tween(
-                        durationMillis = 300,
-                        easing = FastOutSlowInEasing,
-                    ),
-                    shrinkTowards = Alignment.Top,
-                )
-            ) {
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(top = 12.dp),
-                    horizontalArrangement = Arrangement.spacedBy(12.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                ) {
-                    if (state == ReliabilityBannerState.FullScreenIntentWarning) {
-                        Button(
-                            onClick = onFullScreenIntentSkipClick,
-                            modifier = Modifier
-                                .weight(1f)
-                                .height(48.dp),
-                            colors = buttonColors,
-                        ) {
-                            Text(
-                                text = stringResource(R.string.fullscreen_intent_skip),
-                                textAlign = TextAlign.Center,
-                            )
-                        }
+        if (state == ReliabilityBannerState.FullScreenIntentWarning) {
+            ActionBannerButton(
+                text = stringResource(R.string.fullscreen_intent_skip),
+                onClick = onFullScreenIntentSkipClick,
+                modifier = Modifier
+                    .weight(1f)
+                    .height(48.dp),
+            )
+        }
+        if (state == ReliabilityBannerState.BatteryOptimizationWarning || state == ReliabilityBannerState.FullScreenIntentWarning) {
+            ActionBannerButton(
+                text = stringResource(
+                    if (state == ReliabilityBannerState.BatteryOptimizationWarning) {
+                        R.string.battery_optimization_allow_now
+                    } else {
+                        R.string.fullscreen_intent_allow_now
                     }
-                    Button(
-                        onClick = if (state == ReliabilityBannerState.BatteryOptimizationWarning) {
-                            onBatteryOptimizationClick
-                        } else {
-                            onFullScreenIntentAllowClick
-                        },
-                        modifier = Modifier
-                            .weight(1f)
-                            .height(48.dp),
-                        colors = buttonColors,
-                    ) {
-                        Text(
-                            text = stringResource(
-                                if (state == ReliabilityBannerState.BatteryOptimizationWarning) {
-                                    R.string.battery_optimization_allow_now
-                                } else {
-                                    R.string.fullscreen_intent_allow_now
-                                }
-                            ),
-                            fontWeight = FontWeight.Bold,
-                            textAlign = TextAlign.Center,
-                        )
-                    }
-                }
-            }
+                ),
+                onClick = if (state == ReliabilityBannerState.BatteryOptimizationWarning) {
+                    onBatteryOptimizationClick
+                } else {
+                    onFullScreenIntentAllowClick
+                },
+                modifier = Modifier
+                    .weight(1f)
+                    .height(48.dp),
+            )
         }
     }
 }

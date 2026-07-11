@@ -1,4 +1,4 @@
-# GeoAlarm - A Location-Based Alarm Clock
+# GeoAlarm
 
 ![Downloads](https://img.shields.io/github/downloads/jimmy90109/geo_alarm/total)
 ![GitHub release (latest by date)](https://img.shields.io/github/v/release/jimmy90109/geo_alarm)
@@ -6,125 +6,142 @@
 ![License](https://img.shields.io/badge/License-Apache%202.0-blue.svg)
 
 ![Min SDK](https://img.shields.io/badge/Min%20SDK-31%2B-orange.svg)
-![Platform: Android](https://img.shields.io/badge/Platform-Android-green.svg)
+![Target SDK](https://img.shields.io/badge/Target%20SDK-36-green.svg)
 ![Language: Kotlin](https://img.shields.io/badge/Language-Kotlin-purple.svg)
 ![UI: Jetpack Compose](https://img.shields.io/badge/UI-Jetpack%20Compose-blue.svg)
 
-An intelligent alarm clock app built with **Kotlin** and **Jetpack Compose** that triggers an alarm when you enter a predefined geographical area. Perfect for commuters who want to nap on the train or bus without worrying about missing their stop.
+[![Get it on Google Play](https://play.google.com/intl/en_us/badges/static/images/badges/en_badge_web_generic.png)](https://play.google.com/store/apps/details?id=com.github.jimmy90109.geoalarm)
 
-## 🌟 Core Features
+GeoAlarm is a location-based alarm app for Android. Pick a destination, set a radius, and let the app alert you when you get close. It is built for commuters who want to rest on a train or bus without missing their stop.
 
-* **📍 Set Destination via Map**: Easily set your destination by tapping on an interactive Google Map.
-* **🔍 Search for Destinations**: Find your destination quickly by searching for addresses, landmarks, or station names.
-* **⭕ Adjustable Trigger Radius**: Define a geofence by setting a radius around your destination.
-* **🔔 Background Monitoring**: The app reliably tracks your location in the background using a foreground service.
-* **🔊 Intrusive Alarm**: When you enter the target area, a vibrating alarm is triggered.
-* **🗂️ Alarm Management**: Save, view, edit, and delete your alarms in a clean and simple list.
-* **Toggle On/Off**: Easily activate or deactivate any saved alarm with a single switch.
-* **🎵 Ringtone Customization**: Choose your preferred ringtone or search for new ones.
-* **🎧 Intelligent Audio Output**: Plays arrival sound through headphones if connected to avoid public disturbance; otherwise vibrates.
-* **🫥 Optional Anonymous Usage Analytics**: Privacy-first telemetry for product stability insights, with an in-app opt-out switch.
-* **🌐 Multi-language**: Supports English and Traditional Chinese (繁體中文).
+Traditional Chinese: GeoAlarm 是一款定位鬧鐘 Android App。設定目的地與提醒半徑後，接近目的地時會提醒你，適合通勤、搭車小睡或任何需要「到點再叫我」的場景。
 
-## 🛠️ Tech Stack & Architecture
+## Features
 
-This project is built using modern Android development practices with a clean architecture.
+- Location-based alarms with adjustable trigger radius
+- Google Maps destination picker and Google Places search
+- Background monitoring with foreground service notifications
+- Dynamic location polling that checks less often when far away and increases precision near the destination
+- Arrival alert with vibration, optional ringtone, and full-screen arrival screen support
+- Headphone-aware ringtone playback to reduce public disturbance
+- Alarm schedules for recurring commute routines
+- Home screen widget for quickly starting selected alarms
+- App shortcuts for creating alarms and schedules faster
+- Optional payment app shortcut after arrival, useful for ride-code workflows
+- Alarm icons, enable/disable controls, editing, deletion, and undo
+- English and Traditional Chinese UI
+- Optional AdMob native ads on the home screen when ad support is configured
+- Optional anonymous analytics with an in-app opt-out
 
-### Technology
-* **Language**: Kotlin
-* **UI Framework**: Jetpack Compose with Material Design 3
-* **Architecture**: MVVM with Repository Pattern
-* **Database**: Room (SQLite)
-* **Dependency Injection**: Manual DI via Application class
-* **Maps**: Google Maps SDK for Android
-* **Background Service**: Foreground Service for reliable location tracking
+## Privacy
 
-### Directory Structure
-```
+GeoAlarm uses location permission to detect whether your device has entered the alarm area. Alarm location processing happens on the device.
+
+GeoAlarm does not upload your live location, saved destinations, alarm names, radius settings, or schedule details to a GeoAlarm server. Google Maps Platform may process map and place search usage according to Google's policies, optional AdMob ads may process advertising data according to Google's advertising policies, and optional TelemetryDeck analytics are used only for anonymous stability and usage insights.
+
+Ad-supported builds use Google's User Messaging Platform for consent handling where required. If advertising is enabled, Android advertising ID access is declared with `com.google.android.gms.permission.AD_ID` so Android 13+ devices can provide the advertising ID according to user settings.
+
+Read the full policy: [docs/privacy-policy.html](docs/privacy-policy.html)
+
+## Tech Stack
+
+- Kotlin
+- Jetpack Compose and Material 3
+- MVVM-style UI state with repository-backed data access
+- Hilt for dependency injection
+- Room for local alarm and schedule storage
+- DataStore for app preferences
+- Google Maps SDK, Places SDK, and Play services location
+- Google Mobile Ads SDK and User Messaging Platform for optional ad-supported builds
+- Foreground services, notifications, geofencing/location monitoring, exact alarms, and widgets
+- Android App Functions and app shortcuts for system integrations
+- TelemetryDeck for optional anonymous analytics
+
+## Project Structure
+
+```text
 app/src/main/java/com/github/jimmy90109/geoalarm/
-├── data/
-│   ├── Alarm.kt              # Data entity
-│   ├── AlarmDao.kt           # Room DAO
-│   ├── AlarmRepository.kt    # Repository
-│   ├── AppDatabase.kt        # Room database
-│   └── RingtoneSettings.kt   # Ringtone preferences
-│
-├── service/
-│   └── GeoAlarmService.kt    # Foreground service for location monitoring
-│
-├── ui/
-│   ├── screens/
-│   │   ├── HomeScreen.kt     # Main alarm list screen
-│   │   ├── AlarmEditScreen.kt # Create/Edit alarm screen
-│   │   └── SettingsScreen.kt # Settings & Ringtone config
-│   └── theme/
-│       ├── Color.kt
-│       ├── Theme.kt
-│       └── Type.kt
-│
-├── utils/
-│   └── AudioUtils.kt         # Audio focus & output management
-│
-├── GeoAlarmApplication.kt    # Application class
-└── MainActivity.kt           # Main entry point
+├── ads/              # AdMob consent, native ad loading, and ad eligibility
+├── analytics/        # Optional analytics abstraction and TelemetryDeck implementation
+├── appactions/       # App action parsing and use cases
+├── appfunctions/     # Android App Functions entry points
+├── data/             # Room entities, DAOs, repositories, preferences
+├── data/location/    # Current location and permission helpers
+├── data/places/      # Google Places search/autocomplete services
+├── di/               # Hilt modules
+├── navigation/       # Compose navigation routes and host
+├── receiver/         # Schedule receivers
+├── service/          # Location monitoring and alarm services
+├── share/            # Shared place parsing
+├── ui/               # Compose screens, components, theme, view models
+├── util/             # Permission helpers
+├── utils/            # Audio, distance, wake lock, payment shortcut utilities
+└── widget/           # Glance app widget
 ```
 
-## 🚀 Getting Started
-
-Follow these instructions to get the project up and running on your local machine.
+## Getting Started
 
 ### Prerequisites
 
-* Android Studio (latest version recommended)
-* Android SDK 35+
-* A Google Maps Platform API Key
+- Android Studio
+- JDK 17
+- Android SDK 36
+- Google Maps Platform API key with Maps SDK for Android and Places API enabled
 
-### Installation & Setup
+### Setup
 
-1.  **Clone the repository:**
-    ```sh
-    git clone https://github.com/jimmy90109/geo_alarm.git
-    cd geo_alarm
-    ```
+1. Clone the repository:
 
-2.  **Configure API Keys:**
-    You need to add your Google Maps API key. Make sure you have enabled **Maps SDK for Android** in your Google Cloud Console.
+   ```sh
+   git clone https://github.com/jimmy90109/geo_alarm.git
+   cd geo_alarm
+   ```
 
-    1. Copy `local.properties.example` to `local.properties` (or create a new one)
-    2. Add your Google Maps API key:
-       ```properties
-       MAPS_API_KEY=YOUR_GOOGLE_MAPS_API_KEY_HERE
-       ```
+2. Create or update `local.properties`:
 
-    **Security Note:** The `local.properties` file is excluded from version control to keep your API keys secure.
+   ```properties
+   maps.apiKey=YOUR_GOOGLE_MAPS_API_KEY
+   ```
 
-3.  **Build and Run:**
-    Open the project in Android Studio and run on an emulator or physical device.
+3. Optional: configure TelemetryDeck analytics:
 
-4.  **(Optional) Configure TelemetryDeck analytics:**
-    ```properties
-    telemetrydeck.appId=YOUR_TELEMETRYDECK_APP_ID
-    ```
-    Setup and removal guide: `docs/analytics.md`
+   ```properties
+   telemetrydeck.appId=YOUR_TELEMETRYDECK_APP_ID
+   ```
 
-## ⚠️ Key Challenges & Considerations
+   Analytics can also be left unconfigured. See [docs/analytics.md](docs/analytics.md).
 
-* **Background Execution & Battery Optimization**: The biggest challenge is ensuring the foreground service is not killed by the OS, especially on heavily customized Android versions (like Xiaomi, Huawei, OnePlus). The app should guide users to disable battery optimization for GeoAlarm.
-* **Permission Handling**: The app must gracefully handle cases where the user denies location permissions.
-* **Reliability**: The alarm trigger logic must be robust and tested across various real-world scenarios.
+4. Optional: configure AdMob for release builds:
 
-## 🌿 Branching Strategy
+   ```properties
+   admob.appId=YOUR_ADMOB_APP_ID
+   admob.homeNativeAdUnitId=YOUR_HOME_NATIVE_AD_UNIT_ID
+   ```
 
-- `main`: Stable release branch
-- `dev`: Development integration branch
-- `feature/*`: Feature development branches
+   Debug builds use Google's sample AdMob app ID and native ad unit ID. Release builds enable ads only when both AdMob values are present in `local.properties`; otherwise ad loading remains disabled.
 
-## 🤝 Contributing
+5. Build the debug app:
+
+   ```sh
+   ./gradlew assembleDebug
+   ```
+
+## Notes for Android Reliability
+
+Location alarms depend on Android location, notification, foreground service, exact alarm, and battery settings. GeoAlarm guides users through the required permissions, but behavior can still vary by device manufacturer and battery policy.
+
+For best reliability, allow precise location, background location, notifications, exact alarms, and unrestricted battery usage when prompted.
+
+## Contributing
 
 1. Create a feature branch from `dev`
-2. Submit a Pull Request to `dev` when complete
-3. After testing stability, create PR from `dev` to `main`
+2. Submit a pull request to `dev`
+3. After testing stability, merge `dev` into `main`
 
-## 📝 Note
+## License
 
-This project was originally built with Flutter and has been rewritten in pure Kotlin with Jetpack Compose for better Android platform integration and performance. The original Flutter code is available in the Git history.
+GeoAlarm is released under the [Apache License 2.0](LICENSE).
+
+## History
+
+This project was originally built with Flutter and later rewritten in Kotlin with Jetpack Compose for better Android platform integration and performance. The original Flutter code remains available in Git history.

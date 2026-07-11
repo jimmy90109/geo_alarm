@@ -6,6 +6,9 @@ import kotlinx.serialization.Serializable
 sealed interface MainRoutes {
     @Serializable
     data object Home : MainRoutes
+
+    @Serializable
+    data object PlaceReminders : MainRoutes
     
     @Serializable
     data object Settings : MainRoutes
