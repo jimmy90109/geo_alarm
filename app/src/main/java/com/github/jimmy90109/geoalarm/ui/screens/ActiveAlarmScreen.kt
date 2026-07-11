@@ -4,7 +4,6 @@ import android.content.res.Configuration.ORIENTATION_LANDSCAPE
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.animateColorAsState
-import androidx.compose.animation.animateContentSize
 import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.RepeatMode
 import androidx.compose.animation.core.animateFloat
@@ -14,7 +13,6 @@ import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
-import androidx.compose.animation.shrinkVertically
 import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
@@ -61,6 +59,7 @@ import androidx.compose.ui.unit.sp
 import com.github.jimmy90109.geoalarm.R
 import com.github.jimmy90109.geoalarm.data.Alarm
 import com.github.jimmy90109.geoalarm.data.PaymentShortcut
+import com.github.jimmy90109.geoalarm.ui.theme.GeoAlarmTheme
 import com.github.jimmy90109.geoalarm.utils.DistanceFormatter
 import kotlinx.coroutines.delay
 import kotlin.math.sqrt
@@ -398,6 +397,8 @@ private fun ReliabilityBanner(
         containerColor = targetContainerColor,
         contentColor = targetContentColor,
         modifier = modifier,
+        showActions = state == ReliabilityBannerState.BatteryOptimizationWarning ||
+            state == ReliabilityBannerState.FullScreenIntentWarning,
     ) {
         if (state == ReliabilityBannerState.FullScreenIntentWarning) {
             ActionBannerButton(
@@ -461,7 +462,7 @@ private fun PaymentShortcutPrompt(
     }
 }
 
-@Preview
+@Preview(name = "Active alarm - battery warning", widthDp = 390, heightDp = 720)
 @Composable
 fun ActiveAlarmScreenPreview() {
     val mockAlarm = Alarm(
@@ -482,7 +483,7 @@ fun ActiveAlarmScreenPreview() {
         }
     }
 
-    MaterialTheme {
+    GeoAlarmTheme(dynamicColor = false) {
         ActiveAlarmScreen(
             alarm = mockAlarm,
             progress = progressState.intValue,
@@ -490,5 +491,61 @@ fun ActiveAlarmScreenPreview() {
             reliabilityBannerState = ReliabilityBannerState.BatteryOptimizationWarning,
             onStopAlarm = {},
         )
+    }
+}
+
+@Preview(name = "Reliability banner - battery warning", widthDp = 390, showBackground = true)
+@Composable
+private fun BatteryOptimizationWarningBannerPreview() {
+    GeoAlarmTheme(dynamicColor = false) {
+        ReliabilityBannerPreviewContainer {
+            ReliabilityBanner(
+                state = ReliabilityBannerState.BatteryOptimizationWarning,
+                onBatteryOptimizationClick = {},
+                onFullScreenIntentAllowClick = {},
+                onFullScreenIntentSkipClick = {},
+            )
+        }
+    }
+}
+
+@Preview(name = "Reliability banner - battery success", widthDp = 390, showBackground = true)
+@Composable
+private fun BatteryOptimizationSuccessBannerPreview() {
+    GeoAlarmTheme(dynamicColor = false) {
+        ReliabilityBannerPreviewContainer {
+            ReliabilityBanner(
+                state = ReliabilityBannerState.BatteryOptimizationSuccess,
+                onBatteryOptimizationClick = {},
+                onFullScreenIntentAllowClick = {},
+                onFullScreenIntentSkipClick = {},
+            )
+        }
+    }
+}
+
+@Preview(name = "Reliability banner - full screen intent", widthDp = 390, showBackground = true)
+@Composable
+private fun FullScreenIntentBannerPreview() {
+    GeoAlarmTheme(dynamicColor = false) {
+        ReliabilityBannerPreviewContainer {
+            ReliabilityBanner(
+                state = ReliabilityBannerState.FullScreenIntentWarning,
+                onBatteryOptimizationClick = {},
+                onFullScreenIntentAllowClick = {},
+                onFullScreenIntentSkipClick = {},
+            )
+        }
+    }
+}
+
+@Composable
+private fun ReliabilityBannerPreviewContainer(content: @Composable () -> Unit) {
+    Box(
+        modifier = Modifier
+            .background(MaterialTheme.colorScheme.surface)
+            .padding(24.dp),
+    ) {
+        content()
     }
 }
