@@ -12,7 +12,7 @@ plugins {
 
 android {
     namespace = "com.github.jimmy90109.geoalarm"
-    compileSdk = 36
+    compileSdk = 37
 
     val debugAdMobAppId = "ca-app-pub-3940256099942544~3347511713"
     val debugHomeNativeAdUnitId = "ca-app-pub-3940256099942544/2247696110"
@@ -26,7 +26,7 @@ android {
     defaultConfig {
         applicationId = "com.github.jimmy90109.geoalarm"
         minSdk = 31
-        targetSdk = 36
+        targetSdk = 37
         versionCode = 2607101
         versionName = "1.4.0"
         
