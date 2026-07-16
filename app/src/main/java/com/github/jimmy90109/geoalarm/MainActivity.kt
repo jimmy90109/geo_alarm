@@ -9,6 +9,7 @@ import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.viewModels
 import androidx.appcompat.app.AppCompatActivity
+import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.lifecycleScope
 import com.github.jimmy90109.geoalarm.appactions.AlarmTurnOffUseCase
 import com.github.jimmy90109.geoalarm.appactions.AppActionContract
@@ -29,6 +30,7 @@ import com.github.jimmy90109.geoalarm.ui.theme.GeoAlarmTheme
 import com.github.jimmy90109.geoalarm.ui.viewmodel.HomeAction
 import com.github.jimmy90109.geoalarm.ui.viewmodel.HomeViewModel
 import com.github.jimmy90109.geoalarm.widget.GeoAlarmGlanceWidget
+import com.github.jimmy90109.geoalarm.util.InAppReviewLauncher
 import androidx.glance.appwidget.updateAll
 import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.CoroutineScope
@@ -54,6 +56,9 @@ class MainActivity : AppCompatActivity() {
     lateinit var alarmTurnOffUseCase: AlarmTurnOffUseCase
 
     @Inject
+    lateinit var inAppReviewLauncher: InAppReviewLauncher
+
+    @Inject
     lateinit var createGeoAlarmUseCase: CreateGeoAlarmUseCase
 
     @Inject
@@ -69,6 +74,7 @@ class MainActivity : AppCompatActivity() {
     lateinit var adConsentManager: AdConsentManager
 
     private val homeViewModel: HomeViewModel by viewModels()
+    private var pendingInAppReview = false
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -114,6 +120,11 @@ class MainActivity : AppCompatActivity() {
         handleIntent(intent)
     }
 
+    override fun onPostResume() {
+        super.onPostResume()
+        launchPendingInAppReview()
+    }
+
     private fun handleIntent(intent: Intent) {
         if (intent.action == GeoAlarmService.ACTION_CANCEL_ALARM) {
             val alarmId = intent.getStringExtra(GeoAlarmService.EXTRA_ALARM_ID)
@@ -121,7 +132,10 @@ class MainActivity : AppCompatActivity() {
                 GeoAlarmService.CANCEL_SOURCE_ARRIVAL_TURN_OFF
             if (!alarmId.isNullOrEmpty()) {
                 lifecycleScope.launch {
-                    alarmTurnOffUseCase(alarmId, isArrivedTurnOff)
+                    val result = alarmTurnOffUseCase(alarmId, isArrivedTurnOff)
+                    if (result.shouldRequestInAppReview) {
+                        requestInAppReviewWhenResumed()
+                    }
                 }
             }
         } else if (intent.action == ACTION_OPEN_PLACE_REMINDER) {
@@ -152,6 +166,19 @@ class MainActivity : AppCompatActivity() {
         ) {
             logAndNotify("INVALID_SHARED_PLACE", getString(R.string.invalid_shared_place))
         }
+    }
+
+    private fun requestInAppReviewWhenResumed() {
+        pendingInAppReview = true
+        launchPendingInAppReview()
+    }
+
+    private fun launchPendingInAppReview() {
+        if (!pendingInAppReview || !lifecycle.currentState.isAtLeast(Lifecycle.State.RESUMED)) {
+            return
+        }
+        pendingInAppReview = false
+        inAppReviewLauncher.launch(this)
     }
 
     private fun handleCreateGeoAlarmIntent(intent: Intent) {

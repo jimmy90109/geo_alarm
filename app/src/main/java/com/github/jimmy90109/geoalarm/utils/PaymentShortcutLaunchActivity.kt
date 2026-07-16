@@ -17,7 +17,7 @@ class PaymentShortcutLaunchActivity : Activity() {
             intent.getStringExtra(PaymentShortcutNotifier.EXTRA_SHORTCUT_ID),
         )
         if (shortcut != null) {
-            startActivity(PaymentShortcutNotifier.createOpenPaymentIntent(this, shortcut))
+            PaymentShortcutNotifier.openPaymentTarget(this, shortcut)
         }
 
         finish()

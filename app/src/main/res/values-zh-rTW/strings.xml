@@ -165,6 +165,8 @@
     <string name="section_about">關於</string>
     <string name="open_source_licenses">開放原始碼授權</string>
     <string name="settings_version_label">版本 %s</string>
+    <string name="rate_geoalarm">為 GeoAlarm 評分</string>
+    <string name="open_google_play">前往 Google Play</string>
 
     <!--  Monitoring Screen  -->
     <string name="cancel_alarm">取消鬧鐘</string>

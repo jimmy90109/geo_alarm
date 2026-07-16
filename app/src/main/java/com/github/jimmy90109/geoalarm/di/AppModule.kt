@@ -25,6 +25,8 @@ import com.github.jimmy90109.geoalarm.data.PlaceReminderAttachmentStore
 import com.github.jimmy90109.geoalarm.data.PlaceReminderRepository
 import com.github.jimmy90109.geoalarm.data.LocalPlaceReminderAttachmentStore
 import com.github.jimmy90109.geoalarm.data.ScheduleDao
+import com.github.jimmy90109.geoalarm.data.ReviewPromptRepository
+import com.github.jimmy90109.geoalarm.data.ReviewPromptStore
 import com.github.jimmy90109.geoalarm.data.location.AndroidCurrentLocationClient
 import com.github.jimmy90109.geoalarm.data.location.AndroidAlarmActivationPermissionChecker
 import com.github.jimmy90109.geoalarm.data.location.AndroidLocationPermissionChecker
@@ -41,17 +43,24 @@ import com.github.jimmy90109.geoalarm.data.places.PlaceAutocompleteService
 import com.github.jimmy90109.geoalarm.data.places.PlaceSearchService
 import com.github.jimmy90109.geoalarm.widget.AppWidgetUpdater
 import com.github.jimmy90109.geoalarm.widget.WidgetUpdater
+import com.github.jimmy90109.geoalarm.util.PlayReviewManagerProvider
+import com.github.jimmy90109.geoalarm.util.ReviewManagerProvider
 import dagger.Binds
 import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn
 import dagger.hilt.android.qualifiers.ApplicationContext
 import dagger.hilt.components.SingletonComponent
+import java.time.Clock
 import javax.inject.Singleton
 
 @Module
 @InstallIn(SingletonComponent::class)
 object DatabaseModule {
+    @Provides
+    @Singleton
+    fun provideClock(): Clock = Clock.systemUTC()
+
     @Provides
     @Singleton
     fun provideAppDatabase(@ApplicationContext context: Context): AppDatabase {
@@ -130,6 +139,18 @@ abstract class RepositoryModule {
     abstract fun bindAnalyticsPreferencesStore(
         repository: AnalyticsPreferencesRepository
     ): AnalyticsPreferencesStore
+
+    @Binds
+    @Singleton
+    abstract fun bindReviewPromptStore(
+        repository: ReviewPromptRepository
+    ): ReviewPromptStore
+
+    @Binds
+    @Singleton
+    abstract fun bindReviewManagerProvider(
+        provider: PlayReviewManagerProvider
+    ): ReviewManagerProvider
 
     @Binds
     @Singleton

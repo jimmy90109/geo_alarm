@@ -118,6 +118,7 @@ dependencies {
 
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.appcompat)
+    implementation(libs.androidx.browser)
     implementation(libs.material)
     implementation(libs.androidx.lifecycle.runtime.ktx)
     implementation(libs.androidx.activity.compose)
@@ -133,6 +134,8 @@ dependencies {
     implementation(libs.play.services.location)
     implementation(libs.play.services.ads)
     implementation(libs.play.services.oss.licenses)
+    implementation(libs.play.review)
+    implementation(libs.play.review.ktx)
     implementation(libs.maps.compose)
     implementation(libs.places)
     implementation(libs.accompanist.permissions)

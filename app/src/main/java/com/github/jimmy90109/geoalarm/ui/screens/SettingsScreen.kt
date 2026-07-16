@@ -78,7 +78,6 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalHapticFeedback
-import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.font.FontWeight
@@ -91,6 +90,8 @@ import com.github.jimmy90109.geoalarm.R
 import com.github.jimmy90109.geoalarm.data.PaymentShortcut
 import com.github.jimmy90109.geoalarm.data.RingtoneSettings
 import com.github.jimmy90109.geoalarm.util.FullScreenIntentPermissionHelper
+import com.github.jimmy90109.geoalarm.util.PlayStoreListingLauncher
+import com.github.jimmy90109.geoalarm.util.WebPageLauncher
 import com.github.jimmy90109.geoalarm.ui.viewmodel.SettingsAction
 import com.github.jimmy90109.geoalarm.ui.viewmodel.SettingsViewModel
 import com.github.jimmy90109.geoalarm.utils.AudioUtils
@@ -119,7 +120,6 @@ fun SettingsScreen(
     val currentLanguage = viewModel.currentLanguage
     val context = LocalContext.current
     val lifecycleOwner = LocalLifecycleOwner.current
-    val uriHandler = LocalUriHandler.current
     val coroutineScope = rememberCoroutineScope()
     val languageSheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
     val ringtonePickerTitle = stringResource(R.string.ringtone_select)
@@ -144,6 +144,14 @@ fun SettingsScreen(
     fun openOpenSourceLicenses() {
         OssLicensesMenuActivity.setActivityTitle(openSourceLicensesTitle)
         context.startActivity(Intent(context, OssLicensesMenuActivity::class.java))
+    }
+
+    fun openPlayStoreListing() {
+        PlayStoreListingLauncher.open(context)
+    }
+
+    fun openPrivacyPolicy() {
+        WebPageLauncher.open(context, PRIVACY_POLICY_URL)
     }
 
     DisposableEffect(lifecycleOwner) {
@@ -243,11 +251,12 @@ fun SettingsScreen(
                                     viewModel.onAction(SettingsAction.AdPrivacyOptionsRequested(it))
                                 }
                             },
-                            onPrivacyPolicyClick = { uriHandler.openUri(PRIVACY_POLICY_URL) },
+                            onPrivacyPolicyClick = ::openPrivacyPolicy,
                         )
                         Spacer(modifier = Modifier.height(16.dp))
                         SettingsAboutSection(
                             currentVersion = viewModel.currentVersion,
+                            onRateAppClick = ::openPlayStoreListing,
                             onOpenSourceLicensesClick = ::openOpenSourceLicenses,
                         )
                     }
@@ -290,11 +299,12 @@ fun SettingsScreen(
                                 viewModel.onAction(SettingsAction.AdPrivacyOptionsRequested(it))
                             }
                         },
-                        onPrivacyPolicyClick = { uriHandler.openUri(PRIVACY_POLICY_URL) },
+                        onPrivacyPolicyClick = ::openPrivacyPolicy,
                     )
                     Spacer(modifier = Modifier.height(24.dp))
                     SettingsAboutSection(
                         currentVersion = viewModel.currentVersion,
+                        onRateAppClick = ::openPlayStoreListing,
                         onOpenSourceLicensesClick = ::openOpenSourceLicenses,
                     )
                 }
@@ -1008,10 +1018,17 @@ private fun Context.findActivity(): Activity? {
 @Composable
 private fun SettingsAboutSection(
     currentVersion: String,
+    onRateAppClick: () -> Unit,
     onOpenSourceLicensesClick: () -> Unit,
 ) {
     SettingsSectionHeader(title = stringResource(R.string.section_about))
 
+    SettingsCard(
+        title = stringResource(R.string.rate_geoalarm),
+        value = stringResource(R.string.open_google_play),
+        onClick = onRateAppClick,
+    )
+    Spacer(modifier = Modifier.height(8.dp))
     SettingsCard(
         title = stringResource(R.string.section_about),
         value = stringResource(R.string.settings_version_label, currentVersion),
