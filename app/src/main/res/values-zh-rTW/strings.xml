@@ -87,9 +87,9 @@
     <string name="battery_optimization_banner_message">開啟電池最佳化時仍可使用鬧鐘；在部分裝置上，允許不受限制的電池用量可能改善背景定位的可靠性。</string>
     <string name="battery_optimization_allow_now">提升可靠性</string>
     <string name="battery_optimization_success_message">已允許不受限制的電池用量</string>
-    <string name="fullscreen_intent_banner_message">螢幕關閉時抵達目的地，顯示全螢幕畫面，讓「關閉」按鈕更容易按到。</string>
-    <string name="fullscreen_intent_allow_now">立即允許</string>
-    <string name="fullscreen_intent_skip">先不用</string>
+    <string name="samsung_now_bar_banner_message">想讓即時鬧鐘進度顯示在 Samsung Now Bar 上嗎？</string>
+    <string name="samsung_now_bar_later">稍後設定</string>
+    <string name="samsung_now_bar_troubleshoot">疑難排解</string>
     
     <!-- 搜尋字串 -->
     <string name="search_location">搜尋地點</string>
@@ -141,6 +141,8 @@
     <string name="fullscreen_intent_settings_off">未啟用</string>
     <string name="fullscreen_intent_sheet_message">允許全螢幕提醒後，抵達目的地時可以直接看到到站畫面。螢幕鎖定時也更容易找到「關閉」按鈕，快速停止震動與鈴聲。</string>
     <string name="fullscreen_intent_open_settings">開啟設定</string>
+    <string name="samsung_now_bar_settings_title">Samsung Now Bar</string>
+    <string name="samsung_now_bar_settings_value">查看疑難排解</string>
     <string name="settings_ringtone">鈴聲</string>
     <string name="settings_payment_shortcut">支付 App 捷徑</string>
     <string name="payment_shortcut_off">關閉</string>

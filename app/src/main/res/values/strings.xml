@@ -87,9 +87,9 @@
     <string name="battery_optimization_banner_message">Alarms still work with battery optimization on. On some devices, allowing unrestricted battery use may improve background location reliability.</string>
     <string name="battery_optimization_allow_now">Improve reliability</string>
     <string name="battery_optimization_success_message">Unrestricted battery use enabled</string>
-    <string name="fullscreen_intent_banner_message">When the screen is off, show the arrival screen over the lock screen so the Turn Off button is easier to reach.</string>
-    <string name="fullscreen_intent_allow_now">Allow now</string>
-    <string name="fullscreen_intent_skip">Not now</string>
+    <string name="samsung_now_bar_banner_message">Want live alarm updates to appear in Samsung Now Bar?</string>
+    <string name="samsung_now_bar_later">Not now</string>
+    <string name="samsung_now_bar_troubleshoot">Troubleshoot</string>
     
     <!-- Search strings -->
     <string name="search_location">Search location</string>
@@ -141,6 +141,8 @@
     <string name="fullscreen_intent_settings_off">Not enabled</string>
     <string name="fullscreen_intent_sheet_message">Allow full-screen alerts to show the arrival screen as soon as you reach your destination. When your phone is locked, the Turn Off button is easier to find so you can stop vibration and sound quickly.</string>
     <string name="fullscreen_intent_open_settings">Open settings</string>
+    <string name="samsung_now_bar_settings_title">Samsung Now Bar</string>
+    <string name="samsung_now_bar_settings_value">View troubleshooting guide</string>
     <string name="settings_ringtone">Ringtone</string>
     <string name="settings_payment_shortcut">Payment app shortcut</string>
     <string name="payment_shortcut_off">Off</string>

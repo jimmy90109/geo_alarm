@@ -90,6 +90,7 @@ import com.github.jimmy90109.geoalarm.data.PaymentShortcut
 import com.github.jimmy90109.geoalarm.data.RingtoneSettings
 import com.github.jimmy90109.geoalarm.util.FullScreenIntentPermissionHelper
 import com.github.jimmy90109.geoalarm.util.PlayStoreListingLauncher
+import com.github.jimmy90109.geoalarm.util.SamsungNowBarGuide
 import com.github.jimmy90109.geoalarm.util.WebPageLauncher
 import com.github.jimmy90109.geoalarm.ui.viewmodel.SettingsAction
 import com.github.jimmy90109.geoalarm.ui.viewmodel.SettingsViewModel
@@ -150,6 +151,10 @@ fun SettingsScreen(
 
     fun openPrivacyPolicy() {
         WebPageLauncher.open(context, PRIVACY_POLICY_URL)
+    }
+
+    fun openSamsungNowBarGuide() {
+        WebPageLauncher.open(context, SamsungNowBarGuide.url(context))
     }
 
     DisposableEffect(lifecycleOwner) {
@@ -222,6 +227,7 @@ fun SettingsScreen(
                             ringtoneSettings = ringtoneSettings,
                             paymentShortcut = paymentShortcut,
                             showFullScreenIntentSetting = FullScreenIntentPermissionHelper.isRequired(),
+                            showSamsungNowBarGuide = SamsungNowBarGuide.isSupportedDevice(),
                             canUseFullScreenIntent = canUseFullScreenIntent,
                             onRingtoneClick = { viewModel.onAction(SettingsAction.RingtoneSheetRequested) },
                             onPaymentShortcutClick = {
@@ -230,6 +236,7 @@ fun SettingsScreen(
                             onFullScreenIntentClick = {
                                 viewModel.onAction(SettingsAction.FullScreenIntentSheetRequested)
                             },
+                            onSamsungNowBarClick = ::openSamsungNowBarGuide,
                         )
                     }
 
@@ -276,6 +283,7 @@ fun SettingsScreen(
                         ringtoneSettings = ringtoneSettings,
                         paymentShortcut = paymentShortcut,
                         showFullScreenIntentSetting = FullScreenIntentPermissionHelper.isRequired(),
+                        showSamsungNowBarGuide = SamsungNowBarGuide.isSupportedDevice(),
                         canUseFullScreenIntent = canUseFullScreenIntent,
                         onRingtoneClick = { viewModel.onAction(SettingsAction.RingtoneSheetRequested) },
                         onPaymentShortcutClick = {
@@ -284,6 +292,7 @@ fun SettingsScreen(
                         onFullScreenIntentClick = {
                             viewModel.onAction(SettingsAction.FullScreenIntentSheetRequested)
                         },
+                        onSamsungNowBarClick = ::openSamsungNowBarGuide,
                     )
                     Spacer(modifier = Modifier.height(16.dp))
                     SettingsPrivacySection(
@@ -485,10 +494,12 @@ private fun SettingsAlarmSection(
     ringtoneSettings: RingtoneSettings,
     paymentShortcut: PaymentShortcut?,
     showFullScreenIntentSetting: Boolean,
+    showSamsungNowBarGuide: Boolean,
     canUseFullScreenIntent: Boolean,
     onRingtoneClick: () -> Unit,
     onPaymentShortcutClick: () -> Unit,
     onFullScreenIntentClick: () -> Unit,
+    onSamsungNowBarClick: () -> Unit,
 ) {
     SettingsSectionHeader(title = stringResource(R.string.settings_section_alarm))
     
@@ -520,6 +531,14 @@ private fun SettingsAlarmSection(
                 }
             ),
             onClick = onFullScreenIntentClick,
+        )
+    }
+    if (showSamsungNowBarGuide) {
+        Spacer(modifier = Modifier.height(8.dp))
+        SettingsCard(
+            title = stringResource(R.string.samsung_now_bar_settings_title),
+            value = stringResource(R.string.samsung_now_bar_settings_value),
+            onClick = onSamsungNowBarClick,
         )
     }
 }

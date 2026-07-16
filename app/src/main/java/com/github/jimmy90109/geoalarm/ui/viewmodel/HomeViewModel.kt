@@ -112,7 +112,7 @@ sealed interface HomeAction {
     data object ScheduleConflictDialogDismissed : HomeAction
     data object ScheduleConflictConfirmed : HomeAction
     data class TestAlarmStarted(val context: Context) : HomeAction
-    data object FullScreenIntentPromptHandled : HomeAction
+    data object SamsungNowBarPromptHandled : HomeAction
 }
 
 /**
@@ -187,8 +187,8 @@ class HomeViewModel @Inject constructor(
     private val _uiState = MutableStateFlow(HomeUiState())
     val uiState: StateFlow<HomeUiState> = _uiState.asStateFlow()
 
-    val fullscreenIntentPromptHandled: StateFlow<Boolean> =
-        settingsRepository.fullscreenIntentPromptHandledFlow.stateIn(
+    val samsungNowBarPromptHandled: StateFlow<Boolean> =
+        settingsRepository.samsungNowBarPromptHandledFlow.stateIn(
             scope = viewModelScope,
             started = SharingStarted.WhileSubscribed(5000),
             initialValue = false,
@@ -280,7 +280,7 @@ class HomeViewModel @Inject constructor(
             HomeAction.ScheduleConflictDialogDismissed -> dismissScheduleConflictDialog()
             HomeAction.ScheduleConflictConfirmed -> confirmScheduleConflict()
             is HomeAction.TestAlarmStarted -> startTestAlarm(action.context)
-            HomeAction.FullScreenIntentPromptHandled -> setFullScreenIntentPromptHandled()
+            HomeAction.SamsungNowBarPromptHandled -> setSamsungNowBarPromptHandled()
         }
     }
 
@@ -565,9 +565,9 @@ class HomeViewModel @Inject constructor(
         }
     }
 
-    private fun setFullScreenIntentPromptHandled() {
+    private fun setSamsungNowBarPromptHandled() {
         viewModelScope.launch {
-            settingsRepository.setFullscreenIntentPromptHandled(true)
+            settingsRepository.setSamsungNowBarPromptHandled(true)
         }
     }
 

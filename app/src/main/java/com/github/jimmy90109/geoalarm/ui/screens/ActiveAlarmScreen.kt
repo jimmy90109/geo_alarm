@@ -44,6 +44,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -72,7 +73,27 @@ enum class ReliabilityBannerState {
     Hidden,
     BatteryOptimizationWarning,
     BatteryOptimizationSuccess,
-    FullScreenIntentWarning,
+    SamsungNowBarPrompt,
+}
+
+internal fun resolveReliabilityBannerState(
+    batteryOptimizationState: ReliabilityBannerState,
+    showSamsungNowBarPrompt: Boolean,
+): ReliabilityBannerState = when {
+    batteryOptimizationState != ReliabilityBannerState.Hidden -> batteryOptimizationState
+    showSamsungNowBarPrompt -> ReliabilityBannerState.SamsungNowBarPrompt
+    else -> ReliabilityBannerState.Hidden
+}
+
+internal fun reliabilityBannerStateForDisplay(
+    currentState: ReliabilityBannerState,
+    lastVisibleState: ReliabilityBannerState,
+): ReliabilityBannerState {
+    return if (currentState == ReliabilityBannerState.Hidden) {
+        lastVisibleState
+    } else {
+        currentState
+    }
 }
 
 @Composable
@@ -84,8 +105,8 @@ fun ActiveAlarmScreen(
     reliabilityBannerState: ReliabilityBannerState = ReliabilityBannerState.Hidden,
     onBatteryOptimizationClick: () -> Unit = {},
     onBatteryOptimizationSuccessShown: () -> Unit = {},
-    onFullScreenIntentAllowClick: () -> Unit = {},
-    onFullScreenIntentSkipClick: () -> Unit = {},
+    onSamsungNowBarTroubleshootClick: () -> Unit = {},
+    onSamsungNowBarLaterClick: () -> Unit = {},
     paymentShortcut: PaymentShortcut? = null,
     onPaymentShortcutClick: () -> Unit = {},
     onStopAlarm: (Boolean) -> Unit,
@@ -328,12 +349,22 @@ fun ActiveAlarmScreen(
             }
         }
 
+        val lastVisibleReliabilityBannerState = remember {
+            mutableStateOf(ReliabilityBannerState.Hidden)
+        }
         LaunchedEffect(reliabilityBannerState) {
+            if (reliabilityBannerState != ReliabilityBannerState.Hidden) {
+                lastVisibleReliabilityBannerState.value = reliabilityBannerState
+            }
             if (reliabilityBannerState == ReliabilityBannerState.BatteryOptimizationSuccess) {
                 delay(900)
                 onBatteryOptimizationSuccessShown()
             }
         }
+        val displayedReliabilityBannerState = reliabilityBannerStateForDisplay(
+            currentState = reliabilityBannerState,
+            lastVisibleState = lastVisibleReliabilityBannerState.value,
+        )
 
         AnimatedVisibility(
             visible = reliabilityBannerState != ReliabilityBannerState.Hidden,
@@ -344,10 +375,10 @@ fun ActiveAlarmScreen(
                 .padding(horizontal = 24.dp, vertical = 24.dp),
         ) {
             ReliabilityBanner(
-                state = reliabilityBannerState,
+                state = displayedReliabilityBannerState,
                 onBatteryOptimizationClick = onBatteryOptimizationClick,
-                onFullScreenIntentAllowClick = onFullScreenIntentAllowClick,
-                onFullScreenIntentSkipClick = onFullScreenIntentSkipClick,
+                onSamsungNowBarTroubleshootClick = onSamsungNowBarTroubleshootClick,
+                onSamsungNowBarLaterClick = onSamsungNowBarLaterClick,
             )
         }
     }
@@ -357,21 +388,21 @@ fun ActiveAlarmScreen(
 private fun ReliabilityBanner(
     state: ReliabilityBannerState,
     onBatteryOptimizationClick: () -> Unit,
-    onFullScreenIntentAllowClick: () -> Unit,
-    onFullScreenIntentSkipClick: () -> Unit,
+    onSamsungNowBarTroubleshootClick: () -> Unit,
+    onSamsungNowBarLaterClick: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val darkTheme = isSystemInDarkTheme()
     val targetContainerColor = when (state) {
         ReliabilityBannerState.BatteryOptimizationWarning -> MaterialTheme.colorScheme.errorContainer
-        ReliabilityBannerState.FullScreenIntentWarning -> MaterialTheme.colorScheme.secondaryContainer
+        ReliabilityBannerState.SamsungNowBarPrompt -> MaterialTheme.colorScheme.secondaryContainer
         ReliabilityBannerState.BatteryOptimizationSuccess ->
             if (darkTheme) Color(0xFF1B5E20) else Color(0xFFC8E6C9)
         ReliabilityBannerState.Hidden -> MaterialTheme.colorScheme.surfaceContainer
     }
     val targetContentColor = when (state) {
         ReliabilityBannerState.BatteryOptimizationWarning -> MaterialTheme.colorScheme.onErrorContainer
-        ReliabilityBannerState.FullScreenIntentWarning -> MaterialTheme.colorScheme.onSecondaryContainer
+        ReliabilityBannerState.SamsungNowBarPrompt -> MaterialTheme.colorScheme.onSecondaryContainer
         ReliabilityBannerState.BatteryOptimizationSuccess ->
             if (darkTheme) Color(0xFFC8E6C9) else Color(0xFF0B3D16)
         ReliabilityBannerState.Hidden -> MaterialTheme.colorScheme.onSurface
@@ -379,15 +410,15 @@ private fun ReliabilityBanner(
     ActionBanner(
         icon = when (state) {
             ReliabilityBannerState.BatteryOptimizationWarning -> Icons.Default.BatteryAlert
-            ReliabilityBannerState.FullScreenIntentWarning -> Icons.Outlined.Info
+            ReliabilityBannerState.SamsungNowBarPrompt -> Icons.Outlined.Info
             else -> Icons.Default.CheckCircle
         },
         message = stringResource(
             when (state) {
                 ReliabilityBannerState.BatteryOptimizationWarning ->
                     R.string.battery_optimization_banner_message
-                ReliabilityBannerState.FullScreenIntentWarning ->
-                    R.string.fullscreen_intent_banner_message
+                ReliabilityBannerState.SamsungNowBarPrompt ->
+                    R.string.samsung_now_bar_banner_message
                 ReliabilityBannerState.BatteryOptimizationSuccess ->
                     R.string.battery_optimization_success_message
                 ReliabilityBannerState.Hidden ->
@@ -398,30 +429,32 @@ private fun ReliabilityBanner(
         contentColor = targetContentColor,
         modifier = modifier,
         showActions = state == ReliabilityBannerState.BatteryOptimizationWarning ||
-            state == ReliabilityBannerState.FullScreenIntentWarning,
+            state == ReliabilityBannerState.SamsungNowBarPrompt,
     ) {
-        if (state == ReliabilityBannerState.FullScreenIntentWarning) {
+        if (state == ReliabilityBannerState.SamsungNowBarPrompt) {
             ActionBannerButton(
-                text = stringResource(R.string.fullscreen_intent_skip),
-                onClick = onFullScreenIntentSkipClick,
+                text = stringResource(R.string.samsung_now_bar_later),
+                onClick = onSamsungNowBarLaterClick,
                 modifier = Modifier
                     .weight(1f)
                     .height(48.dp),
             )
         }
-        if (state == ReliabilityBannerState.BatteryOptimizationWarning || state == ReliabilityBannerState.FullScreenIntentWarning) {
+        if (state == ReliabilityBannerState.BatteryOptimizationWarning ||
+            state == ReliabilityBannerState.SamsungNowBarPrompt
+        ) {
             ActionBannerButton(
                 text = stringResource(
                     if (state == ReliabilityBannerState.BatteryOptimizationWarning) {
                         R.string.battery_optimization_allow_now
                     } else {
-                        R.string.fullscreen_intent_allow_now
+                        R.string.samsung_now_bar_troubleshoot
                     }
                 ),
                 onClick = if (state == ReliabilityBannerState.BatteryOptimizationWarning) {
                     onBatteryOptimizationClick
                 } else {
-                    onFullScreenIntentAllowClick
+                    onSamsungNowBarTroubleshootClick
                 },
                 modifier = Modifier
                     .weight(1f)
@@ -502,8 +535,8 @@ private fun BatteryOptimizationWarningBannerPreview() {
             ReliabilityBanner(
                 state = ReliabilityBannerState.BatteryOptimizationWarning,
                 onBatteryOptimizationClick = {},
-                onFullScreenIntentAllowClick = {},
-                onFullScreenIntentSkipClick = {},
+                onSamsungNowBarTroubleshootClick = {},
+                onSamsungNowBarLaterClick = {},
             )
         }
     }
@@ -517,23 +550,23 @@ private fun BatteryOptimizationSuccessBannerPreview() {
             ReliabilityBanner(
                 state = ReliabilityBannerState.BatteryOptimizationSuccess,
                 onBatteryOptimizationClick = {},
-                onFullScreenIntentAllowClick = {},
-                onFullScreenIntentSkipClick = {},
+                onSamsungNowBarTroubleshootClick = {},
+                onSamsungNowBarLaterClick = {},
             )
         }
     }
 }
 
-@Preview(name = "Reliability banner - full screen intent", widthDp = 390, showBackground = true)
+@Preview(name = "Reliability banner - Samsung Now Bar", widthDp = 390, showBackground = true)
 @Composable
-private fun FullScreenIntentBannerPreview() {
+private fun SamsungNowBarBannerPreview() {
     GeoAlarmTheme(dynamicColor = false) {
         ReliabilityBannerPreviewContainer {
             ReliabilityBanner(
-                state = ReliabilityBannerState.FullScreenIntentWarning,
+                state = ReliabilityBannerState.SamsungNowBarPrompt,
                 onBatteryOptimizationClick = {},
-                onFullScreenIntentAllowClick = {},
-                onFullScreenIntentSkipClick = {},
+                onSamsungNowBarTroubleshootClick = {},
+                onSamsungNowBarLaterClick = {},
             )
         }
     }
