@@ -34,7 +34,6 @@ android {
         manifestPlaceholders["ADMOB_APP_ID"] = localProperties.getProperty("admob.appId") ?: ""
         manifestPlaceholders["appName"] = "@string/app_name"
         buildConfigField("String", "GOOGLE_MAPS_API_KEY", "\"${localProperties.getProperty("maps.apiKey") ?: ""}\"")
-        buildConfigField("String", "TELEMETRYDECK_APP_ID", "\"${localProperties.getProperty("telemetrydeck.appId") ?: ""}\"")
         buildConfigField("String", "HOME_NATIVE_AD_UNIT_ID", "\"${localProperties.getProperty("admob.homeNativeAdUnitId") ?: ""}\"")
         buildConfigField("Boolean", "ADS_ENABLED", "false")
 
@@ -143,7 +142,6 @@ dependencies {
     implementation(libs.androidx.datastore.preferences)
     implementation(libs.androidx.appfunctions)
     implementation(libs.androidx.appfunctions.service)
-    implementation(libs.telemetrydeck.kotlin.sdk)
     implementation(libs.user.messaging.platform)
 
     // Compose

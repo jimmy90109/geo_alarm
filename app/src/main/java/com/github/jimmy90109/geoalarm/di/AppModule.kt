@@ -9,14 +9,10 @@ import com.github.jimmy90109.geoalarm.appactions.AndroidAlarmServiceStarter
 import com.github.jimmy90109.geoalarm.appactions.AndroidGeocodingService
 import com.github.jimmy90109.geoalarm.appactions.GeocodingService
 import com.github.jimmy90109.geoalarm.appactions.ScheduleGateway
-import com.github.jimmy90109.geoalarm.analytics.AppAnalytics
-import com.github.jimmy90109.geoalarm.analytics.TelemetryDeckAppAnalytics
 import com.github.jimmy90109.geoalarm.ads.AdsEntitlementRepository
 import com.github.jimmy90109.geoalarm.ads.DefaultAdsEntitlementRepository
 import com.github.jimmy90109.geoalarm.data.AlarmDao
 import com.github.jimmy90109.geoalarm.data.AlarmDataRepository
-import com.github.jimmy90109.geoalarm.data.AnalyticsPreferencesRepository
-import com.github.jimmy90109.geoalarm.data.AnalyticsPreferencesStore
 import com.github.jimmy90109.geoalarm.data.AlarmRepository
 import com.github.jimmy90109.geoalarm.data.AppDatabase
 import com.github.jimmy90109.geoalarm.data.PlaceReminderDao
@@ -127,18 +123,6 @@ abstract class RepositoryModule {
     abstract fun bindWidgetUpdater(
         widgetUpdater: AppWidgetUpdater
     ): WidgetUpdater
-
-    @Binds
-    @Singleton
-    abstract fun bindAppAnalytics(
-        analytics: TelemetryDeckAppAnalytics
-    ): AppAnalytics
-
-    @Binds
-    @Singleton
-    abstract fun bindAnalyticsPreferencesStore(
-        repository: AnalyticsPreferencesRepository
-    ): AnalyticsPreferencesStore
 
     @Binds
     @Singleton

@@ -35,13 +35,12 @@ Traditional Chinese: GeoAlarm 是一款定位鬧鐘 Android App。設定目的�
 - Alarm icons, enable/disable controls, editing, deletion, and undo
 - English and Traditional Chinese UI
 - Optional AdMob native ads on the home screen when ad support is configured
-- Optional anonymous analytics with an in-app opt-out
 
 ## Privacy
 
 GeoAlarm uses location permission to detect whether your device has entered the alarm area. Alarm location processing happens on the device.
 
-GeoAlarm does not upload your live location, saved destinations, alarm names, radius settings, or schedule details to a GeoAlarm server. Google Maps Platform may process map and place search usage according to Google's policies, optional AdMob ads may process advertising data according to Google's advertising policies, and optional TelemetryDeck analytics are used only for anonymous stability and usage insights.
+GeoAlarm does not upload your live location, saved destinations, alarm names, radius settings, or schedule details to a GeoAlarm server. Google Maps Platform may process map and place search usage according to Google's policies, and optional AdMob ads may process advertising data according to Google's advertising policies.
 
 Ad-supported builds use Google's User Messaging Platform for consent handling where required. If advertising is enabled, Android advertising ID access is declared with `com.google.android.gms.permission.AD_ID` so Android 13+ devices can provide the advertising ID according to user settings.
 
@@ -59,14 +58,12 @@ Read the full policy: [docs/privacy-policy.html](docs/privacy-policy.html)
 - Google Mobile Ads SDK and User Messaging Platform for optional ad-supported builds
 - Foreground services, notifications, geofencing/location monitoring, exact alarms, and widgets
 - Android App Functions and app shortcuts for system integrations
-- TelemetryDeck for optional anonymous analytics
 
 ## Project Structure
 
 ```text
 app/src/main/java/com/github/jimmy90109/geoalarm/
 ├── ads/              # AdMob consent, native ad loading, and ad eligibility
-├── analytics/        # Optional analytics abstraction and TelemetryDeck implementation
 ├── appactions/       # App action parsing and use cases
 ├── appfunctions/     # Android App Functions entry points
 ├── data/             # Room entities, DAOs, repositories, preferences
@@ -107,15 +104,7 @@ app/src/main/java/com/github/jimmy90109/geoalarm/
    maps.apiKey=YOUR_GOOGLE_MAPS_API_KEY
    ```
 
-3. Optional: configure TelemetryDeck analytics:
-
-   ```properties
-   telemetrydeck.appId=YOUR_TELEMETRYDECK_APP_ID
-   ```
-
-   Analytics can also be left unconfigured. See [docs/analytics.md](docs/analytics.md).
-
-4. Optional: configure AdMob for release builds:
+3. Optional: configure AdMob for release builds:
 
    ```properties
    admob.appId=YOUR_ADMOB_APP_ID

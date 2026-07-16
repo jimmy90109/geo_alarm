@@ -2,7 +2,6 @@ package com.github.jimmy90109.geoalarm.appactions
 
 import android.content.Context
 import android.content.Intent
-import com.github.jimmy90109.geoalarm.analytics.TelemetryTracker
 import com.github.jimmy90109.geoalarm.data.AlarmDataRepository
 import com.github.jimmy90109.geoalarm.data.SettingsRepository
 import com.github.jimmy90109.geoalarm.data.ReviewPromptStore
@@ -74,13 +73,11 @@ interface AlarmTurnOffEffects {
 
 class AndroidAlarmTurnOffEffects @Inject constructor(
     @param:ApplicationContext private val context: Context,
-    private val telemetryTracker: TelemetryTracker,
     private val settingsRepository: SettingsRepository,
     private val alarmServiceStarter: AlarmServiceStarter,
     private val widgetUpdater: WidgetUpdater,
 ) : AlarmTurnOffEffects {
     override suspend fun onArrivedTurnOff() {
-        telemetryTracker.trackArrivedTurnOff()
         settingsRepository.paymentShortcutFlow.first()
             ?.let { PaymentShortcutNotifier.show(context, it) }
     }

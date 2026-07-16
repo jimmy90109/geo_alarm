@@ -269,7 +269,7 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun resolveStartDestination(hasSeenOnboarding: Boolean): AppRoutes {
-        if (!hasSeenOnboarding) return AppRoutes.Onboarding()
+        if (!hasSeenOnboarding) return AppRoutes.Onboarding
         return AppRoutes.Main
     }
 

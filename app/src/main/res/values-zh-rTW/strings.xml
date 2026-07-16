@@ -135,7 +135,7 @@
     <string name="tab_reminders">提醒</string>
     <string name="settings_section_general">一般</string>
     <string name="settings_section_alarm">鬧鐘</string>
-    <string name="settings_section_privacy_improvement">隱私與改善</string>
+    <string name="settings_section_privacy">隱私</string>
     <string name="fullscreen_intent_settings_title">全螢幕到站提醒</string>
     <string name="fullscreen_intent_settings_on">已啟用</string>
     <string name="fullscreen_intent_settings_off">未啟用</string>
@@ -152,10 +152,6 @@
     <string name="ringtone_default">預設鈴聲</string>
     <string name="ringtone_select">選擇鈴聲…</string>
     <string name="ringtone_feature_description">到站時從耳機播放鈴聲</string>
-    <string name="analytics_help_improve_title">幫助改善應用程式</string>
-    <string name="analytics_help_improve_description">匿名傳送應用程式使用狀況。我們不會收集您的定位資訊、任何鬧鐘詳細資訊。這僅用來幫助開發者了解產品是否穩定運作。</string>
-    <string name="analytics_enabled">開啟</string>
-    <string name="analytics_disabled">關閉</string>
     <string name="privacy_policy">隱私權政策</string>
     <string name="view">查看</string>
     <string name="manage">管理</string>

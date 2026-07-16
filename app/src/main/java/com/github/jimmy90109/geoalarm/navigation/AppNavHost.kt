@@ -192,25 +192,23 @@ fun AppNavHost(
                         navController.navigate(AppRoutes.PlaceReminderDetail(reminderId))
                     },
                     onOpenOnboarding = {
-                        navController.navigate(AppRoutes.Onboarding(showAnalyticsOptIn = false))
+                        navController.navigate(AppRoutes.Onboarding)
                     }
                 )
             }
         }
 
-        composable<AppRoutes.Onboarding> { backStackEntry ->
-            val route = backStackEntry.toRoute<AppRoutes.Onboarding>()
+        composable<AppRoutes.Onboarding> {
             val onboardingViewModel: OnboardingViewModel = hiltViewModel()
             AnimatedNavScreen {
                 OnboardingScreen(
                     viewModel = onboardingViewModel,
-                    showAnalyticsOptIn = route.showAnalyticsOptIn,
                     onFinished = {
                         val pendingDestination = pendingRequestedDestination
                         if (pendingDestination != null) {
                             pendingRequestedDestination = null
                             navController.navigate(AppRoutes.Main) {
-                                popUpTo(AppRoutes.Onboarding()) { inclusive = true }
+                                popUpTo(AppRoutes.Onboarding) { inclusive = true }
                                 launchSingleTop = true
                             }
                             navController.navigate(pendingDestination) {
@@ -220,7 +218,7 @@ fun AppNavHost(
                             navController.popBackStack()
                         } else {
                             navController.navigate(AppRoutes.Main) {
-                                popUpTo(AppRoutes.Onboarding()) { inclusive = true }
+                                popUpTo(AppRoutes.Onboarding) { inclusive = true }
                                 launchSingleTop = true
                             }
                         }

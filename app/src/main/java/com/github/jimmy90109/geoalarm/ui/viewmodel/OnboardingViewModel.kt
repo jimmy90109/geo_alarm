@@ -4,8 +4,6 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import androidx.appcompat.app.AppCompatDelegate
 import androidx.core.os.LocaleListCompat
-import com.github.jimmy90109.geoalarm.analytics.TelemetryTracker
-import com.github.jimmy90109.geoalarm.data.AnalyticsPreferencesStore
 import com.github.jimmy90109.geoalarm.data.OnboardingRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
 import javax.inject.Inject
@@ -20,14 +18,12 @@ import kotlinx.coroutines.launch
 
 data class OnboardingUiState(
     val currentLanguage: String = "en",
-    val analyticsEnabled: Boolean = false,
     val isLocaleSwitching: Boolean = false,
 )
 
 sealed interface OnboardingAction {
-    data class AnalyticsEnabledChanged(val enabled: Boolean) : OnboardingAction
     data object LanguageToggled : OnboardingAction
-    data class Completed(val trackAnalyticsOptIn: Boolean) : OnboardingAction
+    data object Completed : OnboardingAction
 }
 
 sealed interface OnboardingEffect {
@@ -37,8 +33,6 @@ sealed interface OnboardingEffect {
 @HiltViewModel
 class OnboardingViewModel @Inject constructor(
     private val onboardingRepository: OnboardingRepository,
-    private val analyticsPreferencesStore: AnalyticsPreferencesStore,
-    private val telemetryTracker: TelemetryTracker
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(OnboardingUiState(currentLanguage = resolveCurrentLanguage()))
@@ -49,15 +43,9 @@ class OnboardingViewModel @Inject constructor(
 
     fun onAction(action: OnboardingAction) {
         when (action) {
-            is OnboardingAction.AnalyticsEnabledChanged -> setAnalyticsEnabled(action.enabled)
             OnboardingAction.LanguageToggled -> toggleLanguage()
-            is OnboardingAction.Completed -> completeOnboarding(action.trackAnalyticsOptIn)
+            OnboardingAction.Completed -> completeOnboarding()
         }
-    }
-
-    private fun setAnalyticsEnabled(enabled: Boolean) {
-        if (_uiState.value.isLocaleSwitching) return
-        _uiState.value = _uiState.value.copy(analyticsEnabled = enabled)
     }
 
     private fun resolveCurrentLanguage(): String {
@@ -82,13 +70,9 @@ class OnboardingViewModel @Inject constructor(
         }
     }
 
-    private fun completeOnboarding(trackAnalyticsOptIn: Boolean) {
+    private fun completeOnboarding() {
         if (_uiState.value.isLocaleSwitching) return
         viewModelScope.launch {
-            if (trackAnalyticsOptIn) {
-                analyticsPreferencesStore.setAnalyticsEnabled(_uiState.value.analyticsEnabled)
-                telemetryTracker.trackAnalyticsOptInIfNeeded()
-            }
             onboardingRepository.setSeenLocationOnboarding(true)
             _effects.emit(OnboardingEffect.Completed)
         }

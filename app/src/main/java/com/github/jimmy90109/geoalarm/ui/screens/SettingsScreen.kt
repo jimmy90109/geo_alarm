@@ -6,7 +6,6 @@ import android.content.ContextWrapper
 import android.content.Intent
 import android.content.res.Configuration
 import android.media.RingtoneManager
-import android.os.Build
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.core.LinearEasing
@@ -115,7 +114,6 @@ fun SettingsScreen(
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val ringtoneSettings by viewModel.ringtoneSettings.collectAsStateWithLifecycle()
     val paymentShortcut by viewModel.paymentShortcut.collectAsStateWithLifecycle()
-    val analyticsEnabled by viewModel.analyticsEnabled.collectAsStateWithLifecycle()
     val adConsentState by viewModel.adConsentState.collectAsStateWithLifecycle()
     val currentLanguage = viewModel.currentLanguage
     val context = LocalContext.current
@@ -243,9 +241,7 @@ fun SettingsScreen(
                             .padding(bottom = 16.dp)
                     ) {
                         SettingsPrivacySection(
-                            analyticsEnabled = analyticsEnabled,
                             showAdPrivacyOptions = adConsentState.isPrivacyOptionsRequired,
-                            onPrivacyClick = { viewModel.onAction(SettingsAction.AnalyticsSheetRequested) },
                             onAdPrivacyOptionsClick = {
                                 context.findActivity()?.let {
                                     viewModel.onAction(SettingsAction.AdPrivacyOptionsRequested(it))
@@ -291,9 +287,7 @@ fun SettingsScreen(
                     )
                     Spacer(modifier = Modifier.height(16.dp))
                     SettingsPrivacySection(
-                        analyticsEnabled = analyticsEnabled,
                         showAdPrivacyOptions = adConsentState.isPrivacyOptionsRequired,
-                        onPrivacyClick = { viewModel.onAction(SettingsAction.AnalyticsSheetRequested) },
                         onAdPrivacyOptionsClick = {
                             context.findActivity()?.let {
                                 viewModel.onAction(SettingsAction.AdPrivacyOptionsRequested(it))
@@ -472,39 +466,6 @@ fun SettingsScreen(
         )
     }
 
-    // Analytics Settings Bottom Sheet
-    if (uiState.showAnalyticsSheet) {
-        ModalBottomSheet(
-            onDismissRequest = { viewModel.onAction(SettingsAction.AnalyticsSheetDismissed) },
-            sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true),
-        ) {
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(start = 24.dp, end = 24.dp, bottom = 16.dp),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Text(
-                    modifier = Modifier.weight(1f),
-                    text = stringResource(R.string.analytics_help_improve_title),
-                    style = MaterialTheme.typography.titleLarge,
-                )
-
-                Switch(
-                    checked = analyticsEnabled,
-                    onCheckedChange = { viewModel.onAction(SettingsAction.AnalyticsEnabledChanged(it)) }
-                )
-            }
-
-            Text(
-                modifier = Modifier.padding(start = 24.dp, end = 24.dp, bottom = 16.dp),
-                text = stringResource(R.string.analytics_help_improve_description),
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
-            )
-        }
-    }
 }
 
 @Composable
@@ -974,22 +935,11 @@ private fun PaymentShortcutGridCard(
 
 @Composable
 private fun SettingsPrivacySection(
-    analyticsEnabled: Boolean,
     showAdPrivacyOptions: Boolean,
-    onPrivacyClick: () -> Unit,
     onAdPrivacyOptionsClick: () -> Unit,
     onPrivacyPolicyClick: () -> Unit,
 ) {
-    SettingsSectionHeader(title = stringResource(R.string.settings_section_privacy_improvement))
-    SettingsCard(
-        title = stringResource(R.string.analytics_help_improve_title),
-        value = if (analyticsEnabled) {
-            stringResource(R.string.analytics_enabled)
-        } else {
-            stringResource(R.string.analytics_disabled)
-        },
-        onClick = onPrivacyClick
-    )
+    SettingsSectionHeader(title = stringResource(R.string.settings_section_privacy))
     if (showAdPrivacyOptions) {
         Spacer(modifier = Modifier.height(8.dp))
         SettingsCard(
@@ -1024,6 +974,12 @@ private fun SettingsAboutSection(
     SettingsSectionHeader(title = stringResource(R.string.section_about))
 
     SettingsCard(
+        title = stringResource(R.string.open_source_licenses),
+        value = stringResource(R.string.view),
+        onClick = onOpenSourceLicensesClick,
+    )
+    Spacer(modifier = Modifier.height(8.dp))
+    SettingsCard(
         title = stringResource(R.string.rate_geoalarm),
         value = stringResource(R.string.open_google_play),
         onClick = onRateAppClick,
@@ -1034,12 +990,6 @@ private fun SettingsAboutSection(
         value = stringResource(R.string.settings_version_label, currentVersion),
         onClick = {},
         enabled = false,
-    )
-    Spacer(modifier = Modifier.height(8.dp))
-    SettingsCard(
-        title = stringResource(R.string.open_source_licenses),
-        value = stringResource(R.string.view),
-        onClick = onOpenSourceLicensesClick,
     )
 }
 

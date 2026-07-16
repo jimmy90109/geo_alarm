@@ -135,7 +135,7 @@
     <string name="tab_reminders">Reminders</string>
     <string name="settings_section_general">General</string>
     <string name="settings_section_alarm">Alarm</string>
-    <string name="settings_section_privacy_improvement">Privacy &amp; Improvements</string>
+    <string name="settings_section_privacy">Privacy</string>
     <string name="fullscreen_intent_settings_title">Full-screen arrival alert</string>
     <string name="fullscreen_intent_settings_on">Enabled</string>
     <string name="fullscreen_intent_settings_off">Not enabled</string>
@@ -152,10 +152,6 @@
     <string name="ringtone_default">Default ringtone</string>
     <string name="ringtone_select">Select ringtone…</string>
     <string name="ringtone_feature_description">Plays ringtone via headphones on arrival</string>
-    <string name="analytics_help_improve_title">Help Improve GeoAlarm</string>
-    <string name="analytics_help_improve_description">Send anonymous app usage data. We do not collect your location data or any alarm details. This is only used to help developers understand whether the product is operating stably.</string>
-    <string name="analytics_enabled">On</string>
-    <string name="analytics_disabled">Off</string>
     <string name="privacy_policy">Privacy Policy</string>
     <string name="view">View</string>
     <string name="manage">Manage</string>
