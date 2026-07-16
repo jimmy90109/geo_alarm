@@ -1,0 +1,279 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Samsung Now Bar troubleshooting | GeoAlarm</title>
+  <meta name="description" content="Troubleshooting steps for showing GeoAlarm live alarm updates in Samsung Now Bar on One UI 8.">
+  <style>
+    :root {
+      color-scheme: light dark;
+      --bg: #f7f8fb;
+      --fg: #1f2933;
+      --muted: #5d6876;
+      --panel: #ffffff;
+      --border: #d8dee8;
+      --accent: #2563eb;
+    }
+
+    @media (prefers-color-scheme: dark) {
+      :root {
+        --bg: #111827;
+        --fg: #f3f4f6;
+        --muted: #c4c9d4;
+        --panel: #182131;
+        --border: #2c3748;
+        --accent: #7db1ff;
+      }
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      background: var(--bg);
+      color: var(--fg);
+      font: 16px/1.65 system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    }
+
+    main {
+      width: min(920px, calc(100% - 32px));
+      margin: 0 auto;
+      padding: 56px 0;
+    }
+
+    nav {
+      margin-bottom: 28px;
+    }
+
+    nav a,
+    .language-link {
+      color: var(--accent);
+      text-decoration-thickness: 1px;
+      text-underline-offset: 3px;
+    }
+
+    h1 {
+      margin: 0 0 8px;
+      font-size: clamp(2.1rem, 6vw, 3.6rem);
+      line-height: 1.08;
+      letter-spacing: 0;
+    }
+
+    h2 {
+      margin: 34px 0 12px;
+      font-size: 1.35rem;
+    }
+
+    p,
+    li {
+      color: var(--muted);
+    }
+
+    p {
+      margin: 0 0 16px;
+    }
+
+    ol,
+    ul {
+      margin: 0 0 18px;
+      padding-left: 1.25rem;
+    }
+
+    a {
+      color: var(--accent);
+    }
+
+    .meta {
+      color: var(--muted);
+      margin-bottom: 28px;
+    }
+
+    .card {
+      padding: 24px;
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+    }
+
+    .divider {
+      margin: 44px 0;
+      border: 0;
+      border-top: 1px solid var(--border);
+    }
+
+    .eyebrow {
+      display: inline-block;
+      margin-bottom: 14px;
+      color: var(--accent);
+      font-size: 13px;
+      font-weight: 700;
+      letter-spacing: .08em;
+    }
+
+    .notice {
+      margin: 28px 0;
+      padding: 16px 18px;
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+    }
+
+    .steps {
+      display: grid;
+      gap: 24px;
+      margin-top: 18px;
+    }
+
+    .video-card {
+      padding: 20px;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      background: var(--panel);
+    }
+
+    video {
+      display: block;
+      width: min(100%, 420px);
+      max-height: 720px;
+      margin-top: 16px;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      background: #000;
+    }
+
+    footer {
+      margin-top: 44px;
+      padding-top: 22px;
+      border-top: 1px solid var(--border);
+    }
+  </style>
+</head>
+<body>
+  <main>
+    <nav>
+      <a href="index.html">GeoAlarm</a>
+      <span aria-hidden="true"> / </span>
+      <a href="privacy-policy.html">Privacy Policy</a>
+      <span aria-hidden="true"> / </span>
+      <a href="#zh-tw" class="language-link">繁體中文</a>
+    </nav>
+
+    <article class="card">
+      <span class="eyebrow">SAMSUNG NOW BAR</span>
+      <h1>Samsung Now Bar troubleshooting</h1>
+      <p class="meta">Last updated: July 16, 2026</p>
+
+      <p>On Samsung One UI 8, Now Bar settings may show only some built-in apps by default. Even when GeoAlarm can show live alarm updates in the notification shade, third-party Live Updates may still not appear in Now Bar.</p>
+
+      <div class="notice">
+        This is an advanced troubleshooting flow. Option names can vary by One UI version, language, or region, so follow the wording shown on your phone.
+      </div>
+
+      <h2>Check GeoAlarm permissions first</h2>
+      <ol>
+        <li>Make sure notifications are allowed for GeoAlarm.</li>
+        <li>Start a location alarm in GeoAlarm so the app shows a live alarm progress notification.</li>
+        <li>Confirm that GeoAlarm's progress notification appears in the notification shade. If the notification itself does not appear, return to the app and check location, background location, and notification permissions first.</li>
+      </ol>
+
+      <section class="steps">
+        <div class="video-card">
+          <h2>If Developer options are not enabled yet</h2>
+          <ol>
+            <li>Open system Settings and search for "Build number".</li>
+            <li>Tap "Build number" seven times.</li>
+            <li>Complete the system verification prompt to enable Developer options.</li>
+          </ol>
+          <video controls preload="metadata" playsinline>
+            <source src="assets/samsung-now-bar/enable-developer-options.mp4" type="video/mp4">
+            Your browser does not support video playback.
+          </video>
+        </div>
+
+        <div class="video-card">
+          <h2>If Developer options are already enabled</h2>
+          <ol>
+            <li>Open system Settings and search for "Live notifications for all apps".</li>
+            <li>Open that setting and turn it on.</li>
+            <li>Return to GeoAlarm and trigger a live alarm progress notification again. It may then appear directly in Now Bar.</li>
+          </ol>
+          <video controls preload="metadata" playsinline>
+            <source src="assets/samsung-now-bar/allow-all-live-updates.mp4" type="video/mp4">
+            Your browser does not support video playback.
+          </video>
+        </div>
+      </section>
+
+      <h2>Notes</h2>
+      <ul>
+        <li>This flow only affects whether Samsung Now Bar allows third-party Live Updates to appear.</li>
+        <li>If the option is off, GeoAlarm still shows alarms through regular Android notifications.</li>
+        <li>Developer options are advanced system settings. Decide whether to enable them based on your own comfort level.</li>
+      </ul>
+    </article>
+
+    <hr class="divider">
+
+    <article id="zh-tw" class="card" lang="zh-Hant-TW">
+      <span class="eyebrow">SAMSUNG NOW BAR</span>
+      <h1>Samsung Now Bar 疑難排解</h1>
+      <p class="meta">最後更新：2026 年 7 月 16 日</p>
+
+      <p>在 Samsung One UI 8 上，Now Bar 的設定頁可能預設只列出部分內建 App。即使 GeoAlarm 已經能顯示即時鬧鐘進度通知，第三方 Live Updates 仍可能不會出現在 Now Bar。</p>
+
+      <div class="notice">
+        這是進階疑難排解流程。不同 One UI 版本、語言或地區的選項名稱可能略有不同，請依照你手機上的實際文字為準。
+      </div>
+
+      <h2>先確認 GeoAlarm 權限</h2>
+      <ol>
+        <li>確認 GeoAlarm 已允許通知。</li>
+        <li>在 GeoAlarm 啟用一個定位鬧鐘，讓 app 顯示即時鬧鐘進度通知。</li>
+        <li>確認通知列可以看到 GeoAlarm 的進度通知；如果通知本身沒有出現，請先回到 app 內重新檢查定位、背景定位與通知權限。</li>
+      </ol>
+
+      <section class="steps">
+        <div class="video-card">
+          <h2>如果尚未啟用開發人員選項</h2>
+          <ol>
+            <li>開啟系統設定並搜尋「版本號碼」。</li>
+            <li>連續點擊「版本號碼」七次。</li>
+            <li>依照系統提示完成驗證後，會啟用開發人員選項。</li>
+          </ol>
+          <video controls preload="metadata" playsinline>
+            <source src="assets/samsung-now-bar/enable-developer-options.mp4" type="video/mp4">
+            你的瀏覽器不支援影片播放。
+          </video>
+        </div>
+
+        <div class="video-card">
+          <h2>如果已經啟用開發人員選項</h2>
+          <ol>
+            <li>開啟系統設定並搜尋「所有應用程式即時通知」。如果搜尋不到，也可以試試「開放所有應用程式即時通知」。</li>
+            <li>進入該設定後，開啟選項。</li>
+            <li>回到 GeoAlarm 觸發一次即時鬧鐘進度通知，就有機會直接顯示在 Now Bar。</li>
+          </ol>
+          <video controls preload="metadata" playsinline>
+            <source src="assets/samsung-now-bar/allow-all-live-updates.mp4" type="video/mp4">
+            你的瀏覽器不支援影片播放。
+          </video>
+        </div>
+      </section>
+
+      <h2>補充說明</h2>
+      <ul>
+        <li>這個流程只影響 Samsung Now Bar 是否允許第三方 Live Updates 顯示。</li>
+        <li>如果關閉該選項，GeoAlarm 仍會以一般通知方式顯示提醒。</li>
+        <li>開發人員選項屬於系統進階設定，請自行決定是否啟用。</li>
+      </ul>
+
+      <footer>
+        <p><a href="index.html">返回 GeoAlarm 首頁</a></p>
+      </footer>
+    </article>
+  </main>
+</body>
+</html>
