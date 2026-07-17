@@ -3,6 +3,6 @@ package com.github.jimmy90109.geoalarm.appactions
 import com.github.jimmy90109.geoalarm.data.Alarm
 
 interface AlarmServiceStarter {
-    fun stopCurrentAlarm()
+    suspend fun stopCurrentAlarm(alarmId: String): Boolean
     fun startAlarm(alarm: Alarm)
 }

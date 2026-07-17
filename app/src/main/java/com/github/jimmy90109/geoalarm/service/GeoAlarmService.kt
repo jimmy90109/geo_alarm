@@ -184,7 +184,9 @@ class GeoAlarmService : Service() {
             }
 
             ACTION_STOP -> {
-                cleanUpAndStop()
+                cleanUpAndStop(
+                    intent.getStringExtra(EXTRA_ALARM_ID).orEmpty().ifEmpty { alarmId }
+                )
             }
 
             ACTION_TEST -> {
@@ -249,7 +251,7 @@ class GeoAlarmService : Service() {
                             "GeoAlarmService",
                             "Ignoring stale geofence action because there is no unique active alarm",
                         )
-                        cleanUpAndStop()
+                        cleanUpAndStop(alarmId)
                         return@withLock
                     }
 
@@ -286,7 +288,7 @@ class GeoAlarmService : Service() {
         }
     }
 
-    private fun cleanUpAndStop() {
+    private fun cleanUpAndStop(stoppedAlarmId: String) {
         testJob?.cancel()
         serviceScope.cancel()
         stopGpsUpdates()
@@ -304,6 +306,12 @@ class GeoAlarmService : Service() {
             GeoAlarmGlanceWidget().updateAll(this@GeoAlarmService)
         }
         stopForeground(STOP_FOREGROUND_REMOVE)
+        sendBroadcast(
+            Intent(GeoAlarmContract.ACTION_ALARM_STOPPED).apply {
+                setPackage(packageName)
+                putExtra(EXTRA_ALARM_ID, stoppedAlarmId)
+            }
+        )
         stopSelf()
     }
 

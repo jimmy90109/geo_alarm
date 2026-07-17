@@ -1,12 +1,10 @@
 package com.github.jimmy90109.geoalarm.appactions
 
 import android.content.Context
-import android.content.Intent
 import com.github.jimmy90109.geoalarm.data.AlarmDataRepository
 import com.github.jimmy90109.geoalarm.data.SettingsRepository
 import com.github.jimmy90109.geoalarm.data.ReviewPromptStore
 import com.github.jimmy90109.geoalarm.service.GeoAlarmContract
-import com.github.jimmy90109.geoalarm.service.GeoAlarmService
 import com.github.jimmy90109.geoalarm.utils.PaymentShortcutNotifier
 import com.github.jimmy90109.geoalarm.widget.WidgetUpdater
 import dagger.hilt.android.qualifiers.ApplicationContext
@@ -34,6 +32,7 @@ class AlarmTurnOffUseCase @Inject constructor(
     ): AlarmTurnOffResult = turnOffMutex.withLock {
         var wasEnabled = alarmId == GeoAlarmContract.TEST_ALARM_ID
         var shouldEvaluateReviewPrompt = false
+        var cleanupConfirmed = false
 
         try {
             if (alarmId != GeoAlarmContract.TEST_ALARM_ID) {
@@ -51,14 +50,14 @@ class AlarmTurnOffUseCase @Inject constructor(
             }
         } finally {
             try {
-                effects.stopCurrentAlarm(alarmId)
+                cleanupConfirmed = effects.stopCurrentAlarm(alarmId)
             } finally {
                 effects.refreshWidgets()
             }
         }
 
-        val shouldRequestInAppReview = shouldEvaluateReviewPrompt && runCatching {
-            reviewPromptStore.recordSuccessfulArrivalAndReservePrompt()
+        val shouldRequestInAppReview = shouldEvaluateReviewPrompt && cleanupConfirmed && runCatching {
+            reviewPromptStore.recordSuccessfulArrivalAndCheckEligibility()
         }.getOrDefault(false)
 
         AlarmTurnOffResult(shouldRequestInAppReview)
@@ -67,7 +66,7 @@ class AlarmTurnOffUseCase @Inject constructor(
 
 interface AlarmTurnOffEffects {
     suspend fun onArrivedTurnOff()
-    fun stopCurrentAlarm(alarmId: String)
+    suspend fun stopCurrentAlarm(alarmId: String): Boolean
     suspend fun refreshWidgets()
 }
 
@@ -82,15 +81,8 @@ class AndroidAlarmTurnOffEffects @Inject constructor(
             ?.let { PaymentShortcutNotifier.show(context, it) }
     }
 
-    override fun stopCurrentAlarm(alarmId: String) {
-        alarmServiceStarter.stopCurrentAlarm()
-        context.sendBroadcast(
-            Intent(GeoAlarmContract.ACTION_ALARM_STOPPED).apply {
-                setPackage(context.packageName)
-                putExtra(GeoAlarmService.EXTRA_ALARM_ID, alarmId)
-            }
-        )
-    }
+    override suspend fun stopCurrentAlarm(alarmId: String): Boolean =
+        alarmServiceStarter.stopCurrentAlarm(alarmId)
 
     override suspend fun refreshWidgets() {
         widgetUpdater.refreshAll()

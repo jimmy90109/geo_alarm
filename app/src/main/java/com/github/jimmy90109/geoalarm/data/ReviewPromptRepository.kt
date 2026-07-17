@@ -11,7 +11,8 @@ import javax.inject.Inject
 import javax.inject.Singleton
 
 interface ReviewPromptStore {
-    suspend fun recordSuccessfulArrivalAndReservePrompt(): Boolean
+    suspend fun recordSuccessfulArrivalAndCheckEligibility(): Boolean
+    suspend fun reservePromptAttemptIfEligible(): Boolean
 }
 
 @Singleton
@@ -20,7 +21,7 @@ class ReviewPromptRepository @Inject constructor(
     private val policy: ReviewPromptPolicy,
     private val clock: Clock,
 ) : ReviewPromptStore {
-    override suspend fun recordSuccessfulArrivalAndReservePrompt(): Boolean = runCatching {
+    override suspend fun recordSuccessfulArrivalAndCheckEligibility(): Boolean = runCatching {
         val nowMillis = clock.millis()
         val firstInstallTimeMillis = getFirstInstallTimeMillis()
         var shouldRequest = false
@@ -45,13 +46,35 @@ class ReviewPromptRepository @Inject constructor(
                 )
             )
 
-            if (shouldRequest) {
+        }
+
+        shouldRequest
+    }.getOrDefault(false)
+
+    override suspend fun reservePromptAttemptIfEligible(): Boolean = runCatching {
+        val nowMillis = clock.millis()
+        val firstInstallTimeMillis = getFirstInstallTimeMillis()
+        var reserved = false
+
+        context.dataStore.edit { preferences ->
+            reserved = policy.shouldRequest(
+                ReviewPromptEligibility(
+                    successfulArrivalTurnOffCount =
+                        preferences[SUCCESSFUL_ARRIVAL_TURN_OFF_COUNT_KEY] ?: 0,
+                    firstInstallTimeMillis = firstInstallTimeMillis,
+                    nowMillis = nowMillis,
+                    currentVersionCode = BuildConfig.VERSION_CODE,
+                    lastAttemptAtMillis = preferences[REVIEW_LAST_ATTEMPT_AT_KEY],
+                    lastAttemptVersionCode = preferences[REVIEW_LAST_ATTEMPT_VERSION_CODE_KEY],
+                )
+            )
+            if (reserved) {
                 preferences[REVIEW_LAST_ATTEMPT_AT_KEY] = nowMillis
                 preferences[REVIEW_LAST_ATTEMPT_VERSION_CODE_KEY] = BuildConfig.VERSION_CODE
             }
         }
 
-        shouldRequest
+        reserved
     }.getOrDefault(false)
 
     @Suppress("DEPRECATION")

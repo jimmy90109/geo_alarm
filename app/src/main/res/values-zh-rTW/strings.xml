@@ -84,6 +84,7 @@
     <string name="notification_retry_message">通知功能對於提醒到達目的地至關重要，請允許權限。</string>
     <string name="retry">重試</string>
     <string name="preview">預覽</string>
+    <string name="debug_review_prompt_attempt">Debug：現在嘗試顯示商店評論</string>
     <string name="battery_optimization_banner_message">開啟電池最佳化時仍可使用鬧鐘；在部分裝置上，允許不受限制的電池用量可能改善背景定位的可靠性。</string>
     <string name="battery_optimization_allow_now">提升可靠性</string>
     <string name="battery_optimization_success_message">已允許不受限制的電池用量</string>

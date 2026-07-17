@@ -15,6 +15,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -28,8 +29,10 @@ import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.navigation.NavHostController
+import androidx.navigation.NavDestination.Companion.hasRoute
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
+import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.toRoute
 import com.github.jimmy90109.geoalarm.data.DEFAULT_ALARM_ICON_KEY
 import com.github.jimmy90109.geoalarm.ui.screens.AlarmEditScreen
@@ -95,9 +98,20 @@ fun AppNavHost(
     navController: NavHostController,
     startDestination: AppRoutes = AppRoutes.Main,
     requestedDestination: AppRoutes? = null,
+    onReviewHostReadyChanged: (Boolean) -> Unit = {},
 ) {
+    val outerBackStackEntry by navController.currentBackStackEntryAsState()
+    val isMainRoute = outerBackStackEntry?.destination?.hasRoute<AppRoutes.Main>() == true
+    var isHomeListReady by remember { mutableStateOf(false) }
     var pendingRequestedDestination by remember(requestedDestination) {
         mutableStateOf(requestedDestination)
+    }
+
+    LaunchedEffect(isMainRoute, isHomeListReady) {
+        onReviewHostReadyChanged(isMainRoute && isHomeListReady)
+    }
+    DisposableEffect(Unit) {
+        onDispose { onReviewHostReadyChanged(false) }
     }
 
     LaunchedEffect(startDestination, pendingRequestedDestination) {
@@ -175,6 +189,7 @@ fun AppNavHost(
             AnimatedNavScreen {
                 MainScreen(
                     viewModel = viewModel,
+                    onReviewHostReadyChanged = { isHomeListReady = it },
                     onAddAlarm = { navController.navigate(AppRoutes.AlarmEdit()) },
                     onAlarmClick = { alarmId ->
                         navController.navigate(AppRoutes.AlarmEdit(alarmId))

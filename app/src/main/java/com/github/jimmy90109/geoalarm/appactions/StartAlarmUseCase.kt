@@ -59,7 +59,7 @@ class StartAlarmUseCase @Inject constructor(
 
         if (runningAlarm != null) {
             repository.update(runningAlarm.copy(isEnabled = false))
-            serviceStarter.stopCurrentAlarm()
+            serviceStarter.stopCurrentAlarm(runningAlarm.id)
         }
 
         val enabledAlarm = targetAlarm.copy(isEnabled = true)

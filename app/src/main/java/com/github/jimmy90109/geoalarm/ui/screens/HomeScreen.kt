@@ -19,6 +19,7 @@ import androidx.compose.animation.fadeOut
 import androidx.compose.animation.slideInHorizontally
 import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.animation.togetherWith
+import androidx.compose.animation.core.updateTransition
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
@@ -98,6 +99,7 @@ import androidx.lifecycle.compose.LocalLifecycleOwner
 @Composable
 fun HomeScreen(
     viewModel: HomeViewModel,
+    onReviewHostReadyChanged: (Boolean) -> Unit = {},
     onAddAlarm: () -> Unit,
     onAlarmClick: (Alarm) -> Unit,
     onAddSchedule: () -> Unit,
@@ -252,6 +254,34 @@ fun HomeScreen(
 
     // Check for active alarm
     val activeAlarm = uiState.testActiveAlarm ?: alarms.find { it.isEnabled }
+    val activeAlarmTransition = updateTransition(
+        targetState = activeAlarm,
+        label = "ActiveAlarmTransition",
+    )
+    val hasBlockingOverlay = showPaymentShortcutSheet ||
+        uiState.showEditDisabledDialog ||
+        uiState.showSingleAlarmDialog ||
+        uiState.showBackgroundPermissionDialog ||
+        uiState.showPreciseLocationPermissionDialog ||
+        uiState.showNotificationPermissionDialog ||
+        uiState.showExactAlarmPermissionDialog ||
+        uiState.showNotificationRationaleDialog ||
+        uiState.showAlreadyAtDestinationDialog ||
+        uiState.showDeleteErrorDialog ||
+        uiState.showScheduleConflictDialog ||
+        uiState.alarmToDelete != null
+    val reviewHostReady = !homeListState.isLoading &&
+        !hasBlockingOverlay &&
+        activeAlarmTransition.currentState == null &&
+        activeAlarmTransition.targetState == null &&
+        !activeAlarmTransition.isRunning
+
+    LaunchedEffect(reviewHostReady) {
+        onReviewHostReadyChanged(reviewHostReady)
+    }
+    DisposableEffect(Unit) {
+        onDispose { onReviewHostReadyChanged(false) }
+    }
     Scaffold(
         modifier = Modifier.nestedScroll(scrollBehavior.nestedScrollConnection),
         topBar = {
@@ -296,8 +326,7 @@ fun HomeScreen(
         },
         ) { innerPadding ->
         Box {
-            AnimatedContent(
-                targetState = activeAlarm,
+            activeAlarmTransition.AnimatedContent(
                 transitionSpec = {
                     if (targetState != null) {
                         // Entering Active Mode: Slide in from Left
@@ -307,7 +336,6 @@ fun HomeScreen(
                         (slideInHorizontally { it } + fadeIn()).togetherWith(slideOutHorizontally { -it } + fadeOut())
                     }
                 },
-                label = "ActiveAlarmTransition",
             ) { targetAlarm ->
                 if (targetAlarm != null) {
                     val reliabilityBannerState = resolveReliabilityBannerState(

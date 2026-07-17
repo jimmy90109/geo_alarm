@@ -169,8 +169,9 @@ private class FakeAlarmServiceStarter : AlarmServiceStarter {
     val started = mutableListOf<Alarm>()
     var stopCount = 0
 
-    override fun stopCurrentAlarm() {
+    override suspend fun stopCurrentAlarm(alarmId: String): Boolean {
         stopCount += 1
+        return true
     }
 
     override fun startAlarm(alarm: Alarm) {

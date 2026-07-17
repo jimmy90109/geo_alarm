@@ -84,6 +84,7 @@
     <string name="notification_retry_message">Notifications are essential for alerts. Please allow access.</string>
     <string name="retry">Retry</string>
     <string name="preview">Preview</string>
+    <string name="debug_review_prompt_attempt">Debug: Requesting the in-app review now</string>
     <string name="battery_optimization_banner_message">Alarms still work with battery optimization on. On some devices, allowing unrestricted battery use may improve background location reliability.</string>
     <string name="battery_optimization_allow_now">Improve reliability</string>
     <string name="battery_optimization_success_message">Unrestricted battery use enabled</string>

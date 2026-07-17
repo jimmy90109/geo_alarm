@@ -1,6 +1,7 @@
 package com.github.jimmy90109.geoalarm
 
 import android.content.Intent
+import android.app.KeyguardManager
 import android.net.Uri
 import android.os.Bundle
 import android.util.Log
@@ -31,9 +32,14 @@ import com.github.jimmy90109.geoalarm.ui.viewmodel.HomeAction
 import com.github.jimmy90109.geoalarm.ui.viewmodel.HomeViewModel
 import com.github.jimmy90109.geoalarm.widget.GeoAlarmGlanceWidget
 import com.github.jimmy90109.geoalarm.util.InAppReviewLauncher
+import com.github.jimmy90109.geoalarm.util.ReviewPromptCoordinator
+import com.github.jimmy90109.geoalarm.util.ReviewPromptLaunchConditions
+import com.github.jimmy90109.geoalarm.util.shouldLaunchPendingReview
+import com.github.jimmy90109.geoalarm.data.ReviewPromptStore
 import androidx.glance.appwidget.updateAll
 import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
 import javax.inject.Inject
@@ -59,6 +65,12 @@ class MainActivity : AppCompatActivity() {
     lateinit var inAppReviewLauncher: InAppReviewLauncher
 
     @Inject
+    lateinit var reviewPromptCoordinator: ReviewPromptCoordinator
+
+    @Inject
+    lateinit var reviewPromptStore: ReviewPromptStore
+
+    @Inject
     lateinit var createGeoAlarmUseCase: CreateGeoAlarmUseCase
 
     @Inject
@@ -74,7 +86,8 @@ class MainActivity : AppCompatActivity() {
     lateinit var adConsentManager: AdConsentManager
 
     private val homeViewModel: HomeViewModel by viewModels()
-    private var pendingInAppReview = false
+    private var isReviewHostReady = false
+    private var reviewClaimJob: Job? = null
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -94,6 +107,10 @@ class MainActivity : AppCompatActivity() {
                     navController = navController,
                     startDestination = startDestination,
                     requestedDestination = requestedRoute,
+                    onReviewHostReadyChanged = { ready ->
+                        isReviewHostReady = ready
+                        if (ready) tryLaunchPendingInAppReview()
+                    },
                 )
 
             }
@@ -122,7 +139,7 @@ class MainActivity : AppCompatActivity() {
 
     override fun onPostResume() {
         super.onPostResume()
-        launchPendingInAppReview()
+        tryLaunchPendingInAppReview()
     }
 
     private fun handleIntent(intent: Intent) {
@@ -134,7 +151,8 @@ class MainActivity : AppCompatActivity() {
                 lifecycleScope.launch {
                     val result = alarmTurnOffUseCase(alarmId, isArrivedTurnOff)
                     if (result.shouldRequestInAppReview) {
-                        requestInAppReviewWhenResumed()
+                        reviewPromptCoordinator.markPending()
+                        tryLaunchPendingInAppReview()
                     }
                 }
             }
@@ -168,18 +186,43 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
-    private fun requestInAppReviewWhenResumed() {
-        pendingInAppReview = true
-        launchPendingInAppReview()
-    }
-
-    private fun launchPendingInAppReview() {
-        if (!pendingInAppReview || !lifecycle.currentState.isAtLeast(Lifecycle.State.RESUMED)) {
+    private fun tryLaunchPendingInAppReview() {
+        if (!canLaunchPendingInAppReview()) {
             return
         }
-        pendingInAppReview = false
-        inAppReviewLauncher.launch(this)
+        reviewClaimJob = lifecycleScope.launch {
+            if (!isReviewSurfaceAvailable() || !reviewPromptCoordinator.consumePending()) {
+                return@launch
+            }
+            if (reviewPromptStore.reservePromptAttemptIfEligible()) {
+                if (BuildConfig.DEBUG) {
+                    Toast.makeText(
+                        this@MainActivity,
+                        R.string.debug_review_prompt_attempt,
+                        Toast.LENGTH_SHORT,
+                    ).show()
+                }
+                inAppReviewLauncher.launch(this@MainActivity)
+            }
+        }
     }
+
+    private fun canLaunchPendingInAppReview(): Boolean {
+        return shouldLaunchPendingReview(
+            ReviewPromptLaunchConditions(
+                isActivityResumed = lifecycle.currentState.isAtLeast(Lifecycle.State.RESUMED),
+                isDeviceLocked = getSystemService(KeyguardManager::class.java).isDeviceLocked,
+                isHomeListReady = isReviewHostReady,
+                hasPendingPrompt = reviewPromptCoordinator.hasPending(),
+                isClaimInProgress = reviewClaimJob?.isActive == true,
+            )
+        )
+    }
+
+    private fun isReviewSurfaceAvailable(): Boolean =
+        lifecycle.currentState.isAtLeast(Lifecycle.State.RESUMED) &&
+            isReviewHostReady &&
+            !getSystemService(KeyguardManager::class.java).isDeviceLocked
 
     private fun handleCreateGeoAlarmIntent(intent: Intent) {
         val name = intent.getStringExtra(AppActionContract.EXTRA_NAME)?.trim().orEmpty()

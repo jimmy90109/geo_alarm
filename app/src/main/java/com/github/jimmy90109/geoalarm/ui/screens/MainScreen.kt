@@ -21,6 +21,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.safeDrawing
 import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -52,6 +53,7 @@ import com.github.jimmy90109.geoalarm.utils.SharedPreferenceManager
 @Composable
 fun MainScreen(
     viewModel: HomeViewModel,
+    onReviewHostReadyChanged: (Boolean) -> Unit = {},
     onAddAlarm: () -> Unit,
     onAlarmClick: (String) -> Unit,
     onAddSchedule: () -> Unit,
@@ -96,6 +98,14 @@ fun MainScreen(
         if (isPlaceReminders) {
             markPlaceReminderTabSeen()
         }
+    }
+
+    LaunchedEffect(currentTab) {
+        if (currentTab != NavTab.HOME) onReviewHostReadyChanged(false)
+    }
+
+    DisposableEffect(Unit) {
+        onDispose { onReviewHostReadyChanged(false) }
     }
 
     // Navigation Actions
@@ -177,6 +187,7 @@ fun MainScreen(
                         onAddPlaceReminder = onAddPlaceReminder,
                         onPlaceReminderClick = onPlaceReminderClick,
                         onOpenOnboarding = onOpenOnboarding,
+                        onReviewHostReadyChanged = onReviewHostReadyChanged,
                         isLandscape = true
                     )
                 }
@@ -197,6 +208,7 @@ fun MainScreen(
                     onAddPlaceReminder = onAddPlaceReminder,
                     onPlaceReminderClick = onPlaceReminderClick,
                     onOpenOnboarding = onOpenOnboarding,
+                    onReviewHostReadyChanged = onReviewHostReadyChanged,
                     isLandscape = false
                 )
 
@@ -236,6 +248,7 @@ fun MainNavHost(
     onAddPlaceReminder: () -> Unit,
     onPlaceReminderClick: (String) -> Unit,
     onOpenOnboarding: () -> Unit,
+    onReviewHostReadyChanged: (Boolean) -> Unit,
     isLandscape: Boolean
 ) {
     NavHost(
@@ -289,6 +302,7 @@ fun MainNavHost(
         ) {
             HomeScreen(
                 viewModel = viewModel,
+                onReviewHostReadyChanged = onReviewHostReadyChanged,
                 onAddAlarm = onAddAlarm,
                 onAlarmClick = { alarm -> onAlarmClick(alarm.id) },
                 onAddSchedule = onAddSchedule,

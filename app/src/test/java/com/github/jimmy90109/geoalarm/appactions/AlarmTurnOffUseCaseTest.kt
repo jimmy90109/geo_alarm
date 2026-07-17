@@ -106,6 +106,23 @@ class AlarmTurnOffUseCaseTest {
     }
 
     @Test
+    fun `cleanup timeout does not record successful arrival`() = runBlocking {
+        val repository = InMemoryAlarmDataRepository()
+        repository.insert(alarm(id = "regular", isEnabled = true))
+        val effects = FakeAlarmTurnOffEffects(cleanupConfirmed = false)
+        val reviewPromptStore = FakeReviewPromptStore(shouldRequest = true)
+
+        val result = AlarmTurnOffUseCase(repository, effects, reviewPromptStore)(
+            "regular",
+            trackArrivedTurnOff = true,
+        )
+
+        assertFalse(result.shouldRequestInAppReview)
+        assertEquals(0, reviewPromptStore.recordCount)
+        assertEquals(1, effects.refreshCount)
+    }
+
+    @Test
     fun `failed alarm cleanup does not record successful arrival`() = runBlocking {
         val repository = InMemoryAlarmDataRepository()
         repository.insert(alarm(id = "regular", isEnabled = true))
@@ -143,15 +160,18 @@ private class FakeReviewPromptStore(
 ) : ReviewPromptStore {
     var recordCount = 0
 
-    override suspend fun recordSuccessfulArrivalAndReservePrompt(): Boolean {
+    override suspend fun recordSuccessfulArrivalAndCheckEligibility(): Boolean {
         recordCount += 1
         if (throwOnRecord) error("review storage unavailable")
         return shouldRequest
     }
+
+    override suspend fun reservePromptAttemptIfEligible(): Boolean = shouldRequest
 }
 
 private class FakeAlarmTurnOffEffects(
     private val throwOnStop: Boolean = false,
+    private val cleanupConfirmed: Boolean = true,
 ) : AlarmTurnOffEffects {
     var arrivedTurnOffCount = 0
     var stopCount = 0
@@ -161,9 +181,10 @@ private class FakeAlarmTurnOffEffects(
         arrivedTurnOffCount += 1
     }
 
-    override fun stopCurrentAlarm(alarmId: String) {
+    override suspend fun stopCurrentAlarm(alarmId: String): Boolean {
         stopCount += 1
         if (throwOnStop) error("alarm cleanup failed")
+        return cleanupConfirmed
     }
 
     override suspend fun refreshWidgets() {
