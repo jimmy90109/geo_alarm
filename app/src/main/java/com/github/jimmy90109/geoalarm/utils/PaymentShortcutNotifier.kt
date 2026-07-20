@@ -25,7 +25,7 @@ object PaymentShortcutNotifier {
     }
 
     fun show(context: Context, shortcut: PaymentShortcut) {
-        if (!isInstalled(context, shortcut)) return
+        if (!PaymentShortcutAvailability.isInstalled(context, shortcut)) return
 
         createNotificationChannel(context)
 
@@ -77,10 +77,6 @@ object PaymentShortcutNotifier {
 
     fun cancel(context: Context) {
         context.getSystemService(NotificationManager::class.java).cancel(NOTIFICATION_ID)
-    }
-
-    fun isInstalled(context: Context, shortcut: PaymentShortcut): Boolean {
-        return context.packageManager.getLaunchIntentForPackage(shortcut.packageName) != null
     }
 
     fun openPaymentTarget(context: Context, shortcut: PaymentShortcut) {

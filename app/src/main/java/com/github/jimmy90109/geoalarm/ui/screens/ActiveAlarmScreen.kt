@@ -108,6 +108,7 @@ fun ActiveAlarmScreen(
     onSamsungNowBarTroubleshootClick: () -> Unit = {},
     onSamsungNowBarLaterClick: () -> Unit = {},
     paymentShortcut: PaymentShortcut? = null,
+    paymentShortcutAvailable: Boolean = false,
     onPaymentShortcutClick: () -> Unit = {},
     onStopAlarm: (Boolean) -> Unit,
 ) {
@@ -273,11 +274,13 @@ fun ActiveAlarmScreen(
                             )
                         )
                     }
-                    Spacer(modifier = Modifier.height(8.dp))
-                    PaymentShortcutPrompt(
-                        paymentShortcut = paymentShortcut,
-                        onClick = onPaymentShortcutClick,
-                    )
+                    if (paymentShortcutAvailable) {
+                        Spacer(modifier = Modifier.height(8.dp))
+                        PaymentShortcutPrompt(
+                            paymentShortcut = paymentShortcut,
+                            onClick = onPaymentShortcutClick,
+                        )
+                    }
                 }
             }
         } else {
@@ -341,11 +344,13 @@ fun ActiveAlarmScreen(
                     )
                 }
 
-                Spacer(modifier = Modifier.height(8.dp))
-                PaymentShortcutPrompt(
-                    paymentShortcut = paymentShortcut,
-                    onClick = onPaymentShortcutClick,
-                )
+                if (paymentShortcutAvailable) {
+                    Spacer(modifier = Modifier.height(8.dp))
+                    PaymentShortcutPrompt(
+                        paymentShortcut = paymentShortcut,
+                        onClick = onPaymentShortcutClick,
+                    )
+                }
             }
         }
 

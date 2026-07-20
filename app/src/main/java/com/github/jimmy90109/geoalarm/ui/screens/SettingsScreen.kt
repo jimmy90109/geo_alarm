@@ -95,6 +95,7 @@ import com.github.jimmy90109.geoalarm.util.WebPageLauncher
 import com.github.jimmy90109.geoalarm.ui.viewmodel.SettingsAction
 import com.github.jimmy90109.geoalarm.ui.viewmodel.SettingsViewModel
 import com.github.jimmy90109.geoalarm.utils.AudioUtils
+import com.github.jimmy90109.geoalarm.utils.PaymentShortcutAvailability
 import com.github.jimmy90109.geoalarm.utils.PaymentShortcutNotifier
 import com.google.android.gms.oss.licenses.v2.OssLicensesMenuActivity
 import androidx.lifecycle.Lifecycle
@@ -126,9 +127,19 @@ fun SettingsScreen(
     var canUseFullScreenIntent by remember {
         mutableStateOf(FullScreenIntentPermissionHelper.canUseFullScreenIntent(context))
     }
+    var installedPaymentShortcuts by remember {
+        mutableStateOf(PaymentShortcutAvailability.installedShortcuts(context))
+    }
+    val effectivePaymentShortcut = paymentShortcut?.takeIf {
+        it in installedPaymentShortcuts
+    }
 
     fun refreshFullScreenIntentState() {
         canUseFullScreenIntent = FullScreenIntentPermissionHelper.canUseFullScreenIntent(context)
+    }
+
+    fun refreshInstalledPaymentShortcuts() {
+        installedPaymentShortcuts = PaymentShortcutAvailability.installedShortcuts(context)
     }
 
     fun openFullScreenIntentSettings() {
@@ -161,6 +172,7 @@ fun SettingsScreen(
         val observer = LifecycleEventObserver { _, event ->
             if (event == Lifecycle.Event.ON_RESUME) {
                 refreshFullScreenIntentState()
+                refreshInstalledPaymentShortcuts()
             }
         }
         lifecycleOwner.lifecycle.addObserver(observer)
@@ -225,7 +237,8 @@ fun SettingsScreen(
                         Spacer(modifier = Modifier.height(16.dp))
                         SettingsAlarmSection(
                             ringtoneSettings = ringtoneSettings,
-                            paymentShortcut = paymentShortcut,
+                            paymentShortcut = effectivePaymentShortcut,
+                            paymentShortcutAvailable = installedPaymentShortcuts.isNotEmpty(),
                             showFullScreenIntentSetting = FullScreenIntentPermissionHelper.isRequired(),
                             showSamsungNowBarGuide = SamsungNowBarGuide.isSupportedDevice(),
                             canUseFullScreenIntent = canUseFullScreenIntent,
@@ -281,7 +294,8 @@ fun SettingsScreen(
                     Spacer(modifier = Modifier.height(16.dp))
                     SettingsAlarmSection(
                         ringtoneSettings = ringtoneSettings,
-                        paymentShortcut = paymentShortcut,
+                        paymentShortcut = effectivePaymentShortcut,
+                        paymentShortcutAvailable = installedPaymentShortcuts.isNotEmpty(),
                         showFullScreenIntentSetting = FullScreenIntentPermissionHelper.isRequired(),
                         showSamsungNowBarGuide = SamsungNowBarGuide.isSupportedDevice(),
                         canUseFullScreenIntent = canUseFullScreenIntent,
@@ -456,9 +470,16 @@ fun SettingsScreen(
         }
     }
 
-    if (uiState.showPaymentShortcutSheet) {
+    LaunchedEffect(uiState.showPaymentShortcutSheet, installedPaymentShortcuts) {
+        if (uiState.showPaymentShortcutSheet && installedPaymentShortcuts.isEmpty()) {
+            viewModel.onAction(SettingsAction.PaymentShortcutSheetDismissed)
+        }
+    }
+
+    if (uiState.showPaymentShortcutSheet && installedPaymentShortcuts.isNotEmpty()) {
         PaymentShortcutBottomSheet(
             selectedShortcut = paymentShortcut,
+            installedShortcuts = installedPaymentShortcuts,
             onSelected = { viewModel.onAction(SettingsAction.PaymentShortcutSelected(it)) },
             onPreview = { PaymentShortcutNotifier.show(context, it) },
             onDismiss = { viewModel.onAction(SettingsAction.PaymentShortcutSheetDismissed) },
@@ -493,6 +514,7 @@ private fun SettingsGeneralSection(
 private fun SettingsAlarmSection(
     ringtoneSettings: RingtoneSettings,
     paymentShortcut: PaymentShortcut?,
+    paymentShortcutAvailable: Boolean,
     showFullScreenIntentSetting: Boolean,
     showSamsungNowBarGuide: Boolean,
     canUseFullScreenIntent: Boolean,
@@ -513,12 +535,14 @@ private fun SettingsAlarmSection(
         },
         onClick = onRingtoneClick,
     )
-    Spacer(modifier = Modifier.height(8.dp))
-    SettingsCard(
-        title = stringResource(R.string.settings_payment_shortcut),
-        value = paymentShortcut?.displayName ?: stringResource(R.string.payment_shortcut_off),
-        onClick = onPaymentShortcutClick,
-    )
+    if (paymentShortcutAvailable) {
+        Spacer(modifier = Modifier.height(8.dp))
+        SettingsCard(
+            title = stringResource(R.string.settings_payment_shortcut),
+            value = paymentShortcut?.displayName ?: stringResource(R.string.payment_shortcut_off),
+            onClick = onPaymentShortcutClick,
+        )
+    }
     if (showFullScreenIntentSetting) {
         Spacer(modifier = Modifier.height(8.dp))
         SettingsCard(
@@ -547,6 +571,7 @@ private fun SettingsAlarmSection(
 @Composable
 fun PaymentShortcutBottomSheet(
     selectedShortcut: PaymentShortcut?,
+    installedShortcuts: List<PaymentShortcut>,
     onSelected: (PaymentShortcut?) -> Unit,
     onPreview: (PaymentShortcut) -> Unit,
     onDismiss: () -> Unit,
@@ -556,19 +581,8 @@ fun PaymentShortcutBottomSheet(
         sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true),
     ) {
         val context = LocalContext.current
-        val installedShortcuts = remember {
-            PaymentShortcut.entries.filter {
-                context.packageManager.getLaunchIntentForPackage(it.packageName) != null
-            }
-        }
         val effectiveShortcut = selectedShortcut?.takeIf { it in installedShortcuts }
         val enabled = effectiveShortcut != null
-
-        LaunchedEffect(selectedShortcut, installedShortcuts) {
-            if (selectedShortcut != null && selectedShortcut !in installedShortcuts) {
-                onSelected(null)
-            }
-        }
 
         Row(
             modifier = Modifier

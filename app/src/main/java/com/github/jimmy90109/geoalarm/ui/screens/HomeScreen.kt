@@ -80,6 +80,7 @@ import com.github.jimmy90109.geoalarm.ui.viewmodel.HomeAction
 import com.github.jimmy90109.geoalarm.ui.viewmodel.HomeUiState
 import com.github.jimmy90109.geoalarm.ui.viewmodel.HomeViewModel
 import com.github.jimmy90109.geoalarm.utils.PaymentShortcutNotifier
+import com.github.jimmy90109.geoalarm.utils.PaymentShortcutAvailability
 import com.github.jimmy90109.geoalarm.widget.GeoAlarmGlanceWidgetReceiver
 import androidx.lifecycle.compose.LocalLifecycleOwner
 
@@ -121,6 +122,13 @@ fun HomeScreen(
     var batteryOptimizationBannerState by remember {
         mutableStateOf(ReliabilityBannerState.Hidden)
     }
+    var installedPaymentShortcuts by remember {
+        mutableStateOf(PaymentShortcutAvailability.installedShortcuts(context))
+    }
+    val effectivePaymentShortcut = paymentShortcut?.takeIf {
+        it in installedPaymentShortcuts
+    }
+    var showPaymentShortcutSheet by remember { mutableStateOf(false) }
 
     fun refreshBatteryOptimizationBannerState() {
         val powerManager = context.getSystemService(Context.POWER_SERVICE) as PowerManager
@@ -142,12 +150,20 @@ fun HomeScreen(
         WebPageLauncher.open(context, SamsungNowBarGuide.url(context))
     }
 
+    fun refreshInstalledPaymentShortcuts() {
+        installedPaymentShortcuts = PaymentShortcutAvailability.installedShortcuts(context)
+        if (installedPaymentShortcuts.isEmpty()) {
+            showPaymentShortcutSheet = false
+        }
+    }
+
     DisposableEffect(lifecycleOwner, alarms) {
         val observer = LifecycleEventObserver { _, event ->
             if (event == Lifecycle.Event.ON_RESUME) {
                 viewModel.onAction(HomeAction.ExactAlarmSettingsReturned)
                 viewModel.onAction(HomeAction.ActivationPermissionSettingsReturned)
                 refreshBatteryOptimizationBannerState()
+                refreshInstalledPaymentShortcuts()
             }
         }
         lifecycleOwner.lifecycle.addObserver(observer)
@@ -161,8 +177,6 @@ fun HomeScreen(
     var preRationale by remember { mutableStateOf(false) }
     var pendingAlarm by remember { mutableStateOf<Alarm?>(null) }
     lateinit var continueAlarmEnable: (Alarm) -> Unit
-
-    var showPaymentShortcutSheet by remember { mutableStateOf(false) }
 
     // Helper: Check location permission -> Enable Alarm
     val checkLocationAndEnableAlarm = { alarm: Alarm ->
@@ -378,7 +392,8 @@ fun HomeScreen(
                         onSamsungNowBarLaterClick = {
                             viewModel.onAction(HomeAction.SamsungNowBarPromptHandled)
                         },
-                        paymentShortcut = paymentShortcut,
+                        paymentShortcut = effectivePaymentShortcut,
+                        paymentShortcutAvailable = installedPaymentShortcuts.isNotEmpty(),
                         onPaymentShortcutClick = { showPaymentShortcutSheet = true },
                         onStopAlarm = { isArrived ->
                             haptic.performHapticFeedback(HapticFeedbackType.Confirm)
@@ -460,6 +475,7 @@ fun HomeScreen(
     if (showPaymentShortcutSheet) {
         PaymentShortcutBottomSheet(
             selectedShortcut = paymentShortcut,
+            installedShortcuts = installedPaymentShortcuts,
             onSelected = {
                 viewModel.onAction(HomeAction.PaymentShortcutSelected(it))
             },
