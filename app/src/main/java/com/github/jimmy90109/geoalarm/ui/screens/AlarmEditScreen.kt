@@ -87,10 +87,12 @@ import androidx.compose.material3.ToggleButtonDefaults
 import androidx.compose.material3.carousel.HorizontalCenteredHeroCarousel
 import androidx.compose.material3.carousel.rememberCarouselState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -123,6 +125,9 @@ import androidx.compose.ui.unit.IntOffset
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.github.jimmy90109.geoalarm.R
+import com.github.jimmy90109.geoalarm.GeoAlarmApplication
+import com.github.jimmy90109.geoalarm.data.DistanceUnitPreference
+import com.github.jimmy90109.geoalarm.data.DistanceUnitSystem
 import com.github.jimmy90109.geoalarm.data.places.PlaceCandidate
 import com.github.jimmy90109.geoalarm.share.SharedPlaceSource
 import com.github.jimmy90109.geoalarm.ui.components.AlarmIconBadge
@@ -137,6 +142,9 @@ import com.github.jimmy90109.geoalarm.ui.viewmodel.AlarmEditUiState
 import com.github.jimmy90109.geoalarm.ui.viewmodel.AlarmEditViewModel
 import com.github.jimmy90109.geoalarm.ui.theme.GeoAlarmTheme
 import com.github.jimmy90109.geoalarm.utils.DistanceFormatter
+import com.github.jimmy90109.geoalarm.utils.DistanceFormatStyle
+import com.github.jimmy90109.geoalarm.utils.DistanceRadiusScale
+import com.github.jimmy90109.geoalarm.utils.DistanceUnitResolver
 import com.google.android.gms.maps.CameraUpdateFactory
 import com.google.android.gms.maps.model.CameraPosition
 import com.google.android.gms.maps.model.LatLng
@@ -154,6 +162,7 @@ import kotlin.math.roundToInt
 
 private val DefaultMapPosition = LatLng(25.034, 121.564)
 private const val INITIAL_LOCATION_FALLBACK_DELAY_MS = 1200L
+private val LocalDistanceUnitSystem = staticCompositionLocalOf { DistanceUnitSystem.METRIC }
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalMaterial3ExpressiveApi::class)
 @Composable
@@ -167,10 +176,23 @@ fun AlarmEditScreen(
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val context = LocalContext.current
     val configuration = LocalConfiguration.current
+    val settingsRepository =
+        (context.applicationContext as GeoAlarmApplication).settingsRepository
+    val distanceUnitPreference by settingsRepository.distanceUnitPreferenceFlow
+        .collectAsStateWithLifecycle(initialValue = DistanceUnitPreference.AUTO)
+    val distanceUnitSystem = remember(configuration, distanceUnitPreference) {
+        DistanceUnitResolver.resolve(context, distanceUnitPreference)
+    }
+    val radiusScale = remember(distanceUnitSystem) {
+        DistanceRadiusScale.forSystem(distanceUnitSystem)
+    }
     val haptic = LocalHapticFeedback.current
     val isLandscape = configuration.orientation == Configuration.ORIENTATION_LANDSCAPE
     val isDetailsStep = uiState.step == AlarmEditStep.DetailsForm
     var canShowInitialLocationFallback by remember(alarmId) { mutableStateOf(alarmId != null) }
+    var normalizedRadiusKey by remember(alarmId, distanceUnitSystem) {
+        mutableStateOf<String?>(null)
+    }
 
     val cameraPositionState = rememberCameraPositionState {
         position = CameraPosition.fromLatLngZoom(
@@ -183,6 +205,19 @@ fun AlarmEditScreen(
         viewModel.onAction(AlarmEditAction.LoadAlarm(alarmId))
         delay(1000)
         viewModel.onAction(AlarmEditAction.MapLoaded)
+    }
+
+    LaunchedEffect(uiState.isLoading, alarmId, distanceUnitSystem) {
+        if (!uiState.isLoading) {
+            val key = "${alarmId ?: "new"}:$distanceUnitSystem"
+            if (normalizedRadiusKey != key) {
+                normalizedRadiusKey = key
+                val snappedRadius = radiusScale.snapDistanceMeters(uiState.radius.toDouble())
+                if (snappedRadius != uiState.radius) {
+                    viewModel.onAction(AlarmEditAction.RadiusChanged(snappedRadius))
+                }
+            }
+        }
     }
 
     LaunchedEffect(sharedPlaceQuery, sharedPlaceSource) {
@@ -267,9 +302,10 @@ fun AlarmEditScreen(
         handleMapStepBack()
     }
 
-    Box(modifier = Modifier.fillMaxSize()) {
-        if (isLandscape) {
-            AlarmEditLandscapeLayout(
+    CompositionLocalProvider(LocalDistanceUnitSystem provides distanceUnitSystem) {
+        Box(modifier = Modifier.fillMaxSize()) {
+            if (isLandscape) {
+                AlarmEditLandscapeLayout(
                 uiState = uiState,
                 cameraPositionState = cameraPositionState,
                 isDetailsStep = isDetailsStep,
@@ -281,8 +317,8 @@ fun AlarmEditScreen(
                 nameLabel = stringResource(R.string.alarm_name),
                 namePlaceholder = stringResource(R.string.enter_alarm_name),
                 iconPickerTitle = stringResource(R.string.select_alarm_icon),
-                radiusRange = 500f..5000f,
-                radiusSteps = 45,
+                radiusRange = radiusScale.valueRange,
+                radiusSteps = radiusScale.steps,
                 disabledNextLabel = stringResource(R.string.tap_map_to_select_place),
                 onBack = ::handleMapStepBack,
                 onSearch = {
@@ -307,9 +343,9 @@ fun AlarmEditScreen(
                 hideMapForInitialLocation = !canShowInitialLocationFallback &&
                     uiState.currentLocation == null &&
                     uiState.selectedPosition == null
-            )
-        } else {
-            AlarmEditPortraitLayout(
+                )
+            } else {
+                AlarmEditPortraitLayout(
                 uiState = uiState,
                 cameraPositionState = cameraPositionState,
                 isDetailsStep = isDetailsStep,
@@ -321,8 +357,8 @@ fun AlarmEditScreen(
                 nameLabel = stringResource(R.string.alarm_name),
                 namePlaceholder = stringResource(R.string.enter_alarm_name),
                 iconPickerTitle = stringResource(R.string.select_alarm_icon),
-                radiusRange = 500f..5000f,
-                radiusSteps = 45,
+                radiusRange = radiusScale.valueRange,
+                radiusSteps = radiusScale.steps,
                 disabledNextLabel = stringResource(R.string.tap_map_to_select_place),
                 onBack = ::handleMapStepBack,
                 onSearch = {
@@ -347,7 +383,8 @@ fun AlarmEditScreen(
                 hideMapForInitialLocation = !canShowInitialLocationFallback &&
                     uiState.currentLocation == null &&
                     uiState.selectedPosition == null
-            )
+                )
+            }
         }
     }
 
@@ -1508,11 +1545,18 @@ fun AlarmEditRadiusControl(
     isEditMode: Boolean = false,
     onDeleteClick: () -> Unit = {},
     elevation: androidx.compose.ui.unit.Dp = 0.dp,
-    valueRange: ClosedFloatingPointRange<Float> = 500f..5000f,
-    steps: Int = 45,
+    valueRange: ClosedFloatingPointRange<Float> = 0.5f..5.0f,
+    steps: Int = 44,
 ) {
     val view = LocalView.current
+    val context = LocalContext.current
     val distanceLocale = LocalConfiguration.current.locales[0]
+    val distanceUnitSystem = LocalDistanceUnitSystem.current
+    val radiusScale = remember(distanceUnitSystem) {
+        DistanceRadiusScale.forSystem(distanceUnitSystem)
+    }
+    val sliderValue = radiusScale.sliderValue(radius.toDouble())
+        .coerceIn(valueRange.start, valueRange.endInclusive)
     Card(
         shape = RoundedCornerShape(44.dp),
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
@@ -1526,17 +1570,24 @@ fun AlarmEditRadiusControl(
             Text(
                 text = stringResource(
                     R.string.radius_label,
-                    DistanceFormatter.formatMeters(radius.toInt(), distanceLocale),
+                    DistanceFormatter.format(
+                        context = context,
+                        distanceMeters = radius.toDouble(),
+                        system = distanceUnitSystem,
+                        locale = distanceLocale,
+                        style = DistanceFormatStyle.RADIUS,
+                    ),
                 ),
                 style = MaterialTheme.typography.bodyLarge
             )
             Spacer(modifier = Modifier.height(8.dp))
             Slider(
-                value = radius,
+                value = sliderValue,
                 onValueChange = {
-                    if (it != radius) {
+                    val distanceMeters = radiusScale.distanceMeters(it)
+                    if (distanceMeters != radius) {
                         view.performHapticFeedback(android.view.HapticFeedbackConstants.CLOCK_TICK)
-                        onRadiusChange(it)
+                        onRadiusChange(distanceMeters)
                     }
                 },
                 valueRange = valueRange,

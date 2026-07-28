@@ -49,6 +49,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
@@ -81,6 +82,7 @@ import com.github.jimmy90109.geoalarm.ui.viewmodel.HomeUiState
 import com.github.jimmy90109.geoalarm.ui.viewmodel.HomeViewModel
 import com.github.jimmy90109.geoalarm.utils.PaymentShortcutNotifier
 import com.github.jimmy90109.geoalarm.utils.PaymentShortcutAvailability
+import com.github.jimmy90109.geoalarm.utils.DistanceUnitResolver
 import com.github.jimmy90109.geoalarm.widget.GeoAlarmGlanceWidgetReceiver
 import androidx.lifecycle.compose.LocalLifecycleOwner
 
@@ -113,9 +115,14 @@ fun HomeScreen(
     val schedules = homeListState.schedules
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val paymentShortcut by viewModel.paymentShortcut.collectAsStateWithLifecycle()
+    val distanceUnitPreference by viewModel.distanceUnitPreference.collectAsStateWithLifecycle()
     val homeNativeAdState by viewModel.homeNativeAdState.collectAsStateWithLifecycle()
     val samsungNowBarPromptHandled by viewModel.samsungNowBarPromptHandled.collectAsStateWithLifecycle()
     val context = LocalContext.current
+    val configuration = LocalConfiguration.current
+    val distanceUnitSystem = remember(configuration, distanceUnitPreference) {
+        DistanceUnitResolver.resolve(context, distanceUnitPreference)
+    }
     val lifecycleOwner = LocalLifecycleOwner.current
     val haptic = LocalHapticFeedback.current
     val scrollBehavior = TopAppBarDefaults.exitUntilCollapsedScrollBehavior()
@@ -362,6 +369,7 @@ fun HomeScreen(
                         alarm = targetAlarm,
                         progress = uiState.monitoringProgress,
                         distanceMeters = uiState.monitoringDistance,
+                        distanceUnitSystem = distanceUnitSystem,
                         reliabilityBannerState = reliabilityBannerState,
                         onBatteryOptimizationClick = {
                             val powerManager =

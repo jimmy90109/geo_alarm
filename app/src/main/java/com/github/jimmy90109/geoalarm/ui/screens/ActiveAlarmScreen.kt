@@ -51,6 +51,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalConfiguration
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -60,6 +61,7 @@ import androidx.compose.ui.unit.sp
 import com.github.jimmy90109.geoalarm.R
 import com.github.jimmy90109.geoalarm.data.Alarm
 import com.github.jimmy90109.geoalarm.data.PaymentShortcut
+import com.github.jimmy90109.geoalarm.data.DistanceUnitSystem
 import com.github.jimmy90109.geoalarm.ui.theme.GeoAlarmTheme
 import com.github.jimmy90109.geoalarm.utils.DistanceFormatter
 import kotlinx.coroutines.delay
@@ -102,6 +104,7 @@ fun ActiveAlarmScreen(
     alarm: Alarm,
     progress: Int,
     distanceMeters: Int?,
+    distanceUnitSystem: DistanceUnitSystem,
     reliabilityBannerState: ReliabilityBannerState = ReliabilityBannerState.Hidden,
     onBatteryOptimizationClick: () -> Unit = {},
     onBatteryOptimizationSuccessShown: () -> Unit = {},
@@ -165,6 +168,7 @@ fun ActiveAlarmScreen(
     )
 
     val configuration = LocalConfiguration.current
+    val context = LocalContext.current
     val distanceLocale = configuration.locales[0]
     val isLandscape = configuration.orientation == ORIENTATION_LANDSCAPE
 
@@ -241,8 +245,13 @@ fun ActiveAlarmScreen(
                     } else {
                         Text(
                             text = if (distanceMeters != null) stringResource(
-                                R.string.distance_meters,
-                                DistanceFormatter.formatMeters(distanceMeters, distanceLocale)
+                                R.string.distance_remaining,
+                                DistanceFormatter.format(
+                                    context,
+                                    distanceMeters.toDouble(),
+                                    distanceUnitSystem,
+                                    distanceLocale,
+                                ),
                             ) else "--", style = MaterialTheme.typography.displayLarge.copy(
                                 fontWeight = FontWeight.Bold,
                                 fontSize = 64.sp, // Slightly smaller for landscape
@@ -312,8 +321,13 @@ fun ActiveAlarmScreen(
                 } else {
                     Text(
                         text = if (distanceMeters != null) stringResource(
-                            R.string.distance_meters,
-                            DistanceFormatter.formatMeters(distanceMeters, distanceLocale),
+                            R.string.distance_remaining,
+                            DistanceFormatter.format(
+                                context,
+                                distanceMeters.toDouble(),
+                                distanceUnitSystem,
+                                distanceLocale,
+                            ),
                         ) else "--", style = MaterialTheme.typography.displayMedium.copy(
                             fontWeight = FontWeight.Bold,
                         )
@@ -526,6 +540,7 @@ fun ActiveAlarmScreenPreview() {
             alarm = mockAlarm,
             progress = progressState.intValue,
             distanceMeters = if (progressState.intValue == 10) 5000 else 250,
+            distanceUnitSystem = DistanceUnitSystem.METRIC,
             reliabilityBannerState = ReliabilityBannerState.BatteryOptimizationWarning,
             onStopAlarm = {},
         )

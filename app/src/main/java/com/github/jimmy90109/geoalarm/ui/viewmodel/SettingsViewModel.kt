@@ -12,6 +12,7 @@ import com.github.jimmy90109.geoalarm.BuildConfig
 import com.github.jimmy90109.geoalarm.ads.AdConsentManager
 import com.github.jimmy90109.geoalarm.ads.AdConsentState
 import com.github.jimmy90109.geoalarm.data.AlarmDataRepository
+import com.github.jimmy90109.geoalarm.data.DistanceUnitPreference
 import com.github.jimmy90109.geoalarm.data.PaymentShortcut
 import com.github.jimmy90109.geoalarm.data.RingtoneSettings
 import com.github.jimmy90109.geoalarm.data.SettingsRepository
@@ -28,6 +29,7 @@ import kotlinx.coroutines.launch
 
 data class SettingsUiState(
     val showLanguageSheet: Boolean = false,
+    val showDistanceUnitSheet: Boolean = false,
     val showRingtoneSheet: Boolean = false,
     val showPaymentShortcutSheet: Boolean = false,
     val showFullScreenIntentSheet: Boolean = false,
@@ -42,6 +44,9 @@ sealed interface SettingsAction {
     data class LocaleSelected(val languageTag: String) : SettingsAction
     data object LanguageSheetRequested : SettingsAction
     data object LanguageSheetDismissed : SettingsAction
+    data object DistanceUnitSheetRequested : SettingsAction
+    data object DistanceUnitSheetDismissed : SettingsAction
+    data class DistanceUnitSelected(val preference: DistanceUnitPreference) : SettingsAction
     data object RingtoneSheetRequested : SettingsAction
     data object RingtoneSheetDismissed : SettingsAction
     data object PaymentShortcutSheetRequested : SettingsAction
@@ -88,6 +93,13 @@ class SettingsViewModel @Inject constructor(
             initialValue = null
         )
 
+    val distanceUnitPreference: StateFlow<DistanceUnitPreference> =
+        settingsRepository.distanceUnitPreferenceFlow.stateIn(
+            scope = viewModelScope,
+            started = SharingStarted.WhileSubscribed(5000),
+            initialValue = DistanceUnitPreference.AUTO,
+        )
+
     val adConsentState: StateFlow<AdConsentState> = adConsentManager.state
 
     // Preview player
@@ -116,6 +128,9 @@ class SettingsViewModel @Inject constructor(
             is SettingsAction.LocaleSelected -> setAppLocale(action.languageTag)
             SettingsAction.LanguageSheetRequested -> showLanguageSheet()
             SettingsAction.LanguageSheetDismissed -> dismissLanguageSheet()
+            SettingsAction.DistanceUnitSheetRequested -> showDistanceUnitSheet()
+            SettingsAction.DistanceUnitSheetDismissed -> dismissDistanceUnitSheet()
+            is SettingsAction.DistanceUnitSelected -> setDistanceUnitPreference(action.preference)
             SettingsAction.RingtoneSheetRequested -> showRingtoneSheet()
             SettingsAction.RingtoneSheetDismissed -> dismissRingtoneSheet()
             SettingsAction.PaymentShortcutSheetRequested -> showPaymentShortcutSheet()
@@ -165,6 +180,14 @@ class SettingsViewModel @Inject constructor(
         _uiState.value = _uiState.value.copy(showLanguageSheet = false)
     }
 
+    private fun showDistanceUnitSheet() {
+        _uiState.value = _uiState.value.copy(showDistanceUnitSheet = true)
+    }
+
+    private fun dismissDistanceUnitSheet() {
+        _uiState.value = _uiState.value.copy(showDistanceUnitSheet = false)
+    }
+
     // Ringtone Settings Controls
     private fun showRingtoneSheet() {
         _uiState.value = _uiState.value.copy(showRingtoneSheet = true)
@@ -206,6 +229,13 @@ class SettingsViewModel @Inject constructor(
     private fun setPaymentShortcut(shortcut: PaymentShortcut?) {
         viewModelScope.launch {
             settingsRepository.setPaymentShortcut(shortcut)
+        }
+    }
+
+    private fun setDistanceUnitPreference(preference: DistanceUnitPreference) {
+        dismissDistanceUnitSheet()
+        viewModelScope.launch {
+            settingsRepository.setDistanceUnitPreference(preference)
         }
     }
 
