@@ -56,6 +56,8 @@ fun PlaceReminderListScreen(
     viewModel: PlaceReminderListViewModel,
     onAddReminder: () -> Unit,
     onReminderClick: (String) -> Unit,
+    highlightedReminderId: String? = null,
+    onHighlightFinished: () -> Unit = {},
     isLandscape: Boolean = false,
 ) {
     val listState by viewModel.listState.collectAsStateWithLifecycle()
@@ -203,6 +205,8 @@ fun PlaceReminderListScreen(
                     viewModel.setEnabled(reminderId, false)
                 }
             },
+            highlightedReminderId = highlightedReminderId,
+            onHighlightFinished = onHighlightFinished,
             modifier = Modifier.fillMaxSize(),
         )
     }

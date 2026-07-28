@@ -28,6 +28,7 @@ import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.NavHostController
 import androidx.navigation.NavDestination.Companion.hasRoute
 import androidx.navigation.compose.NavHost
@@ -55,6 +56,7 @@ import com.github.jimmy90109.geoalarm.ui.viewmodel.ScheduleEditViewModel
 private const val DURATION_MEDIUM = 300
 private const val DURATION_SHORT = 150
 private const val INITIAL_SCALE = 0.92f
+private const val HIGHLIGHT_PLACE_REMINDER_ID = "highlight_place_reminder_id"
 
 /**
  * Wrapper composable that applies device's corner radius during navigation transitions.
@@ -172,6 +174,9 @@ fun AppNavHost(
             val savedStateHandle = backStackEntry.savedStateHandle
             val highlightedAlarmId = savedStateHandle.get<String>("highlight_alarm_id")
             val highlightedScheduleId = savedStateHandle.get<String>("highlight_schedule_id")
+            val highlightedPlaceReminderId by remember(savedStateHandle) {
+                savedStateHandle.getStateFlow<String?>(HIGHLIGHT_PLACE_REMINDER_ID, null)
+            }.collectAsStateWithLifecycle()
 
             LaunchedEffect(highlightedAlarmId) {
                 if (highlightedAlarmId != null) {
@@ -205,6 +210,10 @@ fun AppNavHost(
                     },
                     onPlaceReminderClick = { reminderId ->
                         navController.navigate(AppRoutes.PlaceReminderDetail(reminderId))
+                    },
+                    highlightedPlaceReminderId = highlightedPlaceReminderId,
+                    onPlaceReminderHighlightFinished = {
+                        savedStateHandle[HIGHLIGHT_PLACE_REMINDER_ID] = null
                     },
                     onOpenOnboarding = {
                         navController.navigate(AppRoutes.Onboarding)
@@ -314,11 +323,18 @@ fun AppNavHost(
                     },
                     onBack = { savedReminderId ->
                         if (savedReminderId != null) {
-                            navController.navigate(AppRoutes.PlaceReminderDetail(savedReminderId)) {
-                                popUpTo(route) {
-                                    inclusive = true
+                            if (route.reminderId == null) {
+                                navController.previousBackStackEntry
+                                    ?.savedStateHandle
+                                    ?.set(HIGHLIGHT_PLACE_REMINDER_ID, savedReminderId)
+                                navController.popBackStack()
+                            } else {
+                                navController.navigate(AppRoutes.PlaceReminderDetail(savedReminderId)) {
+                                    popUpTo(route) {
+                                        inclusive = true
+                                    }
+                                    launchSingleTop = true
                                 }
-                                launchSingleTop = true
                             }
                         } else {
                             navController.popBackStack()

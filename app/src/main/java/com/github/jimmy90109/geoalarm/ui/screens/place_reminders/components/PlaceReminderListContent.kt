@@ -52,6 +52,8 @@ fun PlaceReminderListContent(
     onAddReminder: () -> Unit,
     onReminderClick: (String) -> Unit,
     onReminderEnabledChange: (String, Boolean) -> Unit,
+    highlightedReminderId: String? = null,
+    onHighlightFinished: () -> Unit = {},
     modifier: Modifier = Modifier,
 ) {
     val enabledReminders = state.reminders.filter { it.reminder.enabled }
@@ -133,6 +135,8 @@ fun PlaceReminderListContent(
                                 onEnabledChange = { enabled ->
                                     onReminderEnabledChange(reminder.reminder.id, enabled)
                                 },
+                                isHighlighted = reminder.reminder.id == highlightedReminderId,
+                                onHighlightFinished = onHighlightFinished,
                                 modifier = Modifier.animateItem(),
                             )
                         }
@@ -153,6 +157,8 @@ fun PlaceReminderListContent(
                                 onEnabledChange = { enabled ->
                                     onReminderEnabledChange(reminder.reminder.id, enabled)
                                 },
+                                isHighlighted = reminder.reminder.id == highlightedReminderId,
+                                onHighlightFinished = onHighlightFinished,
                                 modifier = Modifier.animateItem(),
                             )
                         }

@@ -60,6 +60,8 @@ fun MainScreen(
     onScheduleClick: (String) -> Unit,
     onAddPlaceReminder: () -> Unit,
     onPlaceReminderClick: (String) -> Unit,
+    highlightedPlaceReminderId: String?,
+    onPlaceReminderHighlightFinished: () -> Unit,
     onOpenOnboarding: () -> Unit,
 ) {
     val navController = rememberNavController()
@@ -186,6 +188,8 @@ fun MainScreen(
                         onScheduleClick = onScheduleClick,
                         onAddPlaceReminder = onAddPlaceReminder,
                         onPlaceReminderClick = onPlaceReminderClick,
+                        highlightedPlaceReminderId = highlightedPlaceReminderId,
+                        onPlaceReminderHighlightFinished = onPlaceReminderHighlightFinished,
                         onOpenOnboarding = onOpenOnboarding,
                         onReviewHostReadyChanged = onReviewHostReadyChanged,
                         isLandscape = true
@@ -207,6 +211,8 @@ fun MainScreen(
                     onScheduleClick = onScheduleClick,
                     onAddPlaceReminder = onAddPlaceReminder,
                     onPlaceReminderClick = onPlaceReminderClick,
+                    highlightedPlaceReminderId = highlightedPlaceReminderId,
+                    onPlaceReminderHighlightFinished = onPlaceReminderHighlightFinished,
                     onOpenOnboarding = onOpenOnboarding,
                     onReviewHostReadyChanged = onReviewHostReadyChanged,
                     isLandscape = false
@@ -247,6 +253,8 @@ fun MainNavHost(
     onScheduleClick: (String) -> Unit,
     onAddPlaceReminder: () -> Unit,
     onPlaceReminderClick: (String) -> Unit,
+    highlightedPlaceReminderId: String?,
+    onPlaceReminderHighlightFinished: () -> Unit,
     onOpenOnboarding: () -> Unit,
     onReviewHostReadyChanged: (Boolean) -> Unit,
     isLandscape: Boolean
@@ -391,6 +399,8 @@ fun MainNavHost(
                 viewModel = placeReminderListViewModel,
                 onAddReminder = onAddPlaceReminder,
                 onReminderClick = onPlaceReminderClick,
+                highlightedReminderId = highlightedPlaceReminderId,
+                onHighlightFinished = onPlaceReminderHighlightFinished,
                 isLandscape = isLandscape,
             )
         }
