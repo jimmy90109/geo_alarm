@@ -11,9 +11,7 @@ import androidx.lifecycle.viewModelScope
 import com.github.jimmy90109.geoalarm.BuildConfig
 import com.github.jimmy90109.geoalarm.ads.AdConsentManager
 import com.github.jimmy90109.geoalarm.ads.AdConsentState
-import com.github.jimmy90109.geoalarm.analytics.TelemetryTracker
 import com.github.jimmy90109.geoalarm.data.AlarmDataRepository
-import com.github.jimmy90109.geoalarm.data.AnalyticsPreferencesStore
 import com.github.jimmy90109.geoalarm.data.PaymentShortcut
 import com.github.jimmy90109.geoalarm.data.RingtoneSettings
 import com.github.jimmy90109.geoalarm.data.SettingsRepository
@@ -32,7 +30,6 @@ data class SettingsUiState(
     val showLanguageSheet: Boolean = false,
     val showRingtoneSheet: Boolean = false,
     val showPaymentShortcutSheet: Boolean = false,
-    val showAnalyticsSheet: Boolean = false,
     val showFullScreenIntentSheet: Boolean = false,
     val anyAlarmEnabled: Boolean = false,
     val isPreviewPlaying: Boolean = false,
@@ -49,14 +46,11 @@ sealed interface SettingsAction {
     data object RingtoneSheetDismissed : SettingsAction
     data object PaymentShortcutSheetRequested : SettingsAction
     data object PaymentShortcutSheetDismissed : SettingsAction
-    data object AnalyticsSheetRequested : SettingsAction
-    data object AnalyticsSheetDismissed : SettingsAction
     data object FullScreenIntentSheetRequested : SettingsAction
     data object FullScreenIntentSheetDismissed : SettingsAction
     data class RingtoneEnabledChanged(val enabled: Boolean) : SettingsAction
     data class RingtoneSelected(val uri: String?, val name: String?) : SettingsAction
     data class PaymentShortcutSelected(val shortcut: PaymentShortcut?) : SettingsAction
-    data class AnalyticsEnabledChanged(val enabled: Boolean) : SettingsAction
     data class AdPrivacyOptionsRequested(val activity: Activity) : SettingsAction
     data class PreviewPlayRequested(
         val context: Context,
@@ -70,9 +64,7 @@ sealed interface SettingsAction {
 class SettingsViewModel @Inject constructor(
     application: Application,
     private val settingsRepository: SettingsRepository,
-    private val analyticsPreferencesStore: AnalyticsPreferencesStore,
     private val alarmRepository: AlarmDataRepository,
-    private val telemetryTracker: TelemetryTracker,
     private val adConsentManager: AdConsentManager,
 ) : AndroidViewModel(application) {
 
@@ -96,12 +88,6 @@ class SettingsViewModel @Inject constructor(
             initialValue = null
         )
 
-    val analyticsEnabled: StateFlow<Boolean> = analyticsPreferencesStore.analyticsEnabledFlow
-        .stateIn(
-            scope = viewModelScope,
-            started = SharingStarted.WhileSubscribed(5000),
-            initialValue = false
-        )
     val adConsentState: StateFlow<AdConsentState> = adConsentManager.state
 
     // Preview player
@@ -134,14 +120,11 @@ class SettingsViewModel @Inject constructor(
             SettingsAction.RingtoneSheetDismissed -> dismissRingtoneSheet()
             SettingsAction.PaymentShortcutSheetRequested -> showPaymentShortcutSheet()
             SettingsAction.PaymentShortcutSheetDismissed -> dismissPaymentShortcutSheet()
-            SettingsAction.AnalyticsSheetRequested -> showAnalyticsSheet()
-            SettingsAction.AnalyticsSheetDismissed -> dismissAnalyticsSheet()
             SettingsAction.FullScreenIntentSheetRequested -> showFullScreenIntentSheet()
             SettingsAction.FullScreenIntentSheetDismissed -> dismissFullScreenIntentSheet()
             is SettingsAction.RingtoneEnabledChanged -> setRingtoneEnabled(action.enabled)
             is SettingsAction.RingtoneSelected -> setRingtone(action.uri, action.name)
             is SettingsAction.PaymentShortcutSelected -> setPaymentShortcut(action.shortcut)
-            is SettingsAction.AnalyticsEnabledChanged -> setAnalyticsEnabled(action.enabled)
             is SettingsAction.AdPrivacyOptionsRequested ->
                 adConsentManager.showPrivacyOptionsForm(action.activity)
             is SettingsAction.PreviewPlayRequested -> playPreview(
@@ -200,14 +183,6 @@ class SettingsViewModel @Inject constructor(
         _uiState.value = _uiState.value.copy(showPaymentShortcutSheet = false)
     }
 
-    private fun showAnalyticsSheet() {
-        _uiState.value = _uiState.value.copy(showAnalyticsSheet = true)
-    }
-
-    private fun dismissAnalyticsSheet() {
-        _uiState.value = _uiState.value.copy(showAnalyticsSheet = false)
-    }
-
     private fun showFullScreenIntentSheet() {
         _uiState.value = _uiState.value.copy(showFullScreenIntentSheet = true)
     }
@@ -231,15 +206,6 @@ class SettingsViewModel @Inject constructor(
     private fun setPaymentShortcut(shortcut: PaymentShortcut?) {
         viewModelScope.launch {
             settingsRepository.setPaymentShortcut(shortcut)
-        }
-    }
-
-    private fun setAnalyticsEnabled(enabled: Boolean) {
-        viewModelScope.launch {
-            analyticsPreferencesStore.setAnalyticsEnabled(enabled)
-            if (enabled) {
-                telemetryTracker.trackAnalyticsOptInIfNeeded()
-            }
         }
     }
 

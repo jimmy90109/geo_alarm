@@ -19,6 +19,7 @@ import androidx.compose.animation.fadeOut
 import androidx.compose.animation.slideInHorizontally
 import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.animation.togetherWith
+import androidx.compose.animation.core.updateTransition
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
@@ -72,8 +73,9 @@ import com.github.jimmy90109.geoalarm.ui.components.NotificationRationaleDialog
 import com.github.jimmy90109.geoalarm.ui.components.PreciseLocationPermissionDialog
 import com.github.jimmy90109.geoalarm.ui.components.ScheduleConflictDialog
 import com.github.jimmy90109.geoalarm.ui.components.SingleAlarmDialog
-import com.github.jimmy90109.geoalarm.util.FullScreenIntentPermissionHelper
 import com.github.jimmy90109.geoalarm.ads.HomeNativeAdState
+import com.github.jimmy90109.geoalarm.util.SamsungNowBarGuide
+import com.github.jimmy90109.geoalarm.util.WebPageLauncher
 import com.github.jimmy90109.geoalarm.ui.viewmodel.HomeAction
 import com.github.jimmy90109.geoalarm.ui.viewmodel.HomeUiState
 import com.github.jimmy90109.geoalarm.ui.viewmodel.HomeViewModel
@@ -97,6 +99,7 @@ import androidx.lifecycle.compose.LocalLifecycleOwner
 @Composable
 fun HomeScreen(
     viewModel: HomeViewModel,
+    onReviewHostReadyChanged: (Boolean) -> Unit = {},
     onAddAlarm: () -> Unit,
     onAlarmClick: (Alarm) -> Unit,
     onAddSchedule: () -> Unit,
@@ -110,16 +113,13 @@ fun HomeScreen(
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val paymentShortcut by viewModel.paymentShortcut.collectAsStateWithLifecycle()
     val homeNativeAdState by viewModel.homeNativeAdState.collectAsStateWithLifecycle()
-    val fullscreenIntentPromptHandled by viewModel.fullscreenIntentPromptHandled.collectAsStateWithLifecycle()
+    val samsungNowBarPromptHandled by viewModel.samsungNowBarPromptHandled.collectAsStateWithLifecycle()
     val context = LocalContext.current
     val lifecycleOwner = LocalLifecycleOwner.current
     val haptic = LocalHapticFeedback.current
     val scrollBehavior = TopAppBarDefaults.exitUntilCollapsedScrollBehavior()
     var batteryOptimizationBannerState by remember {
         mutableStateOf(ReliabilityBannerState.Hidden)
-    }
-    var canUseFullScreenIntent by remember {
-        mutableStateOf(FullScreenIntentPermissionHelper.canUseFullScreenIntent(context))
     }
 
     fun refreshBatteryOptimizationBannerState() {
@@ -137,18 +137,9 @@ fun HomeScreen(
         }
     }
 
-    fun refreshFullScreenIntentState() {
-        canUseFullScreenIntent = FullScreenIntentPermissionHelper.canUseFullScreenIntent(context)
-    }
-
-    fun openFullScreenIntentSettings() {
-        viewModel.onAction(HomeAction.FullScreenIntentPromptHandled)
-        val intent = FullScreenIntentPermissionHelper.createSettingsIntent(context)
-        runCatching {
-            context.startActivity(intent)
-        }.onFailure {
-            context.startActivity(FullScreenIntentPermissionHelper.createAppDetailsIntent(context))
-        }
+    fun openSamsungNowBarGuide() {
+        viewModel.onAction(HomeAction.SamsungNowBarPromptHandled)
+        WebPageLauncher.open(context, SamsungNowBarGuide.url(context))
     }
 
     DisposableEffect(lifecycleOwner, alarms) {
@@ -157,7 +148,6 @@ fun HomeScreen(
                 viewModel.onAction(HomeAction.ExactAlarmSettingsReturned)
                 viewModel.onAction(HomeAction.ActivationPermissionSettingsReturned)
                 refreshBatteryOptimizationBannerState()
-                refreshFullScreenIntentState()
             }
         }
         lifecycleOwner.lifecycle.addObserver(observer)
@@ -264,6 +254,34 @@ fun HomeScreen(
 
     // Check for active alarm
     val activeAlarm = uiState.testActiveAlarm ?: alarms.find { it.isEnabled }
+    val activeAlarmTransition = updateTransition(
+        targetState = activeAlarm,
+        label = "ActiveAlarmTransition",
+    )
+    val hasBlockingOverlay = showPaymentShortcutSheet ||
+        uiState.showEditDisabledDialog ||
+        uiState.showSingleAlarmDialog ||
+        uiState.showBackgroundPermissionDialog ||
+        uiState.showPreciseLocationPermissionDialog ||
+        uiState.showNotificationPermissionDialog ||
+        uiState.showExactAlarmPermissionDialog ||
+        uiState.showNotificationRationaleDialog ||
+        uiState.showAlreadyAtDestinationDialog ||
+        uiState.showDeleteErrorDialog ||
+        uiState.showScheduleConflictDialog ||
+        uiState.alarmToDelete != null
+    val reviewHostReady = !homeListState.isLoading &&
+        !hasBlockingOverlay &&
+        activeAlarmTransition.currentState == null &&
+        activeAlarmTransition.targetState == null &&
+        !activeAlarmTransition.isRunning
+
+    LaunchedEffect(reviewHostReady) {
+        onReviewHostReadyChanged(reviewHostReady)
+    }
+    DisposableEffect(Unit) {
+        onDispose { onReviewHostReadyChanged(false) }
+    }
     Scaffold(
         modifier = Modifier.nestedScroll(scrollBehavior.nestedScrollConnection),
         topBar = {
@@ -308,8 +326,7 @@ fun HomeScreen(
         },
         ) { innerPadding ->
         Box {
-            AnimatedContent(
-                targetState = activeAlarm,
+            activeAlarmTransition.AnimatedContent(
                 transitionSpec = {
                     if (targetState != null) {
                         // Entering Active Mode: Slide in from Left
@@ -319,18 +336,13 @@ fun HomeScreen(
                         (slideInHorizontally { it } + fadeIn()).togetherWith(slideOutHorizontally { -it } + fadeOut())
                     }
                 },
-                label = "ActiveAlarmTransition",
             ) { targetAlarm ->
                 if (targetAlarm != null) {
-                    val reliabilityBannerState = when {
-                        batteryOptimizationBannerState != ReliabilityBannerState.Hidden ->
-                            batteryOptimizationBannerState
-                        FullScreenIntentPermissionHelper.isRequired() &&
-                            !canUseFullScreenIntent &&
-                            !fullscreenIntentPromptHandled ->
-                            ReliabilityBannerState.FullScreenIntentWarning
-                        else -> ReliabilityBannerState.Hidden
-                    }
+                    val reliabilityBannerState = resolveReliabilityBannerState(
+                        batteryOptimizationState = batteryOptimizationBannerState,
+                        showSamsungNowBarPrompt = SamsungNowBarGuide.isSupportedDevice() &&
+                            !samsungNowBarPromptHandled,
+                    )
                     ActiveAlarmScreen(
                         modifier = Modifier.padding(top = innerPadding.calculateTopPadding()),
                         alarm = targetAlarm,
@@ -360,11 +372,11 @@ fun HomeScreen(
                         onBatteryOptimizationSuccessShown = {
                             batteryOptimizationBannerState = ReliabilityBannerState.Hidden
                         },
-                        onFullScreenIntentAllowClick = {
-                            openFullScreenIntentSettings()
+                        onSamsungNowBarTroubleshootClick = {
+                            openSamsungNowBarGuide()
                         },
-                        onFullScreenIntentSkipClick = {
-                            viewModel.onAction(HomeAction.FullScreenIntentPromptHandled)
+                        onSamsungNowBarLaterClick = {
+                            viewModel.onAction(HomeAction.SamsungNowBarPromptHandled)
                         },
                         paymentShortcut = paymentShortcut,
                         onPaymentShortcutClick = { showPaymentShortcutSheet = true },
@@ -458,7 +470,6 @@ fun HomeScreen(
 
     LaunchedEffect(alarms) {
         refreshBatteryOptimizationBannerState()
-        refreshFullScreenIntentState()
     }
 }
 

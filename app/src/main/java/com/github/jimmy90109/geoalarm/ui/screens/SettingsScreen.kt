@@ -6,7 +6,6 @@ import android.content.ContextWrapper
 import android.content.Intent
 import android.content.res.Configuration
 import android.media.RingtoneManager
-import android.os.Build
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.core.LinearEasing
@@ -78,7 +77,6 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalHapticFeedback
-import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.font.FontWeight
@@ -91,6 +89,9 @@ import com.github.jimmy90109.geoalarm.R
 import com.github.jimmy90109.geoalarm.data.PaymentShortcut
 import com.github.jimmy90109.geoalarm.data.RingtoneSettings
 import com.github.jimmy90109.geoalarm.util.FullScreenIntentPermissionHelper
+import com.github.jimmy90109.geoalarm.util.PlayStoreListingLauncher
+import com.github.jimmy90109.geoalarm.util.SamsungNowBarGuide
+import com.github.jimmy90109.geoalarm.util.WebPageLauncher
 import com.github.jimmy90109.geoalarm.ui.viewmodel.SettingsAction
 import com.github.jimmy90109.geoalarm.ui.viewmodel.SettingsViewModel
 import com.github.jimmy90109.geoalarm.utils.AudioUtils
@@ -114,12 +115,10 @@ fun SettingsScreen(
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val ringtoneSettings by viewModel.ringtoneSettings.collectAsStateWithLifecycle()
     val paymentShortcut by viewModel.paymentShortcut.collectAsStateWithLifecycle()
-    val analyticsEnabled by viewModel.analyticsEnabled.collectAsStateWithLifecycle()
     val adConsentState by viewModel.adConsentState.collectAsStateWithLifecycle()
     val currentLanguage = viewModel.currentLanguage
     val context = LocalContext.current
     val lifecycleOwner = LocalLifecycleOwner.current
-    val uriHandler = LocalUriHandler.current
     val coroutineScope = rememberCoroutineScope()
     val languageSheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
     val ringtonePickerTitle = stringResource(R.string.ringtone_select)
@@ -144,6 +143,18 @@ fun SettingsScreen(
     fun openOpenSourceLicenses() {
         OssLicensesMenuActivity.setActivityTitle(openSourceLicensesTitle)
         context.startActivity(Intent(context, OssLicensesMenuActivity::class.java))
+    }
+
+    fun openPlayStoreListing() {
+        PlayStoreListingLauncher.open(context)
+    }
+
+    fun openPrivacyPolicy() {
+        WebPageLauncher.open(context, PRIVACY_POLICY_URL)
+    }
+
+    fun openSamsungNowBarGuide() {
+        WebPageLauncher.open(context, SamsungNowBarGuide.url(context))
     }
 
     DisposableEffect(lifecycleOwner) {
@@ -216,6 +227,7 @@ fun SettingsScreen(
                             ringtoneSettings = ringtoneSettings,
                             paymentShortcut = paymentShortcut,
                             showFullScreenIntentSetting = FullScreenIntentPermissionHelper.isRequired(),
+                            showSamsungNowBarGuide = SamsungNowBarGuide.isSupportedDevice(),
                             canUseFullScreenIntent = canUseFullScreenIntent,
                             onRingtoneClick = { viewModel.onAction(SettingsAction.RingtoneSheetRequested) },
                             onPaymentShortcutClick = {
@@ -224,6 +236,7 @@ fun SettingsScreen(
                             onFullScreenIntentClick = {
                                 viewModel.onAction(SettingsAction.FullScreenIntentSheetRequested)
                             },
+                            onSamsungNowBarClick = ::openSamsungNowBarGuide,
                         )
                     }
 
@@ -235,19 +248,18 @@ fun SettingsScreen(
                             .padding(bottom = 16.dp)
                     ) {
                         SettingsPrivacySection(
-                            analyticsEnabled = analyticsEnabled,
                             showAdPrivacyOptions = adConsentState.isPrivacyOptionsRequired,
-                            onPrivacyClick = { viewModel.onAction(SettingsAction.AnalyticsSheetRequested) },
                             onAdPrivacyOptionsClick = {
                                 context.findActivity()?.let {
                                     viewModel.onAction(SettingsAction.AdPrivacyOptionsRequested(it))
                                 }
                             },
-                            onPrivacyPolicyClick = { uriHandler.openUri(PRIVACY_POLICY_URL) },
+                            onPrivacyPolicyClick = ::openPrivacyPolicy,
                         )
                         Spacer(modifier = Modifier.height(16.dp))
                         SettingsAboutSection(
                             currentVersion = viewModel.currentVersion,
+                            onRateAppClick = ::openPlayStoreListing,
                             onOpenSourceLicensesClick = ::openOpenSourceLicenses,
                         )
                     }
@@ -271,6 +283,7 @@ fun SettingsScreen(
                         ringtoneSettings = ringtoneSettings,
                         paymentShortcut = paymentShortcut,
                         showFullScreenIntentSetting = FullScreenIntentPermissionHelper.isRequired(),
+                        showSamsungNowBarGuide = SamsungNowBarGuide.isSupportedDevice(),
                         canUseFullScreenIntent = canUseFullScreenIntent,
                         onRingtoneClick = { viewModel.onAction(SettingsAction.RingtoneSheetRequested) },
                         onPaymentShortcutClick = {
@@ -279,22 +292,22 @@ fun SettingsScreen(
                         onFullScreenIntentClick = {
                             viewModel.onAction(SettingsAction.FullScreenIntentSheetRequested)
                         },
+                        onSamsungNowBarClick = ::openSamsungNowBarGuide,
                     )
                     Spacer(modifier = Modifier.height(16.dp))
                     SettingsPrivacySection(
-                        analyticsEnabled = analyticsEnabled,
                         showAdPrivacyOptions = adConsentState.isPrivacyOptionsRequired,
-                        onPrivacyClick = { viewModel.onAction(SettingsAction.AnalyticsSheetRequested) },
                         onAdPrivacyOptionsClick = {
                             context.findActivity()?.let {
                                 viewModel.onAction(SettingsAction.AdPrivacyOptionsRequested(it))
                             }
                         },
-                        onPrivacyPolicyClick = { uriHandler.openUri(PRIVACY_POLICY_URL) },
+                        onPrivacyPolicyClick = ::openPrivacyPolicy,
                     )
                     Spacer(modifier = Modifier.height(24.dp))
                     SettingsAboutSection(
                         currentVersion = viewModel.currentVersion,
+                        onRateAppClick = ::openPlayStoreListing,
                         onOpenSourceLicensesClick = ::openOpenSourceLicenses,
                     )
                 }
@@ -462,39 +475,6 @@ fun SettingsScreen(
         )
     }
 
-    // Analytics Settings Bottom Sheet
-    if (uiState.showAnalyticsSheet) {
-        ModalBottomSheet(
-            onDismissRequest = { viewModel.onAction(SettingsAction.AnalyticsSheetDismissed) },
-            sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true),
-        ) {
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(start = 24.dp, end = 24.dp, bottom = 16.dp),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Text(
-                    modifier = Modifier.weight(1f),
-                    text = stringResource(R.string.analytics_help_improve_title),
-                    style = MaterialTheme.typography.titleLarge,
-                )
-
-                Switch(
-                    checked = analyticsEnabled,
-                    onCheckedChange = { viewModel.onAction(SettingsAction.AnalyticsEnabledChanged(it)) }
-                )
-            }
-
-            Text(
-                modifier = Modifier.padding(start = 24.dp, end = 24.dp, bottom = 16.dp),
-                text = stringResource(R.string.analytics_help_improve_description),
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
-            )
-        }
-    }
 }
 
 @Composable
@@ -514,10 +494,12 @@ private fun SettingsAlarmSection(
     ringtoneSettings: RingtoneSettings,
     paymentShortcut: PaymentShortcut?,
     showFullScreenIntentSetting: Boolean,
+    showSamsungNowBarGuide: Boolean,
     canUseFullScreenIntent: Boolean,
     onRingtoneClick: () -> Unit,
     onPaymentShortcutClick: () -> Unit,
     onFullScreenIntentClick: () -> Unit,
+    onSamsungNowBarClick: () -> Unit,
 ) {
     SettingsSectionHeader(title = stringResource(R.string.settings_section_alarm))
     
@@ -549,6 +531,14 @@ private fun SettingsAlarmSection(
                 }
             ),
             onClick = onFullScreenIntentClick,
+        )
+    }
+    if (showSamsungNowBarGuide) {
+        Spacer(modifier = Modifier.height(8.dp))
+        SettingsCard(
+            title = stringResource(R.string.samsung_now_bar_settings_title),
+            value = stringResource(R.string.samsung_now_bar_settings_value),
+            onClick = onSamsungNowBarClick,
         )
     }
 }
@@ -964,22 +954,11 @@ private fun PaymentShortcutGridCard(
 
 @Composable
 private fun SettingsPrivacySection(
-    analyticsEnabled: Boolean,
     showAdPrivacyOptions: Boolean,
-    onPrivacyClick: () -> Unit,
     onAdPrivacyOptionsClick: () -> Unit,
     onPrivacyPolicyClick: () -> Unit,
 ) {
-    SettingsSectionHeader(title = stringResource(R.string.settings_section_privacy_improvement))
-    SettingsCard(
-        title = stringResource(R.string.analytics_help_improve_title),
-        value = if (analyticsEnabled) {
-            stringResource(R.string.analytics_enabled)
-        } else {
-            stringResource(R.string.analytics_disabled)
-        },
-        onClick = onPrivacyClick
-    )
+    SettingsSectionHeader(title = stringResource(R.string.settings_section_privacy))
     if (showAdPrivacyOptions) {
         Spacer(modifier = Modifier.height(8.dp))
         SettingsCard(
@@ -1008,21 +987,28 @@ private fun Context.findActivity(): Activity? {
 @Composable
 private fun SettingsAboutSection(
     currentVersion: String,
+    onRateAppClick: () -> Unit,
     onOpenSourceLicensesClick: () -> Unit,
 ) {
     SettingsSectionHeader(title = stringResource(R.string.section_about))
 
     SettingsCard(
+        title = stringResource(R.string.open_source_licenses),
+        value = stringResource(R.string.view),
+        onClick = onOpenSourceLicensesClick,
+    )
+    Spacer(modifier = Modifier.height(8.dp))
+    SettingsCard(
+        title = stringResource(R.string.rate_geoalarm),
+        value = stringResource(R.string.open_google_play),
+        onClick = onRateAppClick,
+    )
+    Spacer(modifier = Modifier.height(8.dp))
+    SettingsCard(
         title = stringResource(R.string.section_about),
         value = stringResource(R.string.settings_version_label, currentVersion),
         onClick = {},
         enabled = false,
-    )
-    Spacer(modifier = Modifier.height(8.dp))
-    SettingsCard(
-        title = stringResource(R.string.open_source_licenses),
-        value = stringResource(R.string.view),
-        onClick = onOpenSourceLicensesClick,
     )
 }
 

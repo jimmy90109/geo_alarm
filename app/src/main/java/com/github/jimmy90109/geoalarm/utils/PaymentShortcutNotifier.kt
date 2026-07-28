@@ -10,6 +10,7 @@ import android.os.Build
 import androidx.core.app.NotificationCompat
 import com.github.jimmy90109.geoalarm.R
 import com.github.jimmy90109.geoalarm.data.PaymentShortcut
+import com.github.jimmy90109.geoalarm.util.WebPageLauncher
 
 object PaymentShortcutNotifier {
     private const val CHANNEL_ID = "payment_shortcut_channel"
@@ -82,24 +83,24 @@ object PaymentShortcutNotifier {
         return context.packageManager.getLaunchIntentForPackage(shortcut.packageName) != null
     }
 
-    fun createOpenPaymentIntent(context: Context, shortcut: PaymentShortcut): Intent {
+    fun openPaymentTarget(context: Context, shortcut: PaymentShortcut) {
         val launchIntent = context.packageManager.getLaunchIntentForPackage(shortcut.packageName)
         val marketIntent = Intent(Intent.ACTION_VIEW, Uri.parse(shortcut.playStoreUri)).apply {
             addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
         }
-        return when (
+        when (
             planOpenPaymentTarget(
                 hasLaunchIntent = launchIntent != null,
                 canHandleMarketIntent = marketIntent.resolveActivity(context.packageManager) != null,
             )
         ) {
-            OpenTarget.LaunchApp -> launchIntent!!.apply {
-                addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP)
-            }
-            OpenTarget.Market -> marketIntent
-            OpenTarget.Web -> Intent(Intent.ACTION_VIEW, Uri.parse(shortcut.playStoreWebUri)).apply {
-                addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-            }
+            OpenTarget.LaunchApp -> context.startActivity(
+                launchIntent!!.apply {
+                    addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP)
+                }
+            )
+            OpenTarget.Market -> context.startActivity(marketIntent)
+            OpenTarget.Web -> WebPageLauncher.open(context, shortcut.playStoreWebUri)
         }
     }
 

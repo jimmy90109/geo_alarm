@@ -1,6 +1,7 @@
 package com.github.jimmy90109.geoalarm
 
 import android.content.Intent
+import android.app.KeyguardManager
 import android.net.Uri
 import android.os.Bundle
 import android.util.Log
@@ -9,6 +10,7 @@ import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.viewModels
 import androidx.appcompat.app.AppCompatActivity
+import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.lifecycleScope
 import com.github.jimmy90109.geoalarm.appactions.AlarmTurnOffUseCase
 import com.github.jimmy90109.geoalarm.appactions.AppActionContract
@@ -29,9 +31,15 @@ import com.github.jimmy90109.geoalarm.ui.theme.GeoAlarmTheme
 import com.github.jimmy90109.geoalarm.ui.viewmodel.HomeAction
 import com.github.jimmy90109.geoalarm.ui.viewmodel.HomeViewModel
 import com.github.jimmy90109.geoalarm.widget.GeoAlarmGlanceWidget
+import com.github.jimmy90109.geoalarm.util.InAppReviewLauncher
+import com.github.jimmy90109.geoalarm.util.ReviewPromptCoordinator
+import com.github.jimmy90109.geoalarm.util.ReviewPromptLaunchConditions
+import com.github.jimmy90109.geoalarm.util.shouldLaunchPendingReview
+import com.github.jimmy90109.geoalarm.data.ReviewPromptStore
 import androidx.glance.appwidget.updateAll
 import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
 import javax.inject.Inject
@@ -54,6 +62,15 @@ class MainActivity : AppCompatActivity() {
     lateinit var alarmTurnOffUseCase: AlarmTurnOffUseCase
 
     @Inject
+    lateinit var inAppReviewLauncher: InAppReviewLauncher
+
+    @Inject
+    lateinit var reviewPromptCoordinator: ReviewPromptCoordinator
+
+    @Inject
+    lateinit var reviewPromptStore: ReviewPromptStore
+
+    @Inject
     lateinit var createGeoAlarmUseCase: CreateGeoAlarmUseCase
 
     @Inject
@@ -69,6 +86,8 @@ class MainActivity : AppCompatActivity() {
     lateinit var adConsentManager: AdConsentManager
 
     private val homeViewModel: HomeViewModel by viewModels()
+    private var isReviewHostReady = false
+    private var reviewClaimJob: Job? = null
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -88,6 +107,10 @@ class MainActivity : AppCompatActivity() {
                     navController = navController,
                     startDestination = startDestination,
                     requestedDestination = requestedRoute,
+                    onReviewHostReadyChanged = { ready ->
+                        isReviewHostReady = ready
+                        if (ready) tryLaunchPendingInAppReview()
+                    },
                 )
 
             }
@@ -114,6 +137,11 @@ class MainActivity : AppCompatActivity() {
         handleIntent(intent)
     }
 
+    override fun onPostResume() {
+        super.onPostResume()
+        tryLaunchPendingInAppReview()
+    }
+
     private fun handleIntent(intent: Intent) {
         if (intent.action == GeoAlarmService.ACTION_CANCEL_ALARM) {
             val alarmId = intent.getStringExtra(GeoAlarmService.EXTRA_ALARM_ID)
@@ -121,7 +149,11 @@ class MainActivity : AppCompatActivity() {
                 GeoAlarmService.CANCEL_SOURCE_ARRIVAL_TURN_OFF
             if (!alarmId.isNullOrEmpty()) {
                 lifecycleScope.launch {
-                    alarmTurnOffUseCase(alarmId, isArrivedTurnOff)
+                    val result = alarmTurnOffUseCase(alarmId, isArrivedTurnOff)
+                    if (result.shouldRequestInAppReview) {
+                        reviewPromptCoordinator.markPending()
+                        tryLaunchPendingInAppReview()
+                    }
                 }
             }
         } else if (intent.action == ACTION_OPEN_PLACE_REMINDER) {
@@ -153,6 +185,44 @@ class MainActivity : AppCompatActivity() {
             logAndNotify("INVALID_SHARED_PLACE", getString(R.string.invalid_shared_place))
         }
     }
+
+    private fun tryLaunchPendingInAppReview() {
+        if (!canLaunchPendingInAppReview()) {
+            return
+        }
+        reviewClaimJob = lifecycleScope.launch {
+            if (!isReviewSurfaceAvailable() || !reviewPromptCoordinator.consumePending()) {
+                return@launch
+            }
+            if (reviewPromptStore.reservePromptAttemptIfEligible()) {
+                if (BuildConfig.DEBUG) {
+                    Toast.makeText(
+                        this@MainActivity,
+                        R.string.debug_review_prompt_attempt,
+                        Toast.LENGTH_SHORT,
+                    ).show()
+                }
+                inAppReviewLauncher.launch(this@MainActivity)
+            }
+        }
+    }
+
+    private fun canLaunchPendingInAppReview(): Boolean {
+        return shouldLaunchPendingReview(
+            ReviewPromptLaunchConditions(
+                isActivityResumed = lifecycle.currentState.isAtLeast(Lifecycle.State.RESUMED),
+                isDeviceLocked = getSystemService(KeyguardManager::class.java).isDeviceLocked,
+                isHomeListReady = isReviewHostReady,
+                hasPendingPrompt = reviewPromptCoordinator.hasPending(),
+                isClaimInProgress = reviewClaimJob?.isActive == true,
+            )
+        )
+    }
+
+    private fun isReviewSurfaceAvailable(): Boolean =
+        lifecycle.currentState.isAtLeast(Lifecycle.State.RESUMED) &&
+            isReviewHostReady &&
+            !getSystemService(KeyguardManager::class.java).isDeviceLocked
 
     private fun handleCreateGeoAlarmIntent(intent: Intent) {
         val name = intent.getStringExtra(AppActionContract.EXTRA_NAME)?.trim().orEmpty()
@@ -242,7 +312,7 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun resolveStartDestination(hasSeenOnboarding: Boolean): AppRoutes {
-        if (!hasSeenOnboarding) return AppRoutes.Onboarding()
+        if (!hasSeenOnboarding) return AppRoutes.Onboarding
         return AppRoutes.Main
     }
 

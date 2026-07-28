@@ -7,6 +7,7 @@ junitVersion = "1.3.0"
 espressoCore = "3.7.0"
 appcompat = "1.7.1"
 material = "1.13.0"
+browser = "1.10.0"
 
 # Compose
 composeBom = "2026.06.00"
@@ -33,6 +34,7 @@ ksp = "2.3.6"
 playServicesLocation = "21.3.0"
 playServicesAds = "25.4.0"
 playServicesOssLicenses = "17.5.1"
+playReview = "2.0.2"
 mapsCompose = "4.3.3"
 
 # Permissions
@@ -55,7 +57,6 @@ appfunctions = "1.0.0-alpha08"
 junitPlatformLauncher = "1.13.4"
 junitPlatformEngine = "1.13.4"
 journeysJunitEngine = "0.2.1"
-telemetryDeckKotlinSdk = "6.3.0"
 userMessagingPlatform = "4.0.0"
 coil = "2.6.0"
 reorderable = "2.4.3"
@@ -68,6 +69,7 @@ junit = { group = "junit", name = "junit", version.ref = "junit" }
 androidx-junit = { group = "androidx.test.ext", name = "junit", version.ref = "junitVersion" }
 androidx-espresso-core = { group = "androidx.test.espresso", name = "espresso-core", version.ref = "espressoCore" }
 androidx-appcompat = { group = "androidx.appcompat", name = "appcompat", version.ref = "appcompat" }
+androidx-browser = { group = "androidx.browser", name = "browser", version.ref = "browser" }
 material = { group = "com.google.android.material", name = "material", version.ref = "material" }
 androidx-lifecycle-runtime-ktx = { group = "androidx.lifecycle", name = "lifecycle-runtime-ktx", version.ref = "lifecycleRuntimeKtx" }
 androidx-activity-compose = { group = "androidx.activity", name = "activity-compose", version.ref = "activityCompose" }
@@ -91,6 +93,8 @@ androidx-room-compiler = { group = "androidx.room", name = "room-compiler", vers
 play-services-location = { group = "com.google.android.gms", name = "play-services-location", version.ref = "playServicesLocation" }
 play-services-ads = { group = "com.google.android.gms", name = "play-services-ads", version.ref = "playServicesAds" }
 play-services-oss-licenses = { group = "com.google.android.gms", name = "play-services-oss-licenses", version.ref = "playServicesOssLicenses" }
+play-review = { group = "com.google.android.play", name = "review", version.ref = "playReview" }
+play-review-ktx = { group = "com.google.android.play", name = "review-ktx", version.ref = "playReview" }
 maps-compose = { group = "com.google.maps.android", name = "maps-compose", version.ref = "mapsCompose" }
 accompanist-permissions = { group = "com.google.accompanist", name = "accompanist-permissions", version.ref = "accompanistPermissions" }
 kotlinx-serialization-json = { group = "org.jetbrains.kotlinx", name = "kotlinx-serialization-json", version.ref = "kotlinxSerializationJson" }
@@ -108,7 +112,6 @@ androidx-appfunctions-compiler = { group = "androidx.appfunctions", name = "appf
 junit-platform-launcher = { group = "org.junit.platform", name = "junit-platform-launcher", version.ref = "junitPlatformLauncher" }
 junit-platform-engine = { group = "org.junit.platform", name = "junit-platform-engine", version.ref = "junitPlatformEngine" }
 journeys-junit-engine = { group = "com.android.tools.journeys", name = "journeys-junit-engine", version.ref = "journeysJunitEngine" }
-telemetrydeck-kotlin-sdk = { group = "com.telemetrydeck", name = "kotlin-sdk", version.ref = "telemetryDeckKotlinSdk" }
 user-messaging-platform = { group = "com.google.android.ump", name = "user-messaging-platform", version.ref = "userMessagingPlatform" }
 coil-compose = { group = "io.coil-kt", name = "coil-compose", version.ref = "coil" }
 coil-video = { group = "io.coil-kt", name = "coil-video", version.ref = "coil" }

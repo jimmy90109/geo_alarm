@@ -52,8 +52,8 @@
     <string name="language">Language</string>
     <string name="locale_en">English</string>
     <string name="locale_zh">中文 (繁體)</string>
-    <string name="language_switching_title">Switching language</string>
-    <string name="language_switching_body">Updating Geo Alarm. This will only take a moment.</string>
+    <string name="language_switching_title">正在切換語言</string>
+    <string name="language_switching_body">正在套用新的語言設定，馬上就好。</string>
     <string name="ok">OK</string>
     <string name="alarm_deleted">Alarm deleted</string>
     <string name="undo">Undo</string>
@@ -84,12 +84,13 @@
     <string name="notification_retry_message">Notifications are essential for alerts. Please allow access.</string>
     <string name="retry">Retry</string>
     <string name="preview">Preview</string>
+    <string name="debug_review_prompt_attempt">Debug: Requesting the in-app review now</string>
     <string name="battery_optimization_banner_message">Alarms still work with battery optimization on. On some devices, allowing unrestricted battery use may improve background location reliability.</string>
     <string name="battery_optimization_allow_now">Improve reliability</string>
     <string name="battery_optimization_success_message">Unrestricted battery use enabled</string>
-    <string name="fullscreen_intent_banner_message">When the screen is off, show the arrival screen over the lock screen so the Turn Off button is easier to reach.</string>
-    <string name="fullscreen_intent_allow_now">Allow now</string>
-    <string name="fullscreen_intent_skip">Not now</string>
+    <string name="samsung_now_bar_banner_message">Want live alarm updates to appear in Samsung Now Bar?</string>
+    <string name="samsung_now_bar_later">Not now</string>
+    <string name="samsung_now_bar_troubleshoot">Troubleshoot</string>
     
     <!-- Search strings -->
     <string name="search_location">Search location</string>
@@ -135,12 +136,14 @@
     <string name="tab_reminders">Reminders</string>
     <string name="settings_section_general">General</string>
     <string name="settings_section_alarm">Alarm</string>
-    <string name="settings_section_privacy_improvement">Privacy &amp; Improvements</string>
+    <string name="settings_section_privacy">Privacy</string>
     <string name="fullscreen_intent_settings_title">Full-screen arrival alert</string>
     <string name="fullscreen_intent_settings_on">Enabled</string>
     <string name="fullscreen_intent_settings_off">Not enabled</string>
     <string name="fullscreen_intent_sheet_message">Allow full-screen alerts to show the arrival screen as soon as you reach your destination. When your phone is locked, the Turn Off button is easier to find so you can stop vibration and sound quickly.</string>
     <string name="fullscreen_intent_open_settings">Open settings</string>
+    <string name="samsung_now_bar_settings_title">Samsung Now Bar</string>
+    <string name="samsung_now_bar_settings_value">View troubleshooting guide</string>
     <string name="settings_ringtone">Ringtone</string>
     <string name="settings_payment_shortcut">Payment app shortcut</string>
     <string name="payment_shortcut_off">Off</string>
@@ -152,10 +155,6 @@
     <string name="ringtone_default">Default ringtone</string>
     <string name="ringtone_select">Select ringtone…</string>
     <string name="ringtone_feature_description">Plays ringtone via headphones on arrival</string>
-    <string name="analytics_help_improve_title">Help Improve GeoAlarm</string>
-    <string name="analytics_help_improve_description">Send anonymous app usage data. We do not collect your location data or any alarm details. This is only used to help developers understand whether the product is operating stably.</string>
-    <string name="analytics_enabled">On</string>
-    <string name="analytics_disabled">Off</string>
     <string name="privacy_policy">Privacy Policy</string>
     <string name="view">View</string>
     <string name="manage">Manage</string>
@@ -165,6 +164,8 @@
     <string name="section_about">About</string>
     <string name="open_source_licenses">Open source licenses</string>
     <string name="settings_version_label">Version %s</string>
+    <string name="rate_geoalarm">Rate GeoAlarm</string>
+    <string name="open_google_play">Open Google Play</string>
 
     <!--  Monitoring Screen  -->
     <string name="cancel_alarm">Cancel Alarm</string>

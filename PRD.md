@@ -135,7 +135,7 @@ Requirements:
 - User can change language.
 - User can configure ringtone mode/default/custom ringtone where supported.
 - User can configure payment app shortcut if supported payment apps are installed.
-- User can manage analytics/privacy preferences.
+- User can manage privacy preferences.
 - User can open privacy policy.
 - User can see app version/about information.
 - User can configure or open full-screen alert permission when relevant.
@@ -157,12 +157,10 @@ Requirements:
 - App actions/functions should route through existing use cases and validation.
 - External entry points must preserve permission, one-active-alarm, and validation rules.
 
-### Analytics And Ads
+### Ads
 
 Requirements:
 
-- Analytics is optional/anonymous and must not include live location, saved destinations, alarm names, radius settings, or schedule details.
-- User must be able to opt out.
 - Ad/privacy options should be available when required by consent state.
 - Product copy should avoid implying location data is uploaded to GeoAlarm servers.
 

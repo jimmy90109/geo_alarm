@@ -12,7 +12,7 @@ plugins {
 
 android {
     namespace = "com.github.jimmy90109.geoalarm"
-    compileSdk = 36
+    compileSdk = 37
 
     val debugAdMobAppId = "ca-app-pub-3940256099942544~3347511713"
     val debugHomeNativeAdUnitId = "ca-app-pub-3940256099942544/2247696110"
@@ -26,15 +26,14 @@ android {
     defaultConfig {
         applicationId = "com.github.jimmy90109.geoalarm"
         minSdk = 31
-        targetSdk = 36
-        versionCode = 2607101
-        versionName = "1.4.0"
+        targetSdk = 37
+        versionCode = 2607180
+        versionName = "1.4.1"
         
         manifestPlaceholders["GOOGLE_MAPS_API_KEY"] = localProperties.getProperty("maps.apiKey") ?: ""
         manifestPlaceholders["ADMOB_APP_ID"] = localProperties.getProperty("admob.appId") ?: ""
         manifestPlaceholders["appName"] = "@string/app_name"
         buildConfigField("String", "GOOGLE_MAPS_API_KEY", "\"${localProperties.getProperty("maps.apiKey") ?: ""}\"")
-        buildConfigField("String", "TELEMETRYDECK_APP_ID", "\"${localProperties.getProperty("telemetrydeck.appId") ?: ""}\"")
         buildConfigField("String", "HOME_NATIVE_AD_UNIT_ID", "\"${localProperties.getProperty("admob.homeNativeAdUnitId") ?: ""}\"")
         buildConfigField("Boolean", "ADS_ENABLED", "false")
 
@@ -49,7 +48,8 @@ android {
             manifestPlaceholders["ADMOB_APP_ID"] = releaseAdMobAppId
             buildConfigField("String", "HOME_NATIVE_AD_UNIT_ID", "\"$releaseHomeNativeAdUnitId\"")
             buildConfigField("Boolean", "ADS_ENABLED", "${releaseAdMobAppId.isNotBlank() && releaseHomeNativeAdUnitId.isNotBlank()}")
-            isMinifyEnabled = false
+            isMinifyEnabled = true
+            isShrinkResources = true
             proguardFiles(
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro"
@@ -100,6 +100,14 @@ kotlin {
     }
 }
 
+configurations.matching { it.name == "composeMappingProducerClasspath" }.configureEach {
+    resolutionStrategy.eachDependency {
+        if (requested.group == "org.jetbrains.kotlin" && requested.name == "compose-group-mapping") {
+            useVersion(libs.versions.kotlin.get())
+        }
+    }
+}
+
 // Room Schema Export Location
 ksp {
     arg("room.schemaLocation", "$projectDir/schemas")
@@ -109,6 +117,7 @@ dependencies {
 
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.appcompat)
+    implementation(libs.androidx.browser)
     implementation(libs.material)
     implementation(libs.androidx.lifecycle.runtime.ktx)
     implementation(libs.androidx.activity.compose)
@@ -124,6 +133,8 @@ dependencies {
     implementation(libs.play.services.location)
     implementation(libs.play.services.ads)
     implementation(libs.play.services.oss.licenses)
+    implementation(libs.play.review)
+    implementation(libs.play.review.ktx)
     implementation(libs.maps.compose)
     implementation(libs.places)
     implementation(libs.accompanist.permissions)
@@ -131,7 +142,6 @@ dependencies {
     implementation(libs.androidx.datastore.preferences)
     implementation(libs.androidx.appfunctions)
     implementation(libs.androidx.appfunctions.service)
-    implementation(libs.telemetrydeck.kotlin.sdk)
     implementation(libs.user.messaging.platform)
 
     // Compose

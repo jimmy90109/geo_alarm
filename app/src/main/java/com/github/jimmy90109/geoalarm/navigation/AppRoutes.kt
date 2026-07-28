@@ -13,7 +13,7 @@ sealed interface AppRoutes {
     data object Main : AppRoutes
 
     @Serializable
-    data class Onboarding(val showAnalyticsOptIn: Boolean = true) : AppRoutes
+    data object Onboarding : AppRoutes
 
     @Serializable
     data class AlarmEdit(

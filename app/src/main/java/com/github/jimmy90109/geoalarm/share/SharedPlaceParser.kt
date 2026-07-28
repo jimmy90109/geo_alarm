@@ -1,7 +1,9 @@
 package com.github.jimmy90109.geoalarm.share
 
+import androidx.annotation.Keep
 import kotlinx.serialization.Serializable
 
+@Keep
 @Serializable
 enum class SharedPlaceSource {
     GoogleMapsPlace,

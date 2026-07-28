@@ -46,6 +46,7 @@ import androidx.lifecycle.lifecycleScope
 import com.github.jimmy90109.geoalarm.appactions.AlarmTurnOffUseCase
 import com.github.jimmy90109.geoalarm.service.GeoAlarmService
 import com.github.jimmy90109.geoalarm.ui.theme.GeoAlarmTheme
+import com.github.jimmy90109.geoalarm.util.ReviewPromptCoordinator
 import dagger.hilt.android.AndroidEntryPoint
 import javax.inject.Inject
 import kotlinx.coroutines.launch
@@ -54,6 +55,9 @@ import kotlinx.coroutines.launch
 class ArrivalAlarmActivity : AppCompatActivity() {
     @Inject
     lateinit var alarmTurnOffUseCase: AlarmTurnOffUseCase
+
+    @Inject
+    lateinit var reviewPromptCoordinator: ReviewPromptCoordinator
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -72,7 +76,13 @@ class ArrivalAlarmActivity : AppCompatActivity() {
                     onStopClick = {
                         isStopping = true
                         lifecycleScope.launch {
-                            alarmTurnOffUseCase(alarmId, trackArrivedTurnOff = true)
+                            val result = alarmTurnOffUseCase(
+                                alarmId,
+                                trackArrivedTurnOff = true,
+                            )
+                            if (result.shouldRequestInAppReview) {
+                                reviewPromptCoordinator.markPending()
+                            }
                             finish()
                         }
                     },

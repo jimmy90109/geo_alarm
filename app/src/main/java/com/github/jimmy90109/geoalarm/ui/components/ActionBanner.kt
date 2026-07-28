@@ -2,9 +2,9 @@ package com.github.jimmy90109.geoalarm.ui.components
 
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.animateColorAsState
-import androidx.compose.animation.animateContentSize
 import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.tween
+import androidx.compose.animation.expandVertically
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.shrinkVertically
@@ -38,6 +38,7 @@ fun ActionBanner(
     containerColor: Color,
     contentColor: Color,
     modifier: Modifier = Modifier,
+    showActions: Boolean = true,
     actions: @Composable RowScope.() -> Unit = {},
 ) {
     val animatedContainerColor by animateColorAsState(
@@ -52,14 +53,7 @@ fun ActionBanner(
     )
 
     Surface(
-        modifier = modifier
-            .fillMaxWidth()
-            .animateContentSize(
-                animationSpec = tween(
-                    durationMillis = 300,
-                    easing = FastOutSlowInEasing,
-                ),
-            ),
+        modifier = modifier.fillMaxWidth(),
         shape = MaterialTheme.shapes.large,
         color = animatedContainerColor,
         contentColor = animatedContentColor,
@@ -88,14 +82,32 @@ fun ActionBanner(
                         .weight(1f),
                 )
             }
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(top = 12.dp),
-                horizontalArrangement = Arrangement.spacedBy(12.dp),
-                verticalAlignment = Alignment.CenterVertically,
-                content = actions,
-            )
+            AnimatedVisibility(
+                visible = showActions,
+                enter = fadeIn(animationSpec = tween(180)) + expandVertically(
+                    animationSpec = tween(
+                        durationMillis = 260,
+                        easing = FastOutSlowInEasing,
+                    ),
+                    expandFrom = Alignment.Top,
+                ),
+                exit = fadeOut(animationSpec = tween(120)) + shrinkVertically(
+                    animationSpec = tween(
+                        durationMillis = 260,
+                        easing = FastOutSlowInEasing,
+                    ),
+                    shrinkTowards = Alignment.Top,
+                ),
+            ) {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(top = 12.dp),
+                    horizontalArrangement = Arrangement.spacedBy(12.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    content = actions,
+                )
+            }
         }
     }
 }

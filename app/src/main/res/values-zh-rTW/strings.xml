@@ -52,8 +52,8 @@
     <string name="language">語言</string>
     <string name="locale_en">English</string>
     <string name="locale_zh">中文 (繁體)</string>
-    <string name="language_switching_title">正在切換語言</string>
-    <string name="language_switching_body">正在套用新的語言設定，馬上就好。</string>
+    <string name="language_switching_title">Switching language</string>
+    <string name="language_switching_body">Updating Geo Alarm. This will only take a moment.</string>
     <string name="ok">確定</string>
     <string name="alarm_deleted">鬧鐘已刪除</string>
     <string name="delete_alarm_title">刪除鬧鐘</string>
@@ -84,12 +84,13 @@
     <string name="notification_retry_message">通知功能對於提醒到達目的地至關重要，請允許權限。</string>
     <string name="retry">重試</string>
     <string name="preview">預覽</string>
+    <string name="debug_review_prompt_attempt">Debug：現在嘗試顯示商店評論</string>
     <string name="battery_optimization_banner_message">開啟電池最佳化時仍可使用鬧鐘；在部分裝置上，允許不受限制的電池用量可能改善背景定位的可靠性。</string>
     <string name="battery_optimization_allow_now">提升可靠性</string>
     <string name="battery_optimization_success_message">已允許不受限制的電池用量</string>
-    <string name="fullscreen_intent_banner_message">螢幕關閉時抵達目的地，顯示全螢幕畫面，讓「關閉」按鈕更容易按到。</string>
-    <string name="fullscreen_intent_allow_now">立即允許</string>
-    <string name="fullscreen_intent_skip">先不用</string>
+    <string name="samsung_now_bar_banner_message">想讓即時鬧鐘進度顯示在 Samsung Now Bar 上嗎？</string>
+    <string name="samsung_now_bar_later">稍後設定</string>
+    <string name="samsung_now_bar_troubleshoot">疑難排解</string>
     
     <!-- 搜尋字串 -->
     <string name="search_location">搜尋地點</string>
@@ -135,12 +136,14 @@
     <string name="tab_reminders">提醒</string>
     <string name="settings_section_general">一般</string>
     <string name="settings_section_alarm">鬧鐘</string>
-    <string name="settings_section_privacy_improvement">隱私與改善</string>
+    <string name="settings_section_privacy">隱私</string>
     <string name="fullscreen_intent_settings_title">全螢幕到站提醒</string>
     <string name="fullscreen_intent_settings_on">已啟用</string>
     <string name="fullscreen_intent_settings_off">未啟用</string>
     <string name="fullscreen_intent_sheet_message">允許全螢幕提醒後，抵達目的地時可以直接看到到站畫面。螢幕鎖定時也更容易找到「關閉」按鈕，快速停止震動與鈴聲。</string>
     <string name="fullscreen_intent_open_settings">開啟設定</string>
+    <string name="samsung_now_bar_settings_title">Samsung Now Bar</string>
+    <string name="samsung_now_bar_settings_value">查看疑難排解</string>
     <string name="settings_ringtone">鈴聲</string>
     <string name="settings_payment_shortcut">支付 App 捷徑</string>
     <string name="payment_shortcut_off">關閉</string>
@@ -152,10 +155,6 @@
     <string name="ringtone_default">預設鈴聲</string>
     <string name="ringtone_select">選擇鈴聲…</string>
     <string name="ringtone_feature_description">到站時從耳機播放鈴聲</string>
-    <string name="analytics_help_improve_title">幫助改善應用程式</string>
-    <string name="analytics_help_improve_description">匿名傳送應用程式使用狀況。我們不會收集您的定位資訊、任何鬧鐘詳細資訊。這僅用來幫助開發者了解產品是否穩定運作。</string>
-    <string name="analytics_enabled">開啟</string>
-    <string name="analytics_disabled">關閉</string>
     <string name="privacy_policy">隱私權政策</string>
     <string name="view">查看</string>
     <string name="manage">管理</string>
@@ -165,6 +164,8 @@
     <string name="section_about">關於</string>
     <string name="open_source_licenses">開放原始碼授權</string>
     <string name="settings_version_label">版本 %s</string>
+    <string name="rate_geoalarm">為 GeoAlarm 評分</string>
+    <string name="open_google_play">前往 Google Play</string>
 
     <!--  Monitoring Screen  -->
     <string name="cancel_alarm">取消鬧鐘</string>
