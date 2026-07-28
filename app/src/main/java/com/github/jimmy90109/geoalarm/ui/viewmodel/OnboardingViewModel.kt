@@ -1,10 +1,12 @@
 package com.github.jimmy90109.geoalarm.ui.viewmodel
 
-import androidx.lifecycle.ViewModel
-import androidx.lifecycle.viewModelScope
+import android.app.Application
 import androidx.appcompat.app.AppCompatDelegate
 import androidx.core.os.LocaleListCompat
+import androidx.lifecycle.AndroidViewModel
+import androidx.lifecycle.viewModelScope
 import com.github.jimmy90109.geoalarm.data.OnboardingRepository
+import com.github.jimmy90109.geoalarm.utils.AppLanguageResolver
 import dagger.hilt.android.lifecycle.HiltViewModel
 import javax.inject.Inject
 import kotlinx.coroutines.delay
@@ -32,8 +34,9 @@ sealed interface OnboardingEffect {
 
 @HiltViewModel
 class OnboardingViewModel @Inject constructor(
+    application: Application,
     private val onboardingRepository: OnboardingRepository,
-) : ViewModel() {
+) : AndroidViewModel(application) {
 
     private val _uiState = MutableStateFlow(OnboardingUiState(currentLanguage = resolveCurrentLanguage()))
     val uiState: StateFlow<OnboardingUiState> = _uiState.asStateFlow()
@@ -50,22 +53,34 @@ class OnboardingViewModel @Inject constructor(
 
     private fun resolveCurrentLanguage(): String {
         val currentLocales = AppCompatDelegate.getApplicationLocales()
-        return if (!currentLocales.isEmpty) {
-            currentLocales.toLanguageTags().split("-")[0]
-        } else {
-            "en"
-        }
+        val applicationLanguageTags = currentLocales
+            .takeUnless { it.isEmpty }
+            ?.toLanguageTags()
+        val effectiveLanguage = getApplication<Application>()
+            .resources
+            .configuration
+            .locales[0]
+            .language
+
+        return AppLanguageResolver.resolve(
+            applicationLanguageTags = applicationLanguageTags,
+            effectiveLanguage = effectiveLanguage,
+        )
     }
 
     private fun toggleLanguage() {
         val currentState = _uiState.value
         if (currentState.isLocaleSwitching) return
 
-        val nextLanguageTag = if (currentState.currentLanguage == "zh") "en" else "zh-TW"
+        val currentLanguage = resolveCurrentLanguage()
+        val nextLanguageTag = if (currentLanguage == "zh") "en" else "zh-TW"
         _uiState.value = currentState.copy(isLocaleSwitching = true)
         viewModelScope.launch {
             delay(1000)
-            _uiState.value = _uiState.value.copy(isLocaleSwitching = false)
+            _uiState.value = _uiState.value.copy(
+                currentLanguage = nextLanguageTag.substringBefore("-"),
+                isLocaleSwitching = false,
+            )
             AppCompatDelegate.setApplicationLocales(LocaleListCompat.forLanguageTags(nextLanguageTag))
         }
     }

@@ -16,6 +16,7 @@ import com.github.jimmy90109.geoalarm.data.DistanceUnitPreference
 import com.github.jimmy90109.geoalarm.data.PaymentShortcut
 import com.github.jimmy90109.geoalarm.data.RingtoneSettings
 import com.github.jimmy90109.geoalarm.data.SettingsRepository
+import com.github.jimmy90109.geoalarm.utils.AppLanguageResolver
 import com.github.jimmy90109.geoalarm.utils.AudioUtils
 import dagger.hilt.android.lifecycle.HiltViewModel
 import javax.inject.Inject
@@ -119,8 +120,19 @@ class SettingsViewModel @Inject constructor(
     val currentLanguage: String
         get() {
             val currentLocales = AppCompatDelegate.getApplicationLocales()
-            return if (!currentLocales.isEmpty) currentLocales.toLanguageTags()
-                .split("-")[0] else "en"
+            val applicationLanguageTags = currentLocales
+                .takeUnless { it.isEmpty }
+                ?.toLanguageTags()
+            val effectiveLanguage = getApplication<Application>()
+                .resources
+                .configuration
+                .locales[0]
+                .language
+
+            return AppLanguageResolver.resolve(
+                applicationLanguageTags = applicationLanguageTags,
+                effectiveLanguage = effectiveLanguage,
+            )
         }
 
     fun onAction(action: SettingsAction) {
