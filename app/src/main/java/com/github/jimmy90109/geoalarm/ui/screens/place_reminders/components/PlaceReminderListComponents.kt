@@ -1,5 +1,7 @@
 package com.github.jimmy90109.geoalarm.ui.screens.place_reminders.components
 
+import androidx.compose.animation.Animatable
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -19,6 +21,8 @@ import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -155,13 +159,29 @@ fun PlaceReminderCard(
     reminderWithItems: PlaceReminderWithItems,
     onClick: () -> Unit,
     onEnabledChange: (Boolean) -> Unit,
+    isHighlighted: Boolean = false,
+    onHighlightFinished: () -> Unit = {},
     modifier: Modifier = Modifier,
 ) {
     val reminder = reminderWithItems.reminder
+    val containerColor = MaterialTheme.colorScheme.surfaceContainer
+    val highlightColor = MaterialTheme.colorScheme.primaryContainer
+    val animatedColor = remember { Animatable(containerColor) }
+
+    LaunchedEffect(isHighlighted) {
+        if (isHighlighted) {
+            repeat(2) {
+                animatedColor.animateTo(highlightColor, animationSpec = tween(200))
+                animatedColor.animateTo(containerColor, animationSpec = tween(200))
+            }
+            onHighlightFinished()
+        }
+    }
+
     Card(
         onClick = onClick,
         modifier = modifier.fillMaxWidth(),
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainer),
+        colors = CardDefaults.cardColors(containerColor = animatedColor.value),
     ) {
         Row(
             modifier = Modifier.padding(16.dp),

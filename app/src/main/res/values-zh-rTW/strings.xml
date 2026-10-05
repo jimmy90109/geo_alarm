@@ -41,7 +41,7 @@
     <string name="next_step">下一步</string>
     <string name="tap_map_to_select_place">點擊地圖選定地點</string>
     <string name="back_to_map_step">返回地圖</string>
-    <string name="radius_label">半徑: %s 公尺</string>
+    <string name="radius_label">半徑：%s</string>
     <string name="save">儲存</string>
     <string name="cancel">取消</string>
     <string name="delete">刪除</string>
@@ -105,8 +105,7 @@
 
     <!-- 通知字串 -->
     <string name="notification_title">放心休息，到站會提醒你</string>
-    <string name="notification_distance">剩餘 %1$s 公尺 • %2$d%%</string>
-    <string name="notification_distance_over_five_km">&gt;5 km</string>
+    <string name="notification_distance">剩餘 %1$s • %2$d%%</string>
     <string name="notification_cancel">取消</string>
     <string name="notification_arrived_title">已到站！</string>
     <string name="notification_arrived_text">您已到達目的地。</string>
@@ -135,6 +134,13 @@
     <string name="tab_alarms">鬧鐘</string>
     <string name="tab_reminders">提醒</string>
     <string name="settings_section_general">一般</string>
+    <string name="distance_unit_title">距離單位</string>
+    <string name="distance_unit_auto">自動（依系統）</string>
+    <string name="distance_unit_auto_summary">自動（%s）</string>
+    <string name="distance_unit_metric">公里（km）</string>
+    <string name="distance_unit_imperial">英里（mi）</string>
+    <string name="distance_unit_metric_short">公制</string>
+    <string name="distance_unit_imperial_short">英制</string>
     <string name="settings_section_alarm">鬧鐘</string>
     <string name="settings_section_privacy">隱私</string>
     <string name="fullscreen_intent_settings_title">全螢幕到站提醒</string>
@@ -169,7 +175,12 @@
 
     <!--  Monitoring Screen  -->
     <string name="cancel_alarm">取消鬧鐘</string>
-    <string name="distance_meters">剩餘 %s 公尺</string>
+    <string name="distance_remaining">剩餘 %s</string>
+    <string name="distance_value_meters">%s 公尺</string>
+    <string name="distance_value_kilometers">%s 公里</string>
+    <string name="distance_value_feet">%s 英尺</string>
+    <string name="distance_value_miles">%s 英里</string>
+    <string name="distance_greater_than">&gt;%s</string>
     <string name="arrived_status">已到站</string>
     <string name="section_all_alarm">所有鬧鐘</string>
     <string name="section_schedules">排程</string>

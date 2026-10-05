@@ -44,29 +44,24 @@ object HyperIslandHelper {
      * @param context Application context
      * @param builder NotificationCompat.Builder to modify
      * @param progress Current progress (0-100), 0 for FAR zone
-     * @param remainingDistance Remaining distance in meters
      * @param zone Current monitoring zone (FAR/MID/NEAR)
      * @param cancelPendingIntent PendingIntent to cancel the alarm
+     * @param formattedRemainingDistance Localized distance for notification content
      * @return Modified NotificationCompat.Builder
      */
     fun applyProgressExtras(
         context: Context,
         builder: NotificationCompat.Builder,
         progress: Int,
-        remainingDistance: Int,
         zone: MonitoringZone,
-        cancelPendingIntent: PendingIntent
+        cancelPendingIntent: PendingIntent,
+        formattedRemainingDistance: String,
     ): NotificationCompat.Builder {
         if (!isSupported(context)) {
             return builder
         }
 
         return try {
-            val formattedRemainingDistance = DistanceFormatter.formatMeters(
-                remainingDistance,
-                context.resources.configuration.locales[0],
-            )
-
             // Determine progress value (0% for FAR zone)
             val displayProgress = when (zone) {
                 MonitoringZone.FAR -> 0

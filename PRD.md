@@ -133,6 +133,7 @@ Requirements:
 Requirements:
 
 - User can change language.
+- User can choose automatic, metric, or imperial distance units.
 - User can configure ringtone mode/default/custom ringtone where supported.
 - User can configure payment app shortcut if supported payment apps are installed.
 - User can manage privacy preferences.
