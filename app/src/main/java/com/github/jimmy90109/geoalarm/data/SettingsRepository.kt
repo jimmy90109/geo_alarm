@@ -21,6 +21,7 @@ class SettingsRepository @Inject constructor(
         private val RINGTONE_URI_KEY = stringPreferencesKey("ringtone_uri")
         private val RINGTONE_NAME_KEY = stringPreferencesKey("ringtone_name")
         private val PAYMENT_SHORTCUT_KEY = stringPreferencesKey("payment_shortcut")
+        private val DISTANCE_UNIT_KEY = stringPreferencesKey("distance_unit")
         private val SAMSUNG_NOW_BAR_PROMPT_HANDLED_KEY =
             booleanPreferencesKey("samsung_now_bar_prompt_handled")
     }
@@ -36,6 +37,11 @@ class SettingsRepository @Inject constructor(
     val paymentShortcutFlow: Flow<PaymentShortcut?> = context.dataStore.data.map { preferences ->
         PaymentShortcut.fromId(preferences[PAYMENT_SHORTCUT_KEY])
     }
+
+    val distanceUnitPreferenceFlow: Flow<DistanceUnitPreference> =
+        context.dataStore.data.map { preferences ->
+            DistanceUnitPreference.fromId(preferences[DISTANCE_UNIT_KEY])
+        }
 
     val samsungNowBarPromptHandledFlow: Flow<Boolean> = context.dataStore.data.map { preferences ->
         preferences[SAMSUNG_NOW_BAR_PROMPT_HANDLED_KEY] ?: false
@@ -69,6 +75,12 @@ class SettingsRepository @Inject constructor(
             } else {
                 preferences.remove(PAYMENT_SHORTCUT_KEY)
             }
+        }
+    }
+
+    suspend fun setDistanceUnitPreference(preference: DistanceUnitPreference) {
+        context.dataStore.edit { preferences ->
+            preferences[DISTANCE_UNIT_KEY] = preference.id
         }
     }
 

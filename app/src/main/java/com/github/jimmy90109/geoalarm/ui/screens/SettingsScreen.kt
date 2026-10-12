@@ -86,6 +86,8 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.github.jimmy90109.geoalarm.R
+import com.github.jimmy90109.geoalarm.data.DistanceUnitPreference
+import com.github.jimmy90109.geoalarm.data.DistanceUnitSystem
 import com.github.jimmy90109.geoalarm.data.PaymentShortcut
 import com.github.jimmy90109.geoalarm.data.RingtoneSettings
 import com.github.jimmy90109.geoalarm.util.FullScreenIntentPermissionHelper
@@ -95,6 +97,8 @@ import com.github.jimmy90109.geoalarm.util.WebPageLauncher
 import com.github.jimmy90109.geoalarm.ui.viewmodel.SettingsAction
 import com.github.jimmy90109.geoalarm.ui.viewmodel.SettingsViewModel
 import com.github.jimmy90109.geoalarm.utils.AudioUtils
+import com.github.jimmy90109.geoalarm.utils.DistanceUnitResolver
+import com.github.jimmy90109.geoalarm.utils.PaymentShortcutAvailability
 import com.github.jimmy90109.geoalarm.utils.PaymentShortcutNotifier
 import com.google.android.gms.oss.licenses.v2.OssLicensesMenuActivity
 import androidx.lifecycle.Lifecycle
@@ -115,9 +119,14 @@ fun SettingsScreen(
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val ringtoneSettings by viewModel.ringtoneSettings.collectAsStateWithLifecycle()
     val paymentShortcut by viewModel.paymentShortcut.collectAsStateWithLifecycle()
+    val distanceUnitPreference by viewModel.distanceUnitPreference.collectAsStateWithLifecycle()
     val adConsentState by viewModel.adConsentState.collectAsStateWithLifecycle()
     val currentLanguage = viewModel.currentLanguage
     val context = LocalContext.current
+    val configuration = LocalConfiguration.current
+    val effectiveDistanceUnit = remember(configuration, distanceUnitPreference) {
+        DistanceUnitResolver.resolve(context, distanceUnitPreference)
+    }
     val lifecycleOwner = LocalLifecycleOwner.current
     val coroutineScope = rememberCoroutineScope()
     val languageSheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
@@ -126,9 +135,19 @@ fun SettingsScreen(
     var canUseFullScreenIntent by remember {
         mutableStateOf(FullScreenIntentPermissionHelper.canUseFullScreenIntent(context))
     }
+    var installedPaymentShortcuts by remember {
+        mutableStateOf(PaymentShortcutAvailability.installedShortcuts(context))
+    }
+    val effectivePaymentShortcut = paymentShortcut?.takeIf {
+        it in installedPaymentShortcuts
+    }
 
     fun refreshFullScreenIntentState() {
         canUseFullScreenIntent = FullScreenIntentPermissionHelper.canUseFullScreenIntent(context)
+    }
+
+    fun refreshInstalledPaymentShortcuts() {
+        installedPaymentShortcuts = PaymentShortcutAvailability.installedShortcuts(context)
     }
 
     fun openFullScreenIntentSettings() {
@@ -161,6 +180,7 @@ fun SettingsScreen(
         val observer = LifecycleEventObserver { _, event ->
             if (event == Lifecycle.Event.ON_RESUME) {
                 refreshFullScreenIntentState()
+                refreshInstalledPaymentShortcuts()
             }
         }
         lifecycleOwner.lifecycle.addObserver(observer)
@@ -221,11 +241,18 @@ fun SettingsScreen(
                     ) {
                         SettingsGeneralSection(
                             currentLanguage = currentLanguage,
-                            onLanguageClick = { viewModel.onAction(SettingsAction.LanguageSheetRequested) })
+                            distanceUnitPreference = distanceUnitPreference,
+                            effectiveDistanceUnit = effectiveDistanceUnit,
+                            onLanguageClick = { viewModel.onAction(SettingsAction.LanguageSheetRequested) },
+                            onDistanceUnitClick = {
+                                viewModel.onAction(SettingsAction.DistanceUnitSheetRequested)
+                            },
+                        )
                         Spacer(modifier = Modifier.height(16.dp))
                         SettingsAlarmSection(
                             ringtoneSettings = ringtoneSettings,
-                            paymentShortcut = paymentShortcut,
+                            paymentShortcut = effectivePaymentShortcut,
+                            paymentShortcutAvailable = installedPaymentShortcuts.isNotEmpty(),
                             showFullScreenIntentSetting = FullScreenIntentPermissionHelper.isRequired(),
                             showSamsungNowBarGuide = SamsungNowBarGuide.isSupportedDevice(),
                             canUseFullScreenIntent = canUseFullScreenIntent,
@@ -276,12 +303,18 @@ fun SettingsScreen(
                 ) {
                     SettingsGeneralSection(
                         currentLanguage = currentLanguage,
+                        distanceUnitPreference = distanceUnitPreference,
+                        effectiveDistanceUnit = effectiveDistanceUnit,
                         onLanguageClick = { viewModel.onAction(SettingsAction.LanguageSheetRequested) },
+                        onDistanceUnitClick = {
+                            viewModel.onAction(SettingsAction.DistanceUnitSheetRequested)
+                        },
                     )
                     Spacer(modifier = Modifier.height(16.dp))
                     SettingsAlarmSection(
                         ringtoneSettings = ringtoneSettings,
-                        paymentShortcut = paymentShortcut,
+                        paymentShortcut = effectivePaymentShortcut,
+                        paymentShortcutAvailable = installedPaymentShortcuts.isNotEmpty(),
                         showFullScreenIntentSetting = FullScreenIntentPermissionHelper.isRequired(),
                         showSamsungNowBarGuide = SamsungNowBarGuide.isSupportedDevice(),
                         canUseFullScreenIntent = canUseFullScreenIntent,
@@ -355,6 +388,41 @@ fun SettingsScreen(
                         }
                     },
                 )
+            }
+        }
+    }
+
+    if (uiState.showDistanceUnitSheet) {
+        ModalBottomSheet(
+            onDismissRequest = {
+                viewModel.onAction(SettingsAction.DistanceUnitSheetDismissed)
+            },
+            sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true),
+        ) {
+            Text(
+                text = stringResource(R.string.distance_unit_title),
+                style = MaterialTheme.typography.titleLarge,
+                modifier = Modifier.padding(start = 24.dp, bottom = 16.dp),
+            )
+            Column(
+                modifier = Modifier
+                    .padding(start = 16.dp, end = 16.dp, bottom = 16.dp)
+                    .clip(RoundedCornerShape(16.dp))
+                    .background(MaterialTheme.colorScheme.surfaceContainer),
+            ) {
+                DistanceUnitPreference.entries.forEachIndexed { index, preference ->
+                    SettingsSelectionItem(
+                        text = distanceUnitPreferenceLabel(preference),
+                        selected = distanceUnitPreference == preference,
+                        enabled = true,
+                        onClick = {
+                            viewModel.onAction(SettingsAction.DistanceUnitSelected(preference))
+                        },
+                    )
+                    if (index < DistanceUnitPreference.entries.lastIndex) {
+                        HorizontalDivider(modifier = Modifier.padding(horizontal = 16.dp))
+                    }
+                }
             }
         }
     }
@@ -456,9 +524,16 @@ fun SettingsScreen(
         }
     }
 
-    if (uiState.showPaymentShortcutSheet) {
+    LaunchedEffect(uiState.showPaymentShortcutSheet, installedPaymentShortcuts) {
+        if (uiState.showPaymentShortcutSheet && installedPaymentShortcuts.isEmpty()) {
+            viewModel.onAction(SettingsAction.PaymentShortcutSheetDismissed)
+        }
+    }
+
+    if (uiState.showPaymentShortcutSheet && installedPaymentShortcuts.isNotEmpty()) {
         PaymentShortcutBottomSheet(
             selectedShortcut = paymentShortcut,
+            installedShortcuts = installedPaymentShortcuts,
             onSelected = { viewModel.onAction(SettingsAction.PaymentShortcutSelected(it)) },
             onPreview = { PaymentShortcutNotifier.show(context, it) },
             onDismiss = { viewModel.onAction(SettingsAction.PaymentShortcutSheetDismissed) },
@@ -479,7 +554,11 @@ fun SettingsScreen(
 
 @Composable
 private fun SettingsGeneralSection(
-    currentLanguage: String, onLanguageClick: () -> Unit
+    currentLanguage: String,
+    distanceUnitPreference: DistanceUnitPreference,
+    effectiveDistanceUnit: DistanceUnitSystem,
+    onLanguageClick: () -> Unit,
+    onDistanceUnitClick: () -> Unit,
 ) {
     SettingsSectionHeader(title = stringResource(R.string.settings_section_general))
     SettingsCard(
@@ -487,12 +566,53 @@ private fun SettingsGeneralSection(
         value = if (currentLanguage == "zh") stringResource(R.string.locale_zh) else stringResource(R.string.locale_en),
         onClick = onLanguageClick,
     )
+    Spacer(modifier = Modifier.height(8.dp))
+    SettingsCard(
+        title = stringResource(R.string.distance_unit_title),
+        value = distanceUnitPreferenceSummary(
+            preference = distanceUnitPreference,
+            effectiveSystem = effectiveDistanceUnit,
+        ),
+        onClick = onDistanceUnitClick,
+    )
+}
+
+@Composable
+private fun distanceUnitPreferenceLabel(preference: DistanceUnitPreference): String {
+    return stringResource(
+        when (preference) {
+            DistanceUnitPreference.AUTO -> R.string.distance_unit_auto
+            DistanceUnitPreference.METRIC -> R.string.distance_unit_metric
+            DistanceUnitPreference.IMPERIAL -> R.string.distance_unit_imperial
+        }
+    )
+}
+
+@Composable
+private fun distanceUnitPreferenceSummary(
+    preference: DistanceUnitPreference,
+    effectiveSystem: DistanceUnitSystem,
+): String {
+    return if (preference == DistanceUnitPreference.AUTO) {
+        stringResource(
+            R.string.distance_unit_auto_summary,
+            stringResource(
+                when (effectiveSystem) {
+                    DistanceUnitSystem.METRIC -> R.string.distance_unit_metric_short
+                    DistanceUnitSystem.IMPERIAL -> R.string.distance_unit_imperial_short
+                }
+            ),
+        )
+    } else {
+        distanceUnitPreferenceLabel(preference)
+    }
 }
 
 @Composable
 private fun SettingsAlarmSection(
     ringtoneSettings: RingtoneSettings,
     paymentShortcut: PaymentShortcut?,
+    paymentShortcutAvailable: Boolean,
     showFullScreenIntentSetting: Boolean,
     showSamsungNowBarGuide: Boolean,
     canUseFullScreenIntent: Boolean,
@@ -513,12 +633,14 @@ private fun SettingsAlarmSection(
         },
         onClick = onRingtoneClick,
     )
-    Spacer(modifier = Modifier.height(8.dp))
-    SettingsCard(
-        title = stringResource(R.string.settings_payment_shortcut),
-        value = paymentShortcut?.displayName ?: stringResource(R.string.payment_shortcut_off),
-        onClick = onPaymentShortcutClick,
-    )
+    if (paymentShortcutAvailable) {
+        Spacer(modifier = Modifier.height(8.dp))
+        SettingsCard(
+            title = stringResource(R.string.settings_payment_shortcut),
+            value = paymentShortcut?.displayName ?: stringResource(R.string.payment_shortcut_off),
+            onClick = onPaymentShortcutClick,
+        )
+    }
     if (showFullScreenIntentSetting) {
         Spacer(modifier = Modifier.height(8.dp))
         SettingsCard(
@@ -547,6 +669,7 @@ private fun SettingsAlarmSection(
 @Composable
 fun PaymentShortcutBottomSheet(
     selectedShortcut: PaymentShortcut?,
+    installedShortcuts: List<PaymentShortcut>,
     onSelected: (PaymentShortcut?) -> Unit,
     onPreview: (PaymentShortcut) -> Unit,
     onDismiss: () -> Unit,
@@ -556,19 +679,8 @@ fun PaymentShortcutBottomSheet(
         sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true),
     ) {
         val context = LocalContext.current
-        val installedShortcuts = remember {
-            PaymentShortcut.entries.filter {
-                context.packageManager.getLaunchIntentForPackage(it.packageName) != null
-            }
-        }
         val effectiveShortcut = selectedShortcut?.takeIf { it in installedShortcuts }
         val enabled = effectiveShortcut != null
-
-        LaunchedEffect(selectedShortcut, installedShortcuts) {
-            if (selectedShortcut != null && selectedShortcut !in installedShortcuts) {
-                onSelected(null)
-            }
-        }
 
         Row(
             modifier = Modifier

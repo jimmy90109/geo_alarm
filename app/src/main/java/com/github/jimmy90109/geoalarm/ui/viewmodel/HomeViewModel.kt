@@ -24,6 +24,7 @@ import com.github.jimmy90109.geoalarm.appactions.AlarmTurnOffUseCase
 import com.github.jimmy90109.geoalarm.data.Alarm
 import com.github.jimmy90109.geoalarm.data.AlarmDataRepository
 import com.github.jimmy90109.geoalarm.data.AlarmSchedule
+import com.github.jimmy90109.geoalarm.data.DistanceUnitPreference
 import com.github.jimmy90109.geoalarm.data.PaymentShortcut
 import com.github.jimmy90109.geoalarm.data.ScheduleWithAlarm
 import com.github.jimmy90109.geoalarm.data.SettingsRepository
@@ -223,6 +224,11 @@ class HomeViewModel @Inject constructor(
         viewModelScope,
         SharingStarted.WhileSubscribed(5000),
         null
+    )
+    val distanceUnitPreference = settingsRepository.distanceUnitPreferenceFlow.stateIn(
+        viewModelScope,
+        SharingStarted.WhileSubscribed(5000),
+        DistanceUnitPreference.AUTO,
     )
     val homeNativeAdState: StateFlow<HomeNativeAdState> = homeNativeAdManager.state
 

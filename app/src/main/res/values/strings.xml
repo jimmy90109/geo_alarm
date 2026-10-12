@@ -41,7 +41,7 @@
     <string name="next_step">Next</string>
     <string name="tap_map_to_select_place">Tap map to select place</string>
     <string name="back_to_map_step">Back to map</string>
-    <string name="radius_label">Radius: %s m</string>
+    <string name="radius_label">Radius: %s</string>
     <string name="save">Save</string>
     <string name="cancel">Cancel</string>
     <string name="delete">Delete</string>
@@ -105,8 +105,7 @@
     
     <!-- Notification strings -->
     <string name="notification_title">Relax. We\'ll alert you when you arrive.</string>
-    <string name="notification_distance">%1$sm left • %2$d%%</string>
-    <string name="notification_distance_over_five_km">&gt;5 km</string>
+    <string name="notification_distance">%1$s left • %2$d%%</string>
     <string name="notification_cancel">Cancel</string>
     <string name="notification_arrived_title">You have arrived!</string>
     <string name="notification_arrived_text">You have reached your destination.</string>
@@ -135,6 +134,13 @@
     <string name="tab_alarms">Alarms</string>
     <string name="tab_reminders">Reminders</string>
     <string name="settings_section_general">General</string>
+    <string name="distance_unit_title">Distance unit</string>
+    <string name="distance_unit_auto">Automatic (system)</string>
+    <string name="distance_unit_auto_summary">Automatic (%s)</string>
+    <string name="distance_unit_metric">Kilometers (km)</string>
+    <string name="distance_unit_imperial">Miles (mi)</string>
+    <string name="distance_unit_metric_short">km</string>
+    <string name="distance_unit_imperial_short">mi</string>
     <string name="settings_section_alarm">Alarm</string>
     <string name="settings_section_privacy">Privacy</string>
     <string name="fullscreen_intent_settings_title">Full-screen arrival alert</string>
@@ -169,7 +175,12 @@
 
     <!--  Monitoring Screen  -->
     <string name="cancel_alarm">Cancel Alarm</string>
-    <string name="distance_meters">Remaining %s m</string>
+    <string name="distance_remaining">Remaining %s</string>
+    <string name="distance_value_meters">%s m</string>
+    <string name="distance_value_kilometers">%s km</string>
+    <string name="distance_value_feet">%s ft</string>
+    <string name="distance_value_miles">%s mi</string>
+    <string name="distance_greater_than">&gt;%s</string>
     <string name="arrived_status">Arrived</string>
     <string name="section_all_alarm">All alarms</string>
     <string name="section_schedules">Schedules</string>

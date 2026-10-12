@@ -6,6 +6,7 @@ import android.app.NotificationManager
 import android.app.PendingIntent
 import android.app.Service
 import android.content.Intent
+import android.content.res.Configuration
 import android.content.pm.ServiceInfo.FOREGROUND_SERVICE_TYPE_LOCATION
 import android.location.Location
 import android.os.Build
@@ -20,8 +21,10 @@ import androidx.core.app.NotificationCompat
 import com.github.jimmy90109.geoalarm.GeoAlarmApplication
 import com.github.jimmy90109.geoalarm.MainActivity
 import com.github.jimmy90109.geoalarm.R
+import com.github.jimmy90109.geoalarm.data.DistanceUnitPreference
 import com.github.jimmy90109.geoalarm.utils.AudioUtils
 import com.github.jimmy90109.geoalarm.utils.DistanceFormatter
+import com.github.jimmy90109.geoalarm.utils.DistanceUnitResolver
 import com.github.jimmy90109.geoalarm.utils.HyperIslandHelper
 import com.github.jimmy90109.geoalarm.utils.WakeLocker
 import com.github.jimmy90109.geoalarm.widget.GeoAlarmGlanceWidget
@@ -103,6 +106,9 @@ class GeoAlarmService : Service() {
     private val repository by lazy { (application as GeoAlarmApplication).repository }
     private var isServiceRunning = false
     private var currentZone = MonitoringZone.FAR
+    private var distanceUnitPreference = DistanceUnitPreference.AUTO
+    private var latestProgress = 0
+    private var latestRemainingDistance = 0
 
     // Alarm Data
     private var alarmName: String = "Alarm"
@@ -132,6 +138,26 @@ class GeoAlarmService : Service() {
             vibratorManager.defaultVibrator
         } else {
             @Suppress("DEPRECATION") getSystemService(VIBRATOR_SERVICE) as Vibrator
+        }
+        serviceScope.launch {
+            settingsRepository.distanceUnitPreferenceFlow.collect { preference ->
+                val changed = preference != distanceUnitPreference
+                distanceUnitPreference = preference
+                if (changed && isServiceRunning && !isArrived) {
+                    updateNotificationForZone(
+                        currentZone,
+                        latestProgress,
+                        latestRemainingDistance,
+                    )
+                }
+            }
+        }
+    }
+
+    override fun onConfigurationChanged(newConfig: Configuration) {
+        super.onConfigurationChanged(newConfig)
+        if (isServiceRunning && !isArrived) {
+            updateNotificationForZone(currentZone, latestProgress, latestRemainingDistance)
         }
     }
 
@@ -222,9 +248,7 @@ class GeoAlarmService : Service() {
                                 progress < 70 -> MonitoringZone.MID
                                 else -> MonitoringZone.NEAR
                             }
-                            val notification = buildZoneNotification(zone, progress, remaining)
-                            val manager = getSystemService(NotificationManager::class.java)
-                            manager.notify(LIVE_UPDATE_NOTIFICATION_ID, notification)
+                            updateNotificationForZone(zone, progress, remaining)
                         }
                     }
                 }
@@ -558,6 +582,8 @@ class GeoAlarmService : Service() {
 
     @SuppressLint("MissingPermission")
     private fun startForegroundService() {
+        latestProgress = 0
+        latestRemainingDistance = 0
         val notification = buildZoneNotification(currentZone, 0, 0)
         updateForegroundNotification(notification)
     }
@@ -576,6 +602,9 @@ class GeoAlarmService : Service() {
     ) {
         if (isArrived) return
 
+        currentZone = zone
+        latestProgress = progress
+        latestRemainingDistance = remainingDistance
         val notification = buildZoneNotification(zone, progress, remainingDistance)
         val manager = getSystemService(NotificationManager::class.java)
         manager.notify(LIVE_UPDATE_NOTIFICATION_ID, notification)
@@ -669,9 +698,22 @@ class GeoAlarmService : Service() {
                     cancelPendingIntent,
                 )
 
-        val formattedRemainingDistance = DistanceFormatter.formatMeters(
-            remainingDistance,
-            resources.configuration.locales[0],
+        val distanceUnitSystem = DistanceUnitResolver.resolve(this, distanceUnitPreference)
+        val displayLocale = resources.configuration.locales[0]
+        val formattedRemainingDistance = DistanceFormatter.format(
+            context = this,
+            distanceMeters = remainingDistance.toDouble(),
+            system = distanceUnitSystem,
+            locale = displayLocale,
+        )
+        val formattedFarThreshold = getString(
+            R.string.distance_greater_than,
+            DistanceFormatter.format(
+                context = this,
+                distanceMeters = FAR_DISTANCE_THRESHOLD.toDouble(),
+                system = distanceUnitSystem,
+                locale = displayLocale,
+            ),
         )
 
         when (zone) {
@@ -680,7 +722,7 @@ class GeoAlarmService : Service() {
                 builder.setProgress(0, 0, true)
                     .setContentTitle(getString(R.string.notification_title))
                     .setContentText(getString(R.string.notification_power_saving))
-                    .setShortCriticalText(getString(R.string.notification_distance_over_five_km))
+                    .setShortCriticalText(formattedFarThreshold)
             }
 
             MonitoringZone.MID -> {
@@ -718,9 +760,9 @@ class GeoAlarmService : Service() {
             this,
             builder,
             progress,
-            remainingDistance,
             zone,
             cancelPendingIntent,
+            formattedRemainingDistance,
         )
 
         val notification = builder.build()
