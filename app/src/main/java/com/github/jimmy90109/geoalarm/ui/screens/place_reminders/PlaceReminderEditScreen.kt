@@ -53,12 +53,14 @@ import com.github.jimmy90109.geoalarm.ui.viewmodel.AlarmEditStep
 import com.github.jimmy90109.geoalarm.ui.viewmodel.PlaceReminderEditAction
 import com.github.jimmy90109.geoalarm.ui.viewmodel.PlaceReminderEditEffect
 import com.github.jimmy90109.geoalarm.ui.viewmodel.PlaceReminderEditViewModel
+import com.github.jimmy90109.geoalarm.utils.DistanceRadiusScale
 import com.google.android.gms.maps.CameraUpdateFactory
 import com.google.android.gms.maps.model.CameraPosition
 import com.google.android.gms.maps.model.LatLng
 import com.google.maps.android.compose.rememberCameraPositionState
 import kotlinx.coroutines.launch
 
+private val PlaceReminderRadiusScale = DistanceRadiusScale.forPlaceReminder()
 private val DefaultPlaceReminderMapPosition = LatLng(25.034, 121.564)
 private const val PlaceReminderEditPageCount = 3
 private const val PlaceReminderPageAnimationDurationMillis = 460
@@ -393,8 +395,7 @@ fun PlaceReminderPlacePickerScreen(
             nameLabel = stringResource(R.string.place_reminder_place_name),
             namePlaceholder = stringResource(R.string.place_reminder_place_name_placeholder),
             iconPickerTitle = stringResource(R.string.place_reminder_select_place_icon),
-            radiusRange = 100f..1000f,
-            radiusSteps = 8,
+            radiusScale = PlaceReminderRadiusScale,
             disabledNextLabel = stringResource(R.string.tap_map_to_select_place),
             onBack = ::handleLocationBack,
             onSearch = {
@@ -439,8 +440,7 @@ fun PlaceReminderPlacePickerScreen(
             nameLabel = stringResource(R.string.place_reminder_place_name),
             namePlaceholder = stringResource(R.string.place_reminder_place_name_placeholder),
             iconPickerTitle = stringResource(R.string.place_reminder_select_place_icon),
-            radiusRange = 100f..1000f,
-            radiusSteps = 8,
+            radiusScale = PlaceReminderRadiusScale,
             disabledNextLabel = stringResource(R.string.tap_map_to_select_place),
             onBack = ::handleLocationBack,
             onSearch = {

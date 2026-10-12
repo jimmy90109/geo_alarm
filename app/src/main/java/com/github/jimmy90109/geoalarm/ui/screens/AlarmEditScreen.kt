@@ -317,8 +317,7 @@ fun AlarmEditScreen(
                 nameLabel = stringResource(R.string.alarm_name),
                 namePlaceholder = stringResource(R.string.enter_alarm_name),
                 iconPickerTitle = stringResource(R.string.select_alarm_icon),
-                radiusRange = radiusScale.valueRange,
-                radiusSteps = radiusScale.steps,
+                radiusScale = radiusScale,
                 disabledNextLabel = stringResource(R.string.tap_map_to_select_place),
                 onBack = ::handleMapStepBack,
                 onSearch = {
@@ -357,8 +356,7 @@ fun AlarmEditScreen(
                 nameLabel = stringResource(R.string.alarm_name),
                 namePlaceholder = stringResource(R.string.enter_alarm_name),
                 iconPickerTitle = stringResource(R.string.select_alarm_icon),
-                radiusRange = radiusScale.valueRange,
-                radiusSteps = radiusScale.steps,
+                radiusScale = radiusScale,
                 disabledNextLabel = stringResource(R.string.tap_map_to_select_place),
                 onBack = ::handleMapStepBack,
                 onSearch = {
@@ -424,8 +422,7 @@ fun AlarmEditPortraitLayout(
     nameLabel: String,
     namePlaceholder: String,
     iconPickerTitle: String,
-    radiusRange: ClosedFloatingPointRange<Float>,
-    radiusSteps: Int,
+    radiusScale: DistanceRadiusScale,
     disabledNextLabel: String,
     onBack: () -> Unit,
     onSearch: () -> Unit,
@@ -506,8 +503,7 @@ fun AlarmEditPortraitLayout(
                 uiState = uiState,
                 cameraPositionState = cameraPositionState,
                 screenTitle = screenTitle,
-                radiusRange = radiusRange,
-                radiusSteps = radiusSteps,
+                radiusScale = radiusScale,
                 disabledNextLabel = disabledNextLabel,
                 onBack = onBack,
                 onSearch = onSearch,
@@ -550,8 +546,7 @@ fun AlarmEditLandscapeLayout(
     nameLabel: String,
     namePlaceholder: String,
     iconPickerTitle: String,
-    radiusRange: ClosedFloatingPointRange<Float>,
-    radiusSteps: Int,
+    radiusScale: DistanceRadiusScale,
     disabledNextLabel: String,
     onBack: () -> Unit,
     onSearch: () -> Unit,
@@ -636,8 +631,7 @@ fun AlarmEditLandscapeLayout(
                 uiState = uiState,
                 cameraPositionState = cameraPositionState,
                 screenTitle = screenTitle,
-                radiusRange = radiusRange,
-                radiusSteps = radiusSteps,
+                radiusScale = radiusScale,
                 disabledNextLabel = disabledNextLabel,
                 onBack = onBack,
                 onSearch = onSearch,
@@ -676,8 +670,7 @@ private fun AlarmEditPortraitStepOnePage(
     uiState: AlarmEditUiState,
     cameraPositionState: CameraPositionState,
     screenTitle: String,
-    radiusRange: ClosedFloatingPointRange<Float>,
-    radiusSteps: Int,
+    radiusScale: DistanceRadiusScale,
     disabledNextLabel: String,
     onBack: () -> Unit,
     onSearch: () -> Unit,
@@ -757,8 +750,7 @@ private fun AlarmEditPortraitStepOnePage(
         ) {
             AlarmEditControlSwitcher(
                 uiState = uiState,
-                radiusRange = radiusRange,
-                radiusSteps = radiusSteps,
+                radiusScale = radiusScale,
                 disabledNextLabel = disabledNextLabel,
                 onRadiusChange = onRadiusChange,
                 onNext = onNext,
@@ -787,8 +779,7 @@ private fun AlarmEditLandscapeStepOnePage(
     uiState: AlarmEditUiState,
     cameraPositionState: CameraPositionState,
     screenTitle: String,
-    radiusRange: ClosedFloatingPointRange<Float>,
-    radiusSteps: Int,
+    radiusScale: DistanceRadiusScale,
     disabledNextLabel: String,
     onBack: () -> Unit,
     onSearch: () -> Unit,
@@ -860,8 +851,7 @@ private fun AlarmEditLandscapeStepOnePage(
                 AnimatedVisibility(visible = uiState.controlMode != AlarmEditControlMode.SearchInput) {
                     AlarmEditControlSwitcher(
                         uiState = uiState,
-                        radiusRange = radiusRange,
-                        radiusSteps = radiusSteps,
+                        radiusScale = radiusScale,
                         disabledNextLabel = disabledNextLabel,
                         onRadiusChange = onRadiusChange,
                         onNext = onNext,
@@ -1450,8 +1440,7 @@ private fun AlarmEditTopSearchField(
 @Composable
 private fun AlarmEditControlSwitcher(
     uiState: AlarmEditUiState,
-    radiusRange: ClosedFloatingPointRange<Float>,
-    radiusSteps: Int,
+    radiusScale: DistanceRadiusScale,
     disabledNextLabel: String,
     onRadiusChange: (Float) -> Unit,
     onNext: () -> Unit,
@@ -1485,8 +1474,7 @@ private fun AlarmEditControlSwitcher(
                 isEditMode = uiState.existingAlarm != null,
                 onDeleteClick = onDelete,
                 elevation = elevation,
-                valueRange = radiusRange,
-                steps = radiusSteps,
+                radiusScale = radiusScale,
             )
 
             AlarmEditControlMode.SearchInput -> Unit
@@ -1545,18 +1533,14 @@ fun AlarmEditRadiusControl(
     isEditMode: Boolean = false,
     onDeleteClick: () -> Unit = {},
     elevation: androidx.compose.ui.unit.Dp = 0.dp,
-    valueRange: ClosedFloatingPointRange<Float> = 0.5f..5.0f,
-    steps: Int = 44,
+    radiusScale: DistanceRadiusScale,
 ) {
     val view = LocalView.current
     val context = LocalContext.current
     val distanceLocale = LocalConfiguration.current.locales[0]
     val distanceUnitSystem = LocalDistanceUnitSystem.current
-    val radiusScale = remember(distanceUnitSystem) {
-        DistanceRadiusScale.forSystem(distanceUnitSystem)
-    }
     val sliderValue = radiusScale.sliderValue(radius.toDouble())
-        .coerceIn(valueRange.start, valueRange.endInclusive)
+        .coerceIn(radiusScale.valueRange.start, radiusScale.valueRange.endInclusive)
     Card(
         shape = RoundedCornerShape(44.dp),
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
@@ -1590,8 +1574,8 @@ fun AlarmEditRadiusControl(
                         onRadiusChange(distanceMeters)
                     }
                 },
-                valueRange = valueRange,
-                steps = steps
+                valueRange = radiusScale.valueRange,
+                steps = radiusScale.steps
             )
             Spacer(modifier = Modifier.height(16.dp))
 
@@ -1894,6 +1878,7 @@ private fun InitialMapLocationCoverPreview() {
 
             AlarmEditRadiusControl(
                 radius = 1000f,
+                radiusScale = DistanceRadiusScale.forSystem(LocalDistanceUnitSystem.current),
                 onRadiusChange = {},
                 onPrimaryClick = {},
                 primaryButtonLabel = stringResource(R.string.next_step),

@@ -6,6 +6,22 @@ import org.junit.Test
 
 class DistanceRadiusScaleTest {
     @Test
+    fun `place reminder radius maps every slider tick to hundred meter increments`() {
+        val scale = DistanceRadiusScale.forPlaceReminder()
+
+        assertEquals(8, scale.steps)
+        assertEquals(100f, scale.valueRange.start, 0f)
+        assertEquals(1000f, scale.valueRange.endInclusive, 0f)
+        for (meters in 100..1000 step 100) {
+            val sliderValue = scale.sliderValue(meters.toDouble())
+            assertEquals(meters.toFloat(), sliderValue, 0f)
+            assertEquals(meters.toFloat(), scale.distanceMeters(sliderValue), 0f)
+        }
+        assertEquals(100f, scale.snapDistanceMeters(50.0), 0f)
+        assertEquals(1000f, scale.snapDistanceMeters(5000.0), 0f)
+    }
+
+    @Test
     fun `metric scale snaps to nearest hundred meters with ties upward`() {
         val scale = DistanceRadiusScale.forSystem(DistanceUnitSystem.METRIC)
 
