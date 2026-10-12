@@ -12,6 +12,7 @@ import androidx.compose.animation.expandHorizontally
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.shrinkHorizontally
+import androidx.compose.foundation.background
 import androidx.compose.foundation.gestures.awaitEachGesture
 import androidx.compose.foundation.gestures.awaitFirstDown
 import androidx.compose.foundation.layout.Arrangement
@@ -82,14 +83,17 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.input.pointer.PointerEventPass
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.boundsInRoot
+import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.platform.LocalConfiguration
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.platform.LocalHapticFeedback
@@ -113,11 +117,12 @@ import com.github.jimmy90109.geoalarm.data.PlaceReminderType
 import com.github.jimmy90109.geoalarm.data.PlaceReminderWithItems
 import com.github.jimmy90109.geoalarm.ui.components.AlarmIconBadge
 import com.github.jimmy90109.geoalarm.ui.components.BackgroundLocationPermissionDialog
+import com.github.jimmy90109.geoalarm.ui.components.rememberMediaPreviewAspectRatios
 import com.github.jimmy90109.geoalarm.ui.components.MediaPreviewItem
 import com.github.jimmy90109.geoalarm.ui.components.MediaPreviewOverlay
 import com.github.jimmy90109.geoalarm.ui.components.MediaPreviewPreloader
 import com.github.jimmy90109.geoalarm.ui.components.MediaPreviewSelection
-import com.github.jimmy90109.geoalarm.ui.components.MediaPreviewThumbnail
+import com.github.jimmy90109.geoalarm.ui.screens.place_reminders.components.PlaceReminderMediaStack
 import com.github.jimmy90109.geoalarm.ui.components.MediaPreviewType
 import com.github.jimmy90109.geoalarm.ui.screens.place_reminders.components.PlaceReminderTextFieldShape
 import com.github.jimmy90109.geoalarm.ui.components.TopAppBar as GeoTopAppBar
@@ -131,8 +136,6 @@ private val PlaceReminderDetailLandscapeControlWidth = 360.dp
 private val PlaceReminderDetailLandscapePaneGap = 24.dp
 private val PlaceReminderDetailCardShape = RoundedCornerShape(24.dp)
 private val PlaceReminderDetailActionShape = RoundedCornerShape(44.dp)
-private const val PlaceReminderAttachmentGridColumns = 3
-private val PlaceReminderAttachmentGridGap = 8.dp
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalMaterial3ExpressiveApi::class)
 @Composable
@@ -147,6 +150,9 @@ fun PlaceReminderDetailScreen(
     var showResetChecklistDialog by remember { mutableStateOf(false) }
     var newItemText by remember { mutableStateOf("") }
     val context = LocalContext.current
+    val density = LocalDensity.current
+    var topBarHeightPx by remember { mutableStateOf(0) }
+    var actionBarHeightPx by remember { mutableStateOf(0) }
     val haptic = LocalHapticFeedback.current
     val configuration = LocalConfiguration.current
     val isLandscape = configuration.orientation == Configuration.ORIENTATION_LANDSCAPE
@@ -253,6 +259,7 @@ fun PlaceReminderDetailScreen(
             attachment.toMediaPreviewItem()
         } ?: emptyList()
     }
+    val previewAspectRatios = rememberMediaPreviewAspectRatios(previewItems)
     val handleBack = {
         haptic.performHapticFeedback(HapticFeedbackType.ContextClick)
         onBack()
@@ -295,6 +302,7 @@ fun PlaceReminderDetailScreen(
                     viewModel.addItem(reminder.id, newItemText)
                     newItemText = ""
                 },
+                attachmentAspectRatios = previewAspectRatios,
                 hiddenAttachmentId = activePreviewItemId ?: selectedPreview?.item?.id,
                 onAttachmentBoundsChanged = { id, bounds ->
                     previewSourceBounds[id] = bounds
@@ -307,7 +315,10 @@ fun PlaceReminderDetailScreen(
                 contentPadding = if (isLandscape) {
                     PaddingValues()
                 } else {
-                    PaddingValues(top = PlaceReminderDetailTopOverlaySpace())
+                    PaddingValues(
+                        top = PlaceReminderDetailTopOverlaySpace(),
+                        bottom = with(density) { actionBarHeightPx.toDp() },
+                    )
                 },
                 isLandscape = isLandscape,
                 modifier = Modifier.fillMaxSize(),
@@ -325,10 +336,44 @@ fun PlaceReminderDetailScreen(
                 modifier = Modifier.align(Alignment.CenterEnd),
             )
         } else {
+            if (current != null) {
+                val topOverlayHeight = with(density) { topBarHeightPx.toDp() }
+                    .takeIf { it > 0.dp } ?: PlaceReminderDetailTopOverlaySpace()
+                val topMargin = maxOf(
+                    24.dp,
+                    WindowInsets.statusBars.asPaddingValues().calculateTopPadding(),
+                )
+                val cutoutPadding = WindowInsets.displayCutout.asPaddingValues()
+                val bottomMargin = maxOf(
+                    24.dp,
+                    WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding(),
+                ) + cutoutPadding.calculateBottomPadding()
+                val bottomOverlayHeight = with(density) { actionBarHeightPx.toDp() }
+                val topFadeHeight = topMargin + (topOverlayHeight - topMargin) / 2
+                val bottomFadeHeight = if (actionBarHeightPx > 0) {
+                    (bottomOverlayHeight + bottomMargin - cutoutPadding.calculateTopPadding()) / 2
+                } else {
+                    0.dp
+                }
+                PlaceReminderDetailEdgeFade(
+                    isTop = true,
+                    modifier = Modifier
+                        .align(Alignment.TopCenter)
+                        .height(topFadeHeight.coerceAtLeast(0.dp)),
+                )
+                PlaceReminderDetailEdgeFade(
+                    isTop = false,
+                    modifier = Modifier
+                        .align(Alignment.BottomCenter)
+                        .height(bottomFadeHeight.coerceAtLeast(0.dp)),
+                )
+            }
             PlaceReminderDetailTopBar(
                 title = current?.reminder?.title ?: stringResource(R.string.place_reminder_detail_title),
                 onBack = handleBack,
-                modifier = Modifier.align(Alignment.TopCenter),
+                modifier = Modifier
+                    .align(Alignment.TopCenter)
+                    .onSizeChanged { topBarHeightPx = it.height },
             )
 
             if (current != null) {
@@ -336,7 +381,9 @@ fun PlaceReminderDetailScreen(
                     lastTriggeredAt = current.reminder.lastTriggeredAt,
                     onEdit = handleEdit,
                     onDelete = handleDelete,
-                    modifier = Modifier.align(Alignment.BottomCenter),
+                    modifier = Modifier
+                        .align(Alignment.BottomCenter)
+                        .onSizeChanged { actionBarHeightPx = it.height },
                 )
             }
         }
@@ -346,6 +393,8 @@ fun PlaceReminderDetailScreen(
                 selection = it,
                 items = previewItems.ifEmpty { listOf(it.item) },
                 sourceBoundsById = previewSourceBounds.toMap(),
+                sourceCornerRadius = 16.dp,
+                aspectRatiosById = previewAspectRatios,
                 onActiveItemChanged = { item ->
                     activePreviewItemId = item.id
                 },
@@ -428,6 +477,24 @@ fun PlaceReminderDetailScreen(
         )
     }
 
+}
+
+@Composable
+private fun PlaceReminderDetailEdgeFade(
+    isTop: Boolean,
+    modifier: Modifier = Modifier,
+) {
+    val surface = MaterialTheme.colorScheme.surface
+    val colors = listOf(
+        surface.copy(alpha = 0.96f),
+        surface.copy(alpha = 0.72f),
+        surface.copy(alpha = 0f),
+    )
+    Spacer(
+        modifier = modifier
+            .fillMaxWidth()
+            .background(Brush.verticalGradient(if (isTop) colors else colors.reversed())),
+    )
 }
 
 @Composable
@@ -525,6 +592,7 @@ private fun PlaceReminderDetailContent(
     onResetChecklist: () -> Unit,
     onItemCheckedChange: (PlaceReminderItem, Boolean) -> Unit,
     onAddItem: () -> Unit,
+    attachmentAspectRatios: Map<String, Float>,
     hiddenAttachmentId: String?,
     onAttachmentBoundsChanged: (String, Rect) -> Unit,
     onAttachmentClick: (MediaPreviewSelection) -> Unit,
@@ -548,8 +616,10 @@ private fun PlaceReminderDetailContent(
     val bottomPadding = if (isLandscape) {
         maxOf(24.dp, navPadding.calculateBottomPadding())
     } else {
-        contentPadding.calculateBottomPadding() +
-            maxOf(112.dp, navPadding.calculateBottomPadding() + 96.dp)
+        maxOf(
+            contentPadding.calculateBottomPadding() + 24.dp,
+            maxOf(112.dp, navPadding.calculateBottomPadding() + 96.dp),
+        )
     }
     val focusManager = LocalFocusManager.current
     val keyboardController = LocalSoftwareKeyboardController.current
@@ -626,8 +696,9 @@ private fun PlaceReminderDetailContent(
                     )
                 }
                 if (reminderWithItems.sortedAttachments.isNotEmpty()) {
-                    PlaceReminderAttachmentGrid(
-                        reminderWithItems = reminderWithItems,
+                    PlaceReminderMediaStack(
+                        items = reminderWithItems.sortedAttachments.map { it.toMediaPreviewItem() },
+                        aspectRatiosById = attachmentAspectRatios,
                         hiddenAttachmentId = hiddenAttachmentId,
                         onAttachmentBoundsChanged = onAttachmentBoundsChanged,
                         onAttachmentClick = onAttachmentClick,
@@ -844,40 +915,6 @@ private fun ChecklistDetailAddRow(
                             contentDescription = stringResource(R.string.place_reminder_add_item),
                             tint = MaterialTheme.colorScheme.onPrimaryContainer,
                         )
-                    }
-                }
-            }
-        }
-    }
-}
-
-@Composable
-private fun PlaceReminderAttachmentGrid(
-    reminderWithItems: PlaceReminderWithItems,
-    hiddenAttachmentId: String?,
-    onAttachmentBoundsChanged: (String, Rect) -> Unit,
-    onAttachmentClick: (MediaPreviewSelection) -> Unit,
-) {
-    DetailGroupCard {
-        DetailGroupTitle(text = stringResource(R.string.place_reminder_attachments))
-        BoxWithConstraints(modifier = Modifier.fillMaxWidth()) {
-            val tileSize = (
-                maxWidth - PlaceReminderAttachmentGridGap * (PlaceReminderAttachmentGridColumns - 1)
-                ) / PlaceReminderAttachmentGridColumns
-            Column(verticalArrangement = Arrangement.spacedBy(PlaceReminderAttachmentGridGap)) {
-                reminderWithItems.sortedAttachments.chunked(PlaceReminderAttachmentGridColumns).forEach { rowAttachments ->
-                    Row(horizontalArrangement = Arrangement.spacedBy(PlaceReminderAttachmentGridGap)) {
-                        rowAttachments.forEach { attachment ->
-                            MediaPreviewThumbnail(
-                                item = attachment.toMediaPreviewItem(),
-                                hidden = attachment.id == hiddenAttachmentId,
-                                modifier = Modifier
-                                    .width(tileSize)
-                                    .aspectRatio(1f),
-                                onBoundsChanged = onAttachmentBoundsChanged,
-                                onClick = onAttachmentClick,
-                            )
-                        }
                     }
                 }
             }

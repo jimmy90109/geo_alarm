@@ -33,6 +33,8 @@ import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.BrokenImage
+import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Videocam
 import androidx.compose.material3.Card
@@ -50,6 +52,7 @@ import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.produceState
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.withFrameMillis
@@ -65,9 +68,11 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.layout.boundsInRoot
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.lifecycle.Lifecycle
@@ -88,6 +93,8 @@ import com.github.jimmy90109.geoalarm.data.MaxPlaceReminderAttachments
 import com.github.jimmy90109.geoalarm.R
 import java.io.File
 import java.io.IOException
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 import kotlinx.coroutines.launch
 import me.saket.telephoto.zoomable.coil.ZoomableAsyncImage
 import me.saket.telephoto.zoomable.rememberZoomableImageState
@@ -151,6 +158,11 @@ fun MediaPreviewThumbnail(
     modifier: Modifier = Modifier,
     onBoundsChanged: (String, Rect) -> Unit = { _, _ -> },
     onClick: (MediaPreviewSelection) -> Unit,
+    aspectRatio: Float = 1f,
+    cornerRadius: Dp = 12.dp,
+    interactive: Boolean = true,
+    showPlayIndicator: Boolean = false,
+    contentScale: ContentScale = ContentScale.Crop,
 ) {
     val context = LocalContext.current
     val isVideo = item.type == MediaPreviewType.VIDEO
@@ -161,25 +173,26 @@ fun MediaPreviewThumbnail(
             isVideo = isVideo,
         )
     }
+    var failed by remember(item.localPath) { mutableStateOf(false) }
     var itemBounds by remember(item.id) { mutableStateOf<Rect?>(null) }
 
     Card(
         modifier = modifier
-            .aspectRatio(1f)
+            .aspectRatio(aspectRatio)
             .onGloballyPositioned { coordinates ->
                 val bounds = coordinates.boundsInRoot()
                 itemBounds = bounds
                 onBoundsChanged(item.id, bounds)
             }
-            .clip(RoundedCornerShape(12.dp))
-            .clickable(enabled = !hidden) {
+            .clip(RoundedCornerShape(cornerRadius))
+            .clickable(enabled = !hidden && interactive) {
                 itemBounds?.let { onClick(MediaPreviewSelection(item, it)) }
             }
             .graphicsLayer {
                 alpha = if (hidden) 0f else 1f
             },
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerHigh),
-        shape = RoundedCornerShape(12.dp),
+        shape = RoundedCornerShape(cornerRadius),
     ) {
         Box(
             modifier = Modifier.fillMaxSize(),
@@ -189,8 +202,21 @@ fun MediaPreviewThumbnail(
                 model = imageRequest,
                 contentDescription = item.displayName,
                 modifier = Modifier.fillMaxSize(),
-                contentScale = ContentScale.Crop,
+                contentScale = contentScale,
+                onError = { failed = true },
+                onSuccess = { failed = false },
             )
+            if (failed) {
+                Icon(Icons.Filled.BrokenImage, stringResource(R.string.place_reminder_media_unavailable))
+            }
+            if (isVideo && showPlayIndicator) {
+                Icon(
+                    Icons.Filled.PlayArrow,
+                    contentDescription = stringResource(R.string.place_reminder_media_video),
+                    tint = MaterialTheme.colorScheme.inverseOnSurface,
+                    modifier = Modifier.background(MaterialTheme.colorScheme.inverseSurface.copy(alpha = 0.92f), RoundedCornerShape(24.dp)).padding(8.dp),
+                )
+            }
             if (isVideo) {
                 val durationMillis = item.durationMillis ?: rememberMediaPreviewVideoDurationMillis(item.localPath)
                 MediaPreviewVideoDurationBadge(
@@ -212,13 +238,13 @@ private fun MediaPreviewVideoDurationBadge(
     Box(
         modifier = modifier
             .clip(RoundedCornerShape(8.dp))
-            .background(Color.Black.copy(alpha = 0.68f)),
+            .background(MaterialTheme.colorScheme.inverseSurface.copy(alpha = 0.92f)),
     ) {
         Text(
             text = formatMediaPreviewVideoDuration(durationMillis),
             modifier = Modifier.padding(horizontal = 6.dp, vertical = 3.dp),
             style = MaterialTheme.typography.labelSmall,
-            color = Color.White,
+            color = MaterialTheme.colorScheme.inverseOnSurface,
             fontWeight = FontWeight.SemiBold,
         )
     }
@@ -232,12 +258,15 @@ fun MediaPreviewOverlay(
     sourceBoundsById: Map<String, Rect> = mapOf(selection.item.id to selection.sourceBounds),
     onActiveItemChanged: (MediaPreviewItem) -> Unit = {},
     onDismiss: () -> Unit,
+    sourceCornerRadius: Dp = 12.dp,
+    aspectRatiosById: Map<String, Float>? = null,
 ) {
     val previewItems = remember(items, selection.item) {
         val distinctItems = items.distinctBy { it.id }
         distinctItems.takeIf { list -> list.any { it.id == selection.item.id } }
             ?: listOf(selection.item)
     }
+    val resolvedAspectRatios = aspectRatiosById ?: rememberMediaPreviewAspectRatios(previewItems)
     val initialPage = remember(previewItems, selection.item.id) {
         previewItems.indexOfFirst { it.id == selection.item.id }.coerceAtLeast(0)
     }
@@ -304,15 +333,7 @@ fun MediaPreviewOverlay(
                 1f - (dismissProgress * 0.16f)
             }
         }
-        val mediaAspectRatio = remember(
-            activeItem.id,
-            activeItem.localPath,
-            activeItem.type,
-            activeItem.width,
-            activeItem.height,
-        ) {
-            activeItem.resolveAspectRatio()
-        }
+        val mediaAspectRatio = resolvedAspectRatios[activeItem.id]
         val targetBounds = remember(maxWidthPx, maxHeightPx, mediaAspectRatio) {
             mediaAspectRatio?.let { aspectRatio ->
                 mediaFitBounds(
@@ -342,7 +363,7 @@ fun MediaPreviewOverlay(
         }
         val animatedCornerRadius = with(density) {
             lerpFloat(
-                start = 12.dp.toPx(),
+                start = sourceCornerRadius.toPx(),
                 end = if (isActiveVideo) {
                     0f
                 } else {
@@ -451,7 +472,7 @@ fun MediaPreviewOverlay(
                 if (transitionProgress.value > 0.98f && previewItems.size > 1) {
                     HorizontalPager(
                         state = pagerState,
-                        modifier = Modifier.fillMaxSize(),
+                        modifier = Modifier.fillMaxSize().testTag("media_preview_pager"),
                         userScrollEnabled = !isDragging && !hasDismissed && !hasMultiplePointers,
                     ) { page ->
                         MediaPreviewPage(
@@ -476,13 +497,13 @@ fun MediaPreviewOverlay(
                     .align(Alignment.TopEnd)
                     .windowInsetsPadding(WindowInsets.safeDrawing)
                     .padding(12.dp)
+                    .graphicsLayer {
+                        alpha = controlsAlpha
+                    }
                     .background(
                         color = Color.Black.copy(alpha = 0.42f),
                         shape = RoundedCornerShape(24.dp),
-                    )
-                    .graphicsLayer {
-                        alpha = controlsAlpha
-                    },
+                    ),
             ) {
                 Icon(
                     Icons.Filled.Close,
@@ -536,10 +557,12 @@ private fun BoxScope.MediaPreviewPage(
         Icon(
             Icons.Filled.Videocam,
             contentDescription = null,
-            tint = Color.White,
+            tint = MaterialTheme.colorScheme.inverseOnSurface,
             modifier = Modifier
                 .align(Alignment.BottomStart)
                 .padding(12.dp)
+                .background(MaterialTheme.colorScheme.inverseSurface.copy(alpha = 0.92f), RoundedCornerShape(8.dp))
+                .padding(4.dp)
                 .graphicsLayer {
                     alpha = if (complete) 1f else 0f
                 },
@@ -774,11 +797,11 @@ private fun MediaPreviewVideoControls(
             modifier = Modifier
                 .align(Alignment.TopStart)
                 .background(
-                    color = Color.Black.copy(alpha = 0.52f),
+                    color = MaterialTheme.colorScheme.inverseSurface.copy(alpha = 0.92f),
                     shape = RoundedCornerShape(24.dp),
                 )
                 .padding(horizontal = 10.dp, vertical = 6.dp),
-            color = Color.White,
+            color = MaterialTheme.colorScheme.inverseOnSurface,
             style = MaterialTheme.typography.labelMedium,
         )
         Text(
@@ -786,11 +809,11 @@ private fun MediaPreviewVideoControls(
             modifier = Modifier
                 .align(Alignment.TopEnd)
                 .background(
-                    color = Color.Black.copy(alpha = 0.52f),
+                    color = MaterialTheme.colorScheme.inverseSurface.copy(alpha = 0.92f),
                     shape = RoundedCornerShape(24.dp),
                 )
                 .padding(horizontal = 10.dp, vertical = 6.dp),
-            color = Color.White,
+            color = MaterialTheme.colorScheme.inverseOnSurface,
             style = MaterialTheme.typography.labelMedium,
         )
         Box(
@@ -799,7 +822,7 @@ private fun MediaPreviewVideoControls(
                 .fillMaxWidth()
                 .height(5.dp)
                 .clip(RoundedCornerShape(24.dp))
-                .background(Color.White.copy(alpha = 0.24f)),
+                .background(MaterialTheme.colorScheme.onSurface.copy(alpha = 0.24f)),
         ) {
             Box(
                 modifier = Modifier
@@ -865,7 +888,34 @@ private fun mediaFitBounds(
     )
 }
 
-private fun MediaPreviewItem.resolveAspectRatio(): Float? {
+private data class MediaAspectRatioKey(
+    val localPath: String,
+    val type: MediaPreviewType,
+    val width: Int?,
+    val height: Int?,
+)
+
+@Composable
+internal fun rememberMediaPreviewAspectRatios(items: List<MediaPreviewItem>): Map<String, Float> {
+    val keys = items.map { MediaAspectRatioKey(it.localPath, it.type, it.width, it.height) }
+    val ids = items.map { it.id }
+    val cache = remember { mutableMapOf<MediaAspectRatioKey, Float>() }
+    val initial = items.mapIndexed { index, item ->
+        item.id to (cache[keys[index]] ?: aspectRatioFromSize(item.width, item.height) ?: 1f)
+    }.toMap()
+    val ratios by produceState(initialValue = initial, keys, ids) {
+        value = initial
+        val uncached = keys.zip(items).distinctBy { it.first }.filter { it.first !in cache }
+        val loaded = withContext(Dispatchers.IO) {
+            uncached.associate { (key, item) -> key to (item.resolveAspectRatio() ?: 1f) }
+        }
+        cache.putAll(loaded)
+        value = items.mapIndexed { index, item -> item.id to cache.getValue(keys[index]) }.toMap()
+    }
+    return ratios
+}
+
+internal fun MediaPreviewItem.resolveAspectRatio(): Float? {
     val storedAspectRatio = aspectRatioFromSize(width = width, height = height)
     if (storedAspectRatio != null) return storedAspectRatio
 

@@ -323,4 +323,10 @@
         <item quantity="one">Review %1$s here: %2$d item to review</item>
         <item quantity="other">Review %1$s here: %2$d items to review</item>
     </plurals>
+    <string name="place_reminder_media_next">Show next attachment</string>
+    <string name="place_reminder_media_description">Attachment %1$d of %2$d: %3$s, %4$s</string>
+    <string name="place_reminder_media_photo">Photo</string>
+    <string name="place_reminder_media_video">Video</string>
+    <string name="place_reminder_media_unavailable">Media unavailable</string>
+    <string name="place_reminder_media_open">Open full screen</string>
 </resources>
