@@ -1,7 +1,6 @@
 package com.github.jimmy90109.geoalarm.ui.screens.place_reminders.components
 
 import androidx.compose.animation.core.Animatable
-import androidx.compose.animation.core.tween
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.gestures.awaitEachGesture
 import androidx.compose.foundation.gestures.awaitFirstDown
@@ -36,6 +35,7 @@ import androidx.compose.ui.zIndex
 import com.github.jimmy90109.geoalarm.R
 import com.github.jimmy90109.geoalarm.ui.components.rememberMediaPreviewAspectRatios
 import com.github.jimmy90109.geoalarm.ui.components.MediaPreviewItem
+import com.github.jimmy90109.geoalarm.ui.components.MediaPreviewMotion
 import com.github.jimmy90109.geoalarm.ui.components.MediaPreviewSelection
 import com.github.jimmy90109.geoalarm.ui.components.MediaPreviewThumbnail
 import com.github.jimmy90109.geoalarm.ui.components.MediaPreviewType
@@ -112,6 +112,7 @@ fun PlaceReminderMediaStack(
             val regionHeight = cardSizes.values.maxOf { it.second } + 32.dp
             val offsetStep = with(density) { 8.dp.toPx() }
             val velocityThreshold = with(density) { 800.dp.toPx() }
+            val motionThresholdPx = with(density) { 0.5.dp.toPx() }
             fun settle(advance: Boolean, direction: Float) {
                 if (busy || hiddenAttachmentId != null) return
                 busy = true
@@ -121,19 +122,28 @@ fun PlaceReminderMediaStack(
                     try {
                         if (!advance || next == null) {
                             motion.snapTo(dragX)
-                            motion.animateTo(0f, tween(200)) { dragX = value }
+                            motion.animateTo(0f, MediaPreviewMotion.rebound(visibilityThreshold = motionThresholdPx)) { dragX = value }
                         } else if (coroutineContext[MotionDurationScale]?.scaleFactor == 0f) {
                             frontId = next.id
                         } else {
                             outgoingSize = cardSizes.getValue(current.id)
                             outgoing = current
                             motion.snapTo(dragX)
-                            motion.animateTo(direction * widthPx * 1.35f, tween(180)) { dragX = value }
+                            val exitDistance = widthPx * 1.35f
+                            if (abs(dragX) < exitDistance) {
+                                // Reach the layer-swap boundary at speed instead of waiting for a spring's tail.
+                                motion.updateBounds(lowerBound = -exitDistance, upperBound = exitDistance)
+                                motion.animateTo(direction * exitDistance * 1.2f, MediaPreviewMotion.spatial()) {
+                                    dragX = value
+                                }
+                                motion.updateBounds(lowerBound = null, upperBound = null)
+                            }
                             returning = true
                             frontId = next.id
-                            motion.animateTo(0f, tween(220)) { dragX = value }
+                            motion.animateTo(0f, MediaPreviewMotion.rebound(visibilityThreshold = motionThresholdPx)) { dragX = value }
                         }
                     } finally {
+                        motion.updateBounds(lowerBound = null, upperBound = null)
                         dragX = 0f
                         outgoing = null
                         outgoingSize = null

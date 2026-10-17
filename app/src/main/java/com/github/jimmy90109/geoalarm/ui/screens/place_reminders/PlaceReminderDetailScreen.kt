@@ -1,3 +1,5 @@
+@file:OptIn(androidx.compose.foundation.layout.ExperimentalLayoutApi::class)
+
 package com.github.jimmy90109.geoalarm.ui.screens.place_reminders
 
 import android.Manifest
@@ -6,8 +8,7 @@ import android.os.Build
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.animation.core.FastOutSlowInEasing
-import androidx.compose.animation.core.tween
+import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.expandHorizontally
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
@@ -34,9 +35,9 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.imePadding
-import androidx.compose.foundation.layout.navigationBars
+import androidx.compose.foundation.layout.navigationBarsIgnoringVisibility
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.statusBars
+import androidx.compose.foundation.layout.statusBarsIgnoringVisibility
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.layout.windowInsetsPadding
@@ -84,6 +85,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
@@ -104,6 +106,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.zIndex
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.LocalLifecycleOwner
@@ -118,6 +121,7 @@ import com.github.jimmy90109.geoalarm.data.PlaceReminderWithItems
 import com.github.jimmy90109.geoalarm.ui.components.AlarmIconBadge
 import com.github.jimmy90109.geoalarm.ui.components.BackgroundLocationPermissionDialog
 import com.github.jimmy90109.geoalarm.ui.components.rememberMediaPreviewAspectRatios
+import com.github.jimmy90109.geoalarm.ui.components.MediaPreviewMotion
 import com.github.jimmy90109.geoalarm.ui.components.MediaPreviewItem
 import com.github.jimmy90109.geoalarm.ui.components.MediaPreviewOverlay
 import com.github.jimmy90109.geoalarm.ui.components.MediaPreviewPreloader
@@ -158,6 +162,7 @@ fun PlaceReminderDetailScreen(
     val isLandscape = configuration.orientation == Configuration.ORIENTATION_LANDSCAPE
     val lifecycleOwner = LocalLifecycleOwner.current
     var selectedPreview by remember { mutableStateOf<MediaPreviewSelection?>(null) }
+    val previewTransitionProgress = remember(reminderId) { Animatable(0f) }
     var activePreviewItemId by remember { mutableStateOf<String?>(null) }
     val previewSourceBounds = remember { mutableStateMapOf<String, Rect>() }
     var permissionState by remember {
@@ -336,17 +341,29 @@ fun PlaceReminderDetailScreen(
                 modifier = Modifier.align(Alignment.CenterEnd),
             )
         } else {
+            val shadowClearancePx = with(density) { 24.dp.toPx() }
+            // Keep the original occlusion order while the media expands beneath the moving chrome.
+            val topChromeMotion = Modifier
+                .zIndex(1f)
+                .graphicsLayer {
+                    translationY = -(topBarHeightPx + shadowClearancePx) * previewTransitionProgress.value
+                }
+            val bottomChromeMotion = Modifier
+                .zIndex(1f)
+                .graphicsLayer {
+                    translationY = (actionBarHeightPx + shadowClearancePx) * previewTransitionProgress.value
+                }
             if (current != null) {
                 val topOverlayHeight = with(density) { topBarHeightPx.toDp() }
                     .takeIf { it > 0.dp } ?: PlaceReminderDetailTopOverlaySpace()
                 val topMargin = maxOf(
                     24.dp,
-                    WindowInsets.statusBars.asPaddingValues().calculateTopPadding(),
+                    WindowInsets.statusBarsIgnoringVisibility.asPaddingValues().calculateTopPadding(),
                 )
                 val cutoutPadding = WindowInsets.displayCutout.asPaddingValues()
                 val bottomMargin = maxOf(
                     24.dp,
-                    WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding(),
+                    WindowInsets.navigationBarsIgnoringVisibility.asPaddingValues().calculateBottomPadding(),
                 ) + cutoutPadding.calculateBottomPadding()
                 val bottomOverlayHeight = with(density) { actionBarHeightPx.toDp() }
                 val topFadeHeight = topMargin + (topOverlayHeight - topMargin) / 2
@@ -359,12 +376,14 @@ fun PlaceReminderDetailScreen(
                     isTop = true,
                     modifier = Modifier
                         .align(Alignment.TopCenter)
+                        .then(topChromeMotion)
                         .height(topFadeHeight.coerceAtLeast(0.dp)),
                 )
                 PlaceReminderDetailEdgeFade(
                     isTop = false,
                     modifier = Modifier
                         .align(Alignment.BottomCenter)
+                        .then(bottomChromeMotion)
                         .height(bottomFadeHeight.coerceAtLeast(0.dp)),
                 )
             }
@@ -373,6 +392,7 @@ fun PlaceReminderDetailScreen(
                 onBack = handleBack,
                 modifier = Modifier
                     .align(Alignment.TopCenter)
+                    .then(topChromeMotion)
                     .onSizeChanged { topBarHeightPx = it.height },
             )
 
@@ -383,6 +403,7 @@ fun PlaceReminderDetailScreen(
                     onDelete = handleDelete,
                     modifier = Modifier
                         .align(Alignment.BottomCenter)
+                        .then(bottomChromeMotion)
                         .onSizeChanged { actionBarHeightPx = it.height },
                 )
             }
@@ -395,6 +416,8 @@ fun PlaceReminderDetailScreen(
                 sourceBoundsById = previewSourceBounds.toMap(),
                 sourceCornerRadius = 16.dp,
                 aspectRatiosById = previewAspectRatios,
+                transitionProgress = previewTransitionProgress,
+                hideSystemBars = true,
                 onActiveItemChanged = { item ->
                     activePreviewItemId = item.id
                 },
@@ -527,6 +550,7 @@ private fun PlaceReminderDetailTopBar(
                     )
                 }
             },
+            statusBarInsets = WindowInsets.statusBarsIgnoringVisibility,
             containerColor = MaterialTheme.colorScheme.surfaceVariant,
             modifier = Modifier
                 .widthIn(max = if (isLandscape) PlaceReminderDetailLandscapeControlWidth else PlaceReminderDetailActionMaxWidth)
@@ -545,7 +569,7 @@ private fun PlaceReminderDetailLandscapeControls(
     actionEnabled: Boolean,
     modifier: Modifier = Modifier,
 ) {
-    val navInsets = WindowInsets.navigationBars.asPaddingValues()
+    val navInsets = WindowInsets.navigationBarsIgnoringVisibility.asPaddingValues()
     val layoutDirection = LocalLayoutDirection.current
     val bottomPadding = maxOf(24.dp, navInsets.calculateBottomPadding())
     val endPadding = maxOf(24.dp, navInsets.calculateEndPadding(layoutDirection))
@@ -580,7 +604,7 @@ private fun PlaceReminderDetailLandscapeControls(
 @Composable
 private fun PlaceReminderDetailTopOverlaySpace() =
     maxOf(
-        WindowInsets.statusBars.asPaddingValues().calculateTopPadding(),
+        WindowInsets.statusBarsIgnoringVisibility.asPaddingValues().calculateTopPadding(),
         24.dp,
     ) + 72.dp
 
@@ -600,7 +624,7 @@ private fun PlaceReminderDetailContent(
     isLandscape: Boolean,
     modifier: Modifier = Modifier,
 ) {
-    val navPadding = WindowInsets.navigationBars.asPaddingValues()
+    val navPadding = WindowInsets.navigationBarsIgnoringVisibility.asPaddingValues()
     val cutoutPadding = WindowInsets.displayCutout.asPaddingValues()
     val layoutDirection = LocalLayoutDirection.current
     val startPadding = maxOf(
@@ -888,13 +912,13 @@ private fun ChecklistDetailAddRow(
         AnimatedVisibility(
             visible = canAdd,
             enter = expandHorizontally(
-                animationSpec = tween(durationMillis = 180, easing = FastOutSlowInEasing),
+                animationSpec = MediaPreviewMotion.spatial(),
                 expandFrom = Alignment.Start,
-            ) + fadeIn(animationSpec = tween(durationMillis = 120)),
+            ) + fadeIn(animationSpec = MediaPreviewMotion.effects()),
             exit = shrinkHorizontally(
-                animationSpec = tween(durationMillis = 160, easing = FastOutSlowInEasing),
+                animationSpec = MediaPreviewMotion.spatial(),
                 shrinkTowards = Alignment.Start,
-            ) + fadeOut(animationSpec = tween(durationMillis = 100)),
+            ) + fadeOut(animationSpec = MediaPreviewMotion.effects()),
         ) {
             IconButton(
                 onClick = onAdd,
@@ -955,7 +979,7 @@ private fun PlaceReminderDetailActionBar(
     modifier: Modifier = Modifier,
     applyScreenPadding: Boolean = true,
 ) {
-    val navInsets = WindowInsets.navigationBars.asPaddingValues()
+    val navInsets = WindowInsets.navigationBarsIgnoringVisibility.asPaddingValues()
     val bottomPadding = maxOf(24.dp, navInsets.calculateBottomPadding())
     val screenPaddingModifier = if (applyScreenPadding) {
         Modifier

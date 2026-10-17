@@ -103,6 +103,13 @@ Useful commands:
 
 Run the narrowest meaningful test first, then broaden if the change touches shared behavior. If tests cannot be run, state why in the final response.
 
+### Preserve Daily Debug App Data
+
+- Never run instrumentation tests against the user's daily-use debug app on a physical device. Connected test runs have cleared its data.
+- Use a dedicated disposable emulator for instrumentation tests, and explicitly set `ANDROID_SERIAL` to that emulator so Gradle cannot target other connected devices.
+- If no dedicated emulator is available, run local unit tests and build checks only, and report that device tests were not run.
+- Do not uninstall the daily debug app, clear its package data, or reset its storage as part of testing.
+
 ## Git Flow
 
 - Preserve user changes. The worktree may already contain prototype or unrelated edits.

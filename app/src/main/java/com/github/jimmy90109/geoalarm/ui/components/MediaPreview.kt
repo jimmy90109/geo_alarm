@@ -1,3 +1,5 @@
+@file:OptIn(androidx.compose.foundation.layout.ExperimentalLayoutApi::class)
+
 package com.github.jimmy90109.geoalarm.ui.components
 
 import android.content.Context
@@ -7,11 +9,12 @@ import android.media.MediaMetadataRetriever
 import android.net.Uri
 import androidx.annotation.OptIn as AndroidXOptIn
 import androidx.activity.compose.BackHandler
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.ExitTransition
+import androidx.compose.animation.fadeIn
 import androidx.compose.animation.core.Animatable
-import androidx.compose.animation.core.Spring
+import androidx.compose.animation.core.AnimationVector1D
 import androidx.compose.animation.core.animateFloatAsState
-import androidx.compose.animation.core.spring
-import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.ExperimentalFoundationApi
@@ -27,6 +30,8 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.safeDrawing
+import androidx.compose.foundation.layout.systemBarsIgnoringVisibility
+import androidx.compose.foundation.layout.union
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.pager.HorizontalPager
@@ -101,8 +106,6 @@ import me.saket.telephoto.zoomable.rememberZoomableImageState
 import me.saket.telephoto.zoomable.rememberZoomableState
 import kotlin.math.abs
 
-private const val MediaPreviewTransitionMillis = 360
-private const val MediaPreviewReturnMillis = 260
 private val MediaPreviewControlEdgePadding = 16.dp
 
 enum class MediaPreviewType {
@@ -260,7 +263,14 @@ fun MediaPreviewOverlay(
     onDismiss: () -> Unit,
     sourceCornerRadius: Dp = 12.dp,
     aspectRatiosById: Map<String, Float>? = null,
+    hideSystemBars: Boolean = false,
+    transitionProgress: Animatable<Float, AnimationVector1D> = remember(selection.item.id) {
+        Animatable(0f)
+    },
 ) {
+    if (hideSystemBars) {
+        MediaPreviewSystemBars { transitionProgress.value }
+    }
     val previewItems = remember(items, selection.item) {
         val distinctItems = items.distinctBy { it.id }
         distinctItems.takeIf { list -> list.any { it.id == selection.item.id } }
@@ -274,7 +284,6 @@ fun MediaPreviewOverlay(
         previewItems.size
     }
     val scope = rememberCoroutineScope()
-    val transitionProgress = remember(selection.item.id) { Animatable(0f) }
     val dragOffsetY = remember(selection.item.id) { Animatable(0f) }
     var isDragging by remember(selection.item.id) { mutableStateOf(false) }
     var hasDismissed by remember(selection.item.id) { mutableStateOf(false) }
@@ -292,7 +301,7 @@ fun MediaPreviewOverlay(
         scope.launch {
             transitionProgress.animateTo(
                 targetValue = 0f,
-                animationSpec = tween(MediaPreviewReturnMillis),
+                animationSpec = MediaPreviewMotion.spatial(visibilityThreshold = 0.001f),
             )
             onDismiss()
         }
@@ -305,7 +314,7 @@ fun MediaPreviewOverlay(
         dragOffsetY.snapTo(0f)
         transitionProgress.animateTo(
             targetValue = 1f,
-            animationSpec = tween(MediaPreviewTransitionMillis),
+            animationSpec = MediaPreviewMotion.spatial(visibilityThreshold = 0.001f),
         )
         hasOpened = true
     }
@@ -381,7 +390,7 @@ fun MediaPreviewOverlay(
             } else {
                 0f
             },
-            animationSpec = tween(120),
+            animationSpec = MediaPreviewMotion.effects(),
             label = "mediaPreviewControlsAlpha",
         )
         val mediaContentScale = if (useFullScreenCanvas) {
@@ -426,10 +435,7 @@ fun MediaPreviewOverlay(
                                 try {
                                     dragOffsetY.animateTo(
                                         targetValue = 0f,
-                                        animationSpec = spring(
-                                            dampingRatio = Spring.DampingRatioNoBouncy,
-                                            stiffness = Spring.StiffnessMediumLow,
-                                        ),
+                                        animationSpec = MediaPreviewMotion.rebound(),
                                     )
                                 } finally {
                                     isDragging = false
@@ -445,10 +451,7 @@ fun MediaPreviewOverlay(
                                     try {
                                         dragOffsetY.animateTo(
                                             targetValue = 0f,
-                                            animationSpec = spring(
-                                                dampingRatio = Spring.DampingRatioMediumBouncy,
-                                                stiffness = Spring.StiffnessMediumLow,
-                                            ),
+                                            animationSpec = MediaPreviewMotion.rebound(),
                                         )
                                     } finally {
                                         isDragging = false
@@ -479,6 +482,7 @@ fun MediaPreviewOverlay(
                             item = previewItems[page],
                             active = page == pagerState.settledPage,
                             complete = true,
+                            showVideoControls = hasOpened && !isDragging && !hasDismissed,
                             imageContentScale = mediaContentScale,
                         )
                     }
@@ -487,6 +491,7 @@ fun MediaPreviewOverlay(
                         item = activeItem,
                         active = true,
                         complete = transitionProgress.value > 0.98f,
+                        showVideoControls = hasOpened && transitionProgress.value == 1f && !isDragging && !hasDismissed,
                         imageContentScale = mediaContentScale,
                     )
                 }
@@ -495,7 +500,7 @@ fun MediaPreviewOverlay(
                 onClick = ::requestDismiss,
                 modifier = Modifier
                     .align(Alignment.TopEnd)
-                    .windowInsetsPadding(WindowInsets.safeDrawing)
+                    .windowInsetsPadding(WindowInsets.safeDrawing.union(WindowInsets.systemBarsIgnoringVisibility))
                     .padding(12.dp)
                     .graphicsLayer {
                         alpha = controlsAlpha
@@ -520,6 +525,7 @@ private fun BoxScope.MediaPreviewPage(
     item: MediaPreviewItem,
     active: Boolean,
     complete: Boolean,
+    showVideoControls: Boolean,
     imageContentScale: ContentScale,
 ) {
     val context = LocalContext.current
@@ -535,6 +541,7 @@ private fun BoxScope.MediaPreviewPage(
     if (isVideo && active && complete) {
         MediaPreviewVideoPlayer(
             localPath = item.localPath,
+            showControls = showVideoControls,
             modifier = Modifier.fillMaxSize(),
         )
     } else if (!isVideo) {
@@ -553,7 +560,7 @@ private fun BoxScope.MediaPreviewPage(
         )
     }
 
-    if (isVideo) {
+    if (isVideo && showVideoControls) {
         Icon(
             Icons.Filled.Videocam,
             contentDescription = null,
@@ -562,10 +569,7 @@ private fun BoxScope.MediaPreviewPage(
                 .align(Alignment.BottomStart)
                 .padding(12.dp)
                 .background(MaterialTheme.colorScheme.inverseSurface.copy(alpha = 0.92f), RoundedCornerShape(8.dp))
-                .padding(4.dp)
-                .graphicsLayer {
-                    alpha = if (complete) 1f else 0f
-                },
+                .padding(4.dp),
         )
     }
 }
@@ -587,12 +591,12 @@ private fun MediaPreviewImagePage(
     val zoomableImageDisplayed = hasShownZoomable && zoomableImageState.isImageDisplayed
     val bottomImageAlpha by animateFloatAsState(
         targetValue = if (zoomableImageDisplayed) 0f else 1f,
-        animationSpec = tween(140),
+        animationSpec = MediaPreviewMotion.effects(),
         label = "mediaPreviewImageFallbackAlpha",
     )
     val zoomableAlpha by animateFloatAsState(
         targetValue = if (zoomableImageDisplayed) 1f else 0f,
-        animationSpec = tween(140),
+        animationSpec = MediaPreviewMotion.effects(),
         label = "mediaPreviewImageZoomableAlpha",
     )
     Box(modifier = Modifier.fillMaxSize()) {
@@ -627,6 +631,7 @@ private fun MediaPreviewImagePage(
 @Composable
 private fun MediaPreviewVideoPlayer(
     localPath: String,
+    showControls: Boolean,
     modifier: Modifier = Modifier,
 ) {
     val context = LocalContext.current
@@ -644,17 +649,17 @@ private fun MediaPreviewVideoPlayer(
     var hasRenderedFirstFrame by remember(localPath) { mutableStateOf(false) }
     val playerAlpha by animateFloatAsState(
         targetValue = if (hasRenderedFirstFrame) 1f else 0f,
-        animationSpec = tween(180),
+        animationSpec = MediaPreviewMotion.effects(),
         label = "mediaPreviewVideoPlayerAlpha",
     )
     val posterAlpha by animateFloatAsState(
         targetValue = if (hasRenderedFirstFrame) 0f else 1f,
-        animationSpec = tween(180),
+        animationSpec = MediaPreviewMotion.effects(),
         label = "mediaPreviewVideoPosterAlpha",
     )
     val loadingAlpha by animateFloatAsState(
         targetValue = if (isBuffering) 1f else 0f,
-        animationSpec = tween(160),
+        animationSpec = MediaPreviewMotion.effects(),
         label = "mediaPreviewVideoLoadingAlpha",
     )
     val player = remember(localPath) {
@@ -758,19 +763,25 @@ private fun MediaPreviewVideoPlayer(
                     },
             )
         }
-        MediaPreviewVideoControls(
-            positionMillis = playbackPosition,
-            durationMillis = playbackDuration,
+        AnimatedVisibility(
+            visible = showControls,
+            enter = fadeIn(animationSpec = MediaPreviewMotion.effects()),
+            exit = ExitTransition.None,
             modifier = Modifier
                 .align(Alignment.BottomCenter)
-                .windowInsetsPadding(WindowInsets.safeDrawing)
+                .windowInsetsPadding(WindowInsets.safeDrawing.union(WindowInsets.systemBarsIgnoringVisibility))
                 .padding(
                     start = MediaPreviewControlEdgePadding,
                     top = MediaPreviewControlEdgePadding,
                     end = MediaPreviewControlEdgePadding,
                     bottom = MediaPreviewControlEdgePadding,
                 ),
-        )
+        ) {
+            MediaPreviewVideoControls(
+                positionMillis = playbackPosition,
+                durationMillis = playbackDuration,
+            )
+        }
     }
 }
 
