@@ -33,6 +33,7 @@ import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.junit4.StateRestorationTester
 import androidx.compose.ui.semantics.SemanticsActions
 import org.junit.Assert.assertTrue
+import com.github.jimmy90109.geoalarm.ui.components.MediaPreviewStackCard
 import com.github.jimmy90109.geoalarm.ui.components.MediaPreviewItem
 import com.github.jimmy90109.geoalarm.ui.components.MediaPreviewSelection
 import com.github.jimmy90109.geoalarm.ui.components.MediaPreviewType
@@ -56,15 +57,20 @@ class PlaceReminderMediaStackTest {
             MaterialTheme {
                 val selection = remember { mutableStateOf<MediaPreviewSelection?>(null) }
                 val bounds = remember { mutableStateMapOf<String, Rect>() }
+                val cards = remember { mutableStateOf<List<MediaPreviewStackCard>>(emptyList()) }
                 val ratios = rememberMediaPreviewAspectRatios(shownItems.value)
                 Box {
                     PlaceReminderMediaStack(shownItems.value, hidden.value, { id, rect -> bounds[id] = rect }, {
                         opened = it
                         if (withOverlay) { selection.value = it; hidden.value = it.item.id }
-                    }, aspectRatiosById = ratios)
+                    }, aspectRatiosById = ratios, onStackCardsChanged = { cards.value = it })
                     selection.value?.let {
                         MediaPreviewOverlay(
                             selection = it, items = shownItems.value, sourceBoundsById = bounds.toMap(),
+                            stackCards = cards.value,
+                            peekAdjacentMedia = true,
+                            zoomEnabled = false,
+                            dismissOnBackgroundTap = true,
                             sourceCornerRadius = 16.dp, aspectRatiosById = ratios,
                             onActiveItemChanged = { active -> hidden.value = active.id },
                             onDismiss = { selection.value = null; hidden.value = null },
@@ -219,6 +225,441 @@ class PlaceReminderMediaStackTest {
         front().assertIsEnabled()
         assertFront("2")
         compose.mainClock.autoAdvance = true
+    }
+
+    @Test fun backgroundTapDismissesSingleMediaButMediaTapDoesNot() {
+        shownItems.value = listOf(MediaRatioFixtures.image("tap", 320, 180))
+        show(withOverlay = true)
+        waitForRatio(320f / 180)
+        front().performClick()
+        compose.onNodeWithTag("media_preview_transition_media").performTouchInput { click(center) }
+        compose.onNodeWithTag("media_preview_page_count").assertExists()
+        compose.onRoot().performTouchInput { click(Offset(width / 2f, height / 4f)) }
+        front().assertIsEnabled()
+        compose.onNodeWithTag("media_preview_page_count").assertDoesNotExist()
+    }
+
+    @Test fun carouselBackgroundTapDismissesButMediaControlsAndSwipesDoNot() {
+        shownItems.value = (1..3).map { MediaRatioFixtures.image("tap$it", 320, 180) }
+        show(withOverlay = true)
+        waitForRatio(320f / 180)
+        front().performTouchInput { swipeLeft() }
+        compose.waitForIdle()
+        front().performClick()
+        val pager = compose.onNodeWithTag("media_preview_pager")
+        pager.performTouchInput { click(center) }
+        pager.assertExists()
+        pager.performTouchInput { click(Offset(8f, height / 2f)) }
+        pager.assertExists()
+        compose.onNodeWithTag("media_preview_page_count").performTouchInput { click(center) }
+        pager.assertExists()
+        pager.performTouchInput {
+            swipe(Offset(width * 0.75f, height / 4f), Offset(width * 0.25f, height / 4f), 400)
+        }
+        val context = InstrumentationRegistry.getInstrumentation().targetContext
+        compose.onNodeWithTag("media_preview_page_count").assertContentDescriptionEquals(
+            context.getString(R.string.media_preview_page_description, 3, 3),
+        )
+        pager.performTouchInput { click(Offset(width / 2f, height / 4f)) }
+        front().assertIsEnabled()
+        compose.onNodeWithTag("media_preview_pager").assertDoesNotExist()
+    }
+
+    private fun assertMediaCornerIsRounded(tag: String) {
+        val pixels = compose.onNodeWithTag(tag).captureToImage().toPixelMap()
+        val density = InstrumentationRegistry.getInstrumentation().targetContext.resources.displayMetrics.density
+        val inset = (4f * density).toInt()
+        val corner = pixels[inset, inset]
+        val image = pixels[pixels.width / 4, pixels.height / 4]
+        assertTrue("Media corner should stay clipped throughout expansion", corner.green < image.green * 0.65f)
+    }
+
+    @Test fun carouselRetainsRoundedCornersDuringExpansionAndAfterPagerHandoff() {
+        shownItems.value = listOf(
+            MediaRatioFixtures.image("rounded", 320, 180),
+            MediaRatioFixtures.image("next", 320, 180),
+        )
+        show(withOverlay = true)
+        waitForRatio(320f / 180)
+        compose.waitUntil(5000) {
+            val pixels = front().captureToImage().toPixelMap()
+            pixels[pixels.width / 4, pixels.height / 4].green > 0.95f
+        }
+        compose.mainClock.autoAdvance = false
+        front().performClick()
+        compose.mainClock.advanceTimeBy(128)
+        assertMediaCornerIsRounded("media_preview_transition_media")
+        compose.mainClock.autoAdvance = true
+        compose.waitForIdle()
+        assertMediaCornerIsRounded("media_preview_carousel_media_0")
+    }
+
+    @Test fun singleMediaRetainsRoundedCornersAfterExpansion() {
+        shownItems.value = listOf(MediaRatioFixtures.image("rounded", 320, 180))
+        show(withOverlay = true)
+        waitForRatio(320f / 180)
+        front().performClick()
+        compose.waitForIdle()
+        assertMediaCornerIsRounded("media_preview_transition_media")
+    }
+
+    @Test fun verticalDragKeepsNeighborsVisibleAndStationaryUntilGroupDismisses() {
+        shownItems.value = (1..3).map { MediaRatioFixtures.image("drag$it", 320, 180) }
+        show(withOverlay = true)
+        waitForRatio(320f / 180)
+        front().performTouchInput { swipeLeft() }
+        compose.waitForIdle()
+        front().performClick()
+        compose.waitForIdle()
+        val pager = compose.onNodeWithTag("media_preview_pager")
+        fun bounds(page: Int) = compose.onNodeWithTag("media_preview_carousel_media_$page")
+            .fetchSemanticsNode().boundsInRoot
+        val left = bounds(0)
+        val active = bounds(1)
+        val right = bounds(2)
+        compose.mainClock.autoAdvance = false
+        pager.performTouchInput {
+            down(center)
+            moveBy(Offset(0f, height * 0.02f), delayMillis = 32)
+            moveBy(Offset(0f, height * 0.06f), delayMillis = 160)
+        }
+        compose.mainClock.advanceTimeBy(64)
+        assertEquals(left, bounds(0))
+        assertEquals(right, bounds(2))
+        assertTrue(bounds(1).top > active.top)
+        assertTrue(bounds(1).height < active.height)
+        pager.performTouchInput { up() }
+        compose.mainClock.autoAdvance = true
+        compose.waitForIdle()
+        assertEquals(left, bounds(0))
+        assertEquals(right, bounds(2))
+        assertEquals(active.top, bounds(1).top, 1f)
+        compose.mainClock.autoAdvance = false
+        pager.performTouchInput {
+            down(center)
+            moveBy(Offset(0f, height * 0.02f), delayMillis = 32)
+            moveBy(Offset(0f, height * 0.24f), delayMillis = 200)
+        }
+        compose.mainClock.advanceTimeBy(32)
+        assertEquals(left, bounds(0))
+        assertEquals(right, bounds(2))
+        pager.performTouchInput { up() }
+        compose.mainClock.advanceTimeByFrame()
+        compose.onNodeWithTag("media_preview_companion_drag1", useUnmergedTree = true).assertExists()
+        compose.onNodeWithTag("media_preview_companion_drag3", useUnmergedTree = true).assertExists()
+        compose.mainClock.autoAdvance = true
+        front().assertIsEnabled()
+    }
+
+    @Test fun carouselDisablesPinchAndDoubleTapZoomButStillPages() {
+        shownItems.value = listOf(
+            MediaRatioFixtures.image("zoom", 320, 180),
+            MediaRatioFixtures.image("neighbor", 320, 180),
+        )
+        show(withOverlay = true)
+        waitForRatio(320f / 180)
+        front().performClick()
+        compose.waitForIdle()
+        val page = compose.onNodeWithTag("media_preview_carousel_page_0")
+        for (vertical in listOf(false, true)) {
+            page.performTouchInput {
+                val start = if (vertical) Offset(0f, height * 0.06f) else Offset(width * 0.06f, 0f)
+                down(0, center - start)
+                down(1, center + start)
+                for (step in 1..8) {
+                    val fraction = 0.06f + 0.26f * step / 8f
+                    val span = if (vertical) Offset(0f, height * fraction) else Offset(width * fraction, 0f)
+                    moveTo(0, center - span, delayMillis = 32)
+                    moveTo(1, center + span, delayMillis = 32)
+                }
+                up(0)
+                up(1)
+            }
+        }
+        page.performTouchInput { doubleClick() }
+        val pixels = compose.onRoot().captureToImage().toPixelMap()
+        val pixel = pixels[pixels.width / 4, pixels.height / 3]
+        assertTrue(pixel.green < 0.2f && pixel.red < 0.2f)
+        page.performTouchInput { swipeLeft() }
+        val context = InstrumentationRegistry.getInstrumentation().targetContext
+        compose.onNodeWithTag("media_preview_page_count").assertContentDescriptionEquals(
+            context.getString(R.string.media_preview_page_description, 2, 2),
+        )
+    }
+
+    @Test fun landscapeNeighborsKeepTheirMediaHeightAndAspectRatio() {
+        shownItems.value = (1..3).map { MediaRatioFixtures.image("landscape$it", 320, 180) }
+        show(withOverlay = true)
+        waitForRatio(320f / 180)
+        front().performTouchInput { swipeLeft() }
+        compose.waitForIdle()
+        front().performClick()
+        compose.waitForIdle()
+        val root = compose.onRoot().fetchSemanticsNode().boundsInRoot
+        val center = compose.onNodeWithTag("media_preview_carousel_media_1").fetchSemanticsNode().boundsInRoot
+        assertEquals(320f / 180, center.width / center.height, 0.02f)
+        assertTrue(center.height < root.height * 0.7f)
+        for (page in listOf(0, 2)) {
+            val side = compose.onNodeWithTag("media_preview_carousel_media_$page").fetchSemanticsNode().boundsInRoot
+            assertTrue(side.width > 0f)
+            assertEquals(center.height, side.height, 1f)
+            assertEquals(center.top, side.top, 1f)
+        }
+    }
+
+    @Test fun carouselShowsBothPortraitMediaEdgesWithoutWrappingAtEnds() {
+        shownItems.value = (1..3).map { MediaRatioFixtures.image("edge$it", 90, 320) }
+        show(withOverlay = true)
+        waitForRatio(90f / 320)
+        front().performTouchInput { swipeLeft() }
+        compose.waitForIdle()
+        front().performClick()
+        compose.waitForIdle()
+        val root = compose.onRoot().fetchSemanticsNode().boundsInRoot
+        val left = compose.onNodeWithTag("media_preview_carousel_page_0").fetchSemanticsNode().boundsInRoot
+        val middle = compose.onNodeWithTag("media_preview_carousel_page_1").fetchSemanticsNode().boundsInRoot
+        val right = compose.onNodeWithTag("media_preview_carousel_page_2").fetchSemanticsNode().boundsInRoot
+        assertTrue(left.width > 0f && right.width > 0f)
+        assertTrue(middle.width < root.width)
+        assertEquals(root.left, left.left, 1f)
+        assertEquals(root.right, right.right, 1f)
+        compose.waitUntil(5000) {
+            val pixels = compose.onRoot().captureToImage().toPixelMap()
+            val a = pixels[8, pixels.height / 3]
+            val b = pixels[pixels.width - 9, pixels.height / 3]
+            a.green > 0.2f && b.green > 0.2f
+        }
+        val capture = InstrumentationRegistry.getInstrumentation().uiAutomation.executeShellCommand(
+            "screencap -p /sdcard/geoalarm-carousel-peeks.png",
+        )
+        android.os.ParcelFileDescriptor.AutoCloseInputStream(capture).use { it.readBytes() }
+        compose.onNodeWithTag("media_preview_pager").performTouchInput { swipeRight() }
+        assertTrue(compose.onNodeWithTag("media_preview_carousel_page_0")
+            .fetchSemanticsNode().boundsInRoot.left > root.left)
+        compose.onNodeWithTag("media_preview_pager").performTouchInput { swipeLeft() }
+        compose.onNodeWithTag("media_preview_pager").performTouchInput { swipeLeft() }
+        assertTrue(compose.onNodeWithTag("media_preview_carousel_page_2")
+            .fetchSemanticsNode().boundsInRoot.right < root.right)
+    }
+
+    @Test fun pageLabelMovesWithAnUnfinishedHorizontalSwipe() {
+        show(withOverlay = true)
+        front().performClick()
+        compose.waitForIdle()
+        val firstLabel = compose.onNodeWithTag("media_preview_page_label_1", useUnmergedTree = true)
+        val initialX = firstLabel.fetchSemanticsNode().boundsInRoot.center.x
+        compose.mainClock.autoAdvance = false
+        compose.onNodeWithTag("media_preview_pager").performTouchInput {
+            down(center)
+            moveBy(Offset(-width * 0.05f, 0f), delayMillis = 32)
+            moveBy(Offset(-width * 0.2f, 0f), delayMillis = 160)
+        }
+        compose.mainClock.advanceTimeBy(64)
+        val draggedX = firstLabel.fetchSemanticsNode().boundsInRoot.center.x
+        assertTrue("Page label should move left: $initialX -> $draggedX", draggedX < initialX)
+        compose.onNodeWithTag("media_preview_pager").performTouchInput {
+            moveBy(Offset(-width * 0.4f, 0f), delayMillis = 160)
+            up()
+        }
+        compose.mainClock.autoAdvance = true
+        compose.waitForIdle()
+        val counter = compose.onNodeWithTag("media_preview_page_count")
+        val context = InstrumentationRegistry.getInstrumentation().targetContext
+        counter.assertContentDescriptionEquals(context.getString(R.string.media_preview_page_description, 2, 4))
+        val secondLabel = compose.onNodeWithTag("media_preview_page_label_2", useUnmergedTree = true)
+        assertEquals(counter.fetchSemanticsNode().boundsInRoot.center.x,
+            secondLabel.fetchSemanticsNode().boundsInRoot.center.x, 1f)
+    }
+
+    @Test fun rearCardHasDarkScrimWhileFrontStaysBright() {
+        shownItems.value = listOf(
+            MediaRatioFixtures.image("front", 90, 320),
+            MediaRatioFixtures.image("rear", 320, 180),
+        )
+        show()
+        waitForRatio(90f / 320)
+        val rear = compose.onNodeWithTag("place_reminder_media_card_rear", useUnmergedTree = true)
+        compose.waitUntil(5000) {
+            val image = rear.captureToImage().toPixelMap()
+            val pixel = image[image.width / 5, image.height / 4]
+            pixel.green > 0.65f && pixel.green < 0.9f && pixel.red < 0.1f
+        }
+        val top = front().captureToImage().toPixelMap()
+        assertTrue(top[top.width / 4, top.height / 4].green > 0.95f)
+    }
+
+    @Test fun fiveAttachmentsExpandOnBothSidesAndCounterTracksOriginalOrder() {
+        shownItems.value = (1..5).map { MediaRatioFixtures.image("page$it", 320, 180) }
+        show(withOverlay = true)
+        waitForRatio(320f / 180)
+        front().performTouchInput { swipeLeft() }
+        compose.waitForIdle()
+        compose.mainClock.autoAdvance = false
+        front().performClick()
+        compose.mainClock.advanceTimeByFrame()
+        val previous = compose.onNodeWithTag("media_preview_companion_page1", useUnmergedTree = true)
+        val previousStart = previous.fetchSemanticsNode().boundsInRoot.center.x
+        for (id in listOf(1, 3, 4, 5)) {
+            compose.onNodeWithTag("media_preview_companion_page$id", useUnmergedTree = true).assertExists()
+        }
+        compose.mainClock.advanceTimeBy(32)
+        assertTrue(previous.fetchSemanticsNode().boundsInRoot.center.x < previousStart)
+        compose.mainClock.autoAdvance = true
+        compose.waitForIdle()
+        val counter = compose.onNodeWithTag("media_preview_page_count")
+        val context = InstrumentationRegistry.getInstrumentation().targetContext
+        fun assertPage(page: Int) {
+            counter.assertContentDescriptionEquals(
+                context.getString(R.string.media_preview_page_description, page, 5),
+            )
+        }
+        assertPage(2)
+        val root = compose.onRoot().fetchSemanticsNode().boundsInRoot
+        assertEquals(root.center.x, counter.fetchSemanticsNode().boundsInRoot.center.x, 1f)
+        compose.onNodeWithTag("media_preview_pager").performTouchInput { swipeLeft() }
+        assertPage(3)
+        compose.onNodeWithTag("media_preview_pager").performTouchInput { swipeRight() }
+        assertPage(2)
+        val capture = InstrumentationRegistry.getInstrumentation().uiAutomation.executeShellCommand(
+            "screencap -p /sdcard/geoalarm-page-count.png",
+        )
+        android.os.ParcelFileDescriptor.AutoCloseInputStream(capture).use { it.readBytes() }
+        val close = context.getString(R.string.close)
+        compose.mainClock.autoAdvance = false
+        compose.onNodeWithContentDescription(close).performClick()
+        compose.mainClock.advanceTimeBy(32)
+        for (id in listOf(1, 3, 4, 5)) {
+            compose.onNodeWithTag("media_preview_companion_page$id", useUnmergedTree = true).assertExists()
+        }
+        compose.mainClock.autoAdvance = true
+        front().assertIsEnabled()
+    }
+
+    @Test fun singleAttachmentShowsOneOfOneCounter() {
+        shownItems.value = items.take(1)
+        show(withOverlay = true)
+        front().performClick()
+        val context = InstrumentationRegistry.getInstrumentation().targetContext
+        compose.onNodeWithTag("media_preview_page_count").assertContentDescriptionEquals(
+            context.getString(R.string.media_preview_page_description, 1, 1),
+        )
+        compose.onNodeWithTag("media_preview_pager").assertDoesNotExist()
+    }
+
+    @Test fun promotedCardStaysUprightWhileOutgoingCardReturns() {
+        show()
+        compose.mainClock.autoAdvance = false
+        front().performTouchInput { swipeLeft(durationMillis = 100) }
+        var checkedPromotion = false
+        repeat(70) {
+            compose.mainClock.advanceTimeByFrame()
+            val top = front().fetchSemanticsNode()
+            val description = top.config[androidx.compose.ui.semantics.SemanticsProperties.ContentDescription]
+            if (description.any { it.contains("photo2") }) {
+                checkedPromotion = true
+                val card = compose.onNodeWithTag("place_reminder_media_card_2", useUnmergedTree = true)
+                    .fetchSemanticsNode().boundsInRoot
+                assertEquals(top.boundsInRoot.width, card.width, 1f)
+                assertEquals(top.boundsInRoot.height, card.height, 1f)
+            }
+        }
+        assertTrue(checkedPromotion)
+        compose.mainClock.autoAdvance = true
+        assertFront("2")
+    }
+
+    @Test fun cardCompositionSurvivesOutgoingAndReturnForMixedImages() {
+        shownItems.value = listOf(
+            MediaRatioFixtures.image("wide", 320, 180),
+            MediaRatioFixtures.image("tall", 180, 320),
+            MediaRatioFixtures.image("square", 240, 240),
+            MediaRatioFixtures.image("next", 280, 180),
+        )
+        show()
+        waitForRatio(320f / 180)
+        val card = compose.onNodeWithTag("place_reminder_media_card_wide", useUnmergedTree = true)
+        val identity = card.fetchSemanticsNode().id
+        compose.mainClock.autoAdvance = false
+        front().performTouchInput { swipeLeft(durationMillis = 100) }
+        repeat(50) {
+            compose.mainClock.advanceTimeBy(16)
+            assertEquals(identity, card.fetchSemanticsNode().id)
+        }
+        compose.mainClock.autoAdvance = true
+        assertFront("tall")
+        assertEquals(identity, card.fetchSemanticsNode().id)
+    }
+
+    @Test fun overlayCompanionsExpandAndReturnTogether() {
+        shownItems.value = listOf(
+            MediaRatioFixtures.image("first", 320, 180),
+            MediaRatioFixtures.image("second", 320, 180),
+            MediaRatioFixtures.image("third", 320, 180),
+        )
+        show(withOverlay = true)
+        waitForRatio(320f / 180)
+        compose.mainClock.autoAdvance = false
+        front().performClick()
+        compose.mainClock.advanceTimeByFrame()
+        val second = compose.onNodeWithTag("media_preview_companion_second", useUnmergedTree = true)
+        val start = second.fetchSemanticsNode().boundsInRoot
+        compose.mainClock.advanceTimeBy(32)
+        val moving = second.fetchSemanticsNode().boundsInRoot
+        assertTrue(moving.center.x > start.center.x)
+        compose.mainClock.autoAdvance = true
+        compose.waitForIdle()
+        second.assertDoesNotExist()
+        compose.onNodeWithTag("media_preview_pager").performTouchInput { swipeLeft() }
+        compose.runOnIdle { assertEquals("second", hidden.value) }
+        compose.mainClock.autoAdvance = false
+        val close = InstrumentationRegistry.getInstrumentation().targetContext.getString(R.string.close)
+        compose.onNodeWithContentDescription(close).performClick()
+        compose.mainClock.advanceTimeBy(32)
+        compose.onNodeWithTag("media_preview_companion_third", useUnmergedTree = true).assertExists()
+        compose.onNodeWithTag("media_preview_companion_first", useUnmergedTree = true).assertExists()
+        compose.mainClock.autoAdvance = true
+        assertFront("second")
+        compose.onNodeWithTag("media_preview_companion_third", useUnmergedTree = true).assertDoesNotExist()
+    }
+
+    @Test fun middleAttachmentExpandsInOriginalOrderAndCancelledDismissKeepsOverlay() {
+        shownItems.value = listOf(
+            MediaRatioFixtures.image("first", 320, 180),
+            MediaRatioFixtures.image("middle", 320, 180),
+            MediaRatioFixtures.image("last", 320, 180),
+        )
+        show(withOverlay = true)
+        waitForRatio(320f / 180)
+        front().performTouchInput { swipeLeft() }
+        assertFront("middle")
+        // assertFront opens the overlay through the same callback as a user tap.
+        compose.waitForIdle()
+        val close = InstrumentationRegistry.getInstrumentation().targetContext.getString(R.string.close)
+        compose.onNodeWithContentDescription(close).performClick()
+        compose.waitForIdle()
+        compose.mainClock.autoAdvance = false
+        front().performClick()
+        compose.mainClock.advanceTimeByFrame()
+        val left = compose.onNodeWithTag("media_preview_companion_first", useUnmergedTree = true)
+        val right = compose.onNodeWithTag("media_preview_companion_last", useUnmergedTree = true)
+        val leftStart = left.fetchSemanticsNode().boundsInRoot.center.x
+        val rightStart = right.fetchSemanticsNode().boundsInRoot.center.x
+        compose.mainClock.advanceTimeBy(32)
+        assertTrue(left.fetchSemanticsNode().boundsInRoot.center.x < leftStart)
+        assertTrue(right.fetchSemanticsNode().boundsInRoot.center.x > rightStart)
+        val capture = InstrumentationRegistry.getInstrumentation().uiAutomation.executeShellCommand(
+            "screencap -p /sdcard/geoalarm-group-expansion.png",
+        )
+        android.os.ParcelFileDescriptor.AutoCloseInputStream(capture).use { it.readBytes() }
+        compose.mainClock.autoAdvance = true
+        compose.waitForIdle()
+        compose.onNodeWithTag("media_preview_pager").performTouchInput {
+            swipe(center, center + Offset(0f, height * 0.05f), durationMillis = 600)
+        }
+        compose.onNodeWithTag("media_preview_pager").assertExists()
+        androidx.test.espresso.Espresso.pressBack()
+        front().assertIsEnabled()
+        compose.runOnIdle { assertEquals("middle", opened?.item?.id) }
     }
 
     private fun waitForRatio(ratio: Float) {

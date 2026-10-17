@@ -329,4 +329,6 @@
     <string name="place_reminder_media_video">Video</string>
     <string name="place_reminder_media_unavailable">Media unavailable</string>
     <string name="place_reminder_media_open">Open full screen</string>
+    <string name="media_preview_page_count">%1$d / %2$d</string>
+    <string name="media_preview_page_description">Attachment %1$d of %2$d</string>
 </resources>

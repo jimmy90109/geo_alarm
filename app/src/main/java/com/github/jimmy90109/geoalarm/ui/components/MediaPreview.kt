@@ -18,6 +18,9 @@ import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.ExperimentalFoundationApi
+import androidx.compose.foundation.gestures.ScrollScope
+import androidx.compose.foundation.gestures.TargetedFlingBehavior
+import androidx.compose.foundation.gestures.awaitFirstDown
 import androidx.compose.foundation.gestures.awaitEachGesture
 import androidx.compose.foundation.gestures.detectVerticalDragGestures
 import androidx.compose.foundation.layout.aspectRatio
@@ -25,15 +28,20 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxScope
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.WindowInsetsSides
+import androidx.compose.foundation.layout.only
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.safeDrawing
 import androidx.compose.foundation.layout.systemBarsIgnoringVisibility
 import androidx.compose.foundation.layout.union
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.windowInsetsPadding
+import androidx.compose.foundation.pager.PagerDefaults
 import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -41,7 +49,6 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.BrokenImage
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.Close
-import androidx.compose.material.icons.filled.Videocam
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
@@ -55,6 +62,9 @@ import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.rememberUpdatedState
+import androidx.compose.runtime.mutableStateMapOf
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.produceState
@@ -63,7 +73,9 @@ import androidx.compose.runtime.setValue
 import androidx.compose.runtime.withFrameMillis
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
@@ -75,7 +87,11 @@ import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.clearAndSetSemantics
+import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.rememberTextMeasurer
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
@@ -104,6 +120,7 @@ import kotlinx.coroutines.launch
 import me.saket.telephoto.zoomable.coil.ZoomableAsyncImage
 import me.saket.telephoto.zoomable.rememberZoomableImageState
 import me.saket.telephoto.zoomable.rememberZoomableState
+import kotlin.math.sign
 import kotlin.math.abs
 
 private val MediaPreviewControlEdgePadding = 16.dp
@@ -121,6 +138,14 @@ data class MediaPreviewItem(
     val width: Int? = null,
     val height: Int? = null,
     val durationMillis: Long? = null,
+)
+
+data class MediaPreviewStackCard(
+    val item: MediaPreviewItem,
+    val bounds: Rect,
+    val rotation: Float,
+    val sourceAlpha: Float = 1f,
+    val scrimAlpha: Float = 0f,
 )
 
 data class MediaPreviewSelection(
@@ -166,6 +191,7 @@ fun MediaPreviewThumbnail(
     interactive: Boolean = true,
     showPlayIndicator: Boolean = false,
     contentScale: ContentScale = ContentScale.Crop,
+    scrimAlpha: Float = 0f,
 ) {
     val context = LocalContext.current
     val isVideo = item.type == MediaPreviewType.VIDEO
@@ -229,6 +255,9 @@ fun MediaPreviewThumbnail(
                         .padding(8.dp),
                 )
             }
+            if (scrimAlpha > 0f) {
+                Box(Modifier.fillMaxSize().background(Color.Black.copy(alpha = scrimAlpha.coerceIn(0f, 1f))))
+            }
         }
     }
 }
@@ -264,6 +293,10 @@ fun MediaPreviewOverlay(
     sourceCornerRadius: Dp = 12.dp,
     aspectRatiosById: Map<String, Float>? = null,
     hideSystemBars: Boolean = false,
+    stackCards: List<MediaPreviewStackCard> = emptyList(),
+    peekAdjacentMedia: Boolean = false,
+    zoomEnabled: Boolean = true,
+    dismissOnBackgroundTap: Boolean = false,
     transitionProgress: Animatable<Float, AnimationVector1D> = remember(selection.item.id) {
         Animatable(0f)
     },
@@ -283,17 +316,25 @@ fun MediaPreviewOverlay(
     val pagerState = rememberPagerState(initialPage = initialPage) {
         previewItems.size
     }
+    var swipeStartPage by remember(selection.item.id) { mutableIntStateOf(initialPage) }
     val scope = rememberCoroutineScope()
     val dragOffsetY = remember(selection.item.id) { Animatable(0f) }
     var isDragging by remember(selection.item.id) { mutableStateOf(false) }
     var hasDismissed by remember(selection.item.id) { mutableStateOf(false) }
     var hasMultiplePointers by remember(selection.item.id) { mutableStateOf(false) }
     var hasOpened by remember(selection.item.id) { mutableStateOf(false) }
+    val pageMediaBounds = remember(selection.item.id) { mutableStateMapOf<Int, Rect>() }
+    var activeMediaBounds by remember { mutableStateOf<Rect?>(null) }
+    var overlayOrigin by remember { mutableStateOf(Offset.Zero) }
+    var counterBounds by remember { mutableStateOf<Rect?>(null) }
+    var closeBounds by remember { mutableStateOf<Rect?>(null) }
     val activeItem = if (hasOpened) {
         previewItems.getOrElse(pagerState.settledPage) { selection.item }
     } else {
         selection.item
     }
+    val openingCards = remember(selection.item.id) { stackCards.toList() }
+    val transitionCards = if (hasOpened) stackCards else openingCards
     val isActiveVideo = activeItem.type == MediaPreviewType.VIDEO
     fun requestDismiss() {
         if (hasDismissed) return
@@ -331,6 +372,28 @@ fun MediaPreviewOverlay(
         val density = LocalDensity.current
         val maxHeightPx = with(density) { maxHeight.toPx() }.coerceAtLeast(1f)
         val maxWidthPx = with(density) { maxWidth.toPx() }.coerceAtLeast(1f)
+        val showPeeks = peekAdjacentMedia && previewItems.size > 1
+        val pageInset = if (showPeeks) 32.dp else 0.dp
+        val pageGap = if (showPeeks) 12.dp else 0.dp
+        val insetPx = with(density) { pageInset.toPx() }
+        val pageWidthPx = (maxWidthPx - insetPx * 2f).coerceAtLeast(1f)
+        val pageStridePx = pageWidthPx + with(density) { pageGap.toPx() }
+        val defaultPagerFling = PagerDefaults.flingBehavior(state = pagerState)
+        val pagerFling = remember(defaultPagerFling, showPeeks) {
+            if (!showPeeks) defaultPagerFling else object : TargetedFlingBehavior {
+                override suspend fun ScrollScope.performFling(
+                    initialVelocity: Float,
+                    onRemainingDistanceUpdated: (Float) -> Unit,
+                ): Float {
+                    val advanced = pagerState.currentPage - swipeStartPage
+                    // A drag may already cross a narrower page before its release fling begins.
+                    val velocity = if (advanced * initialVelocity > 0f) 0f else initialVelocity
+                    return with(defaultPagerFling) {
+                        this@performFling.performFling(velocity, onRemainingDistanceUpdated)
+                    }
+                }
+            }
+        }
         val dismissThresholdPx = maxHeightPx * 0.16f
         val dismissProgress by remember(maxHeightPx) {
             derivedStateOf {
@@ -343,14 +406,14 @@ fun MediaPreviewOverlay(
             }
         }
         val mediaAspectRatio = resolvedAspectRatios[activeItem.id]
-        val targetBounds = remember(maxWidthPx, maxHeightPx, mediaAspectRatio) {
+        val targetBounds = remember(pageWidthPx, maxHeightPx, insetPx, mediaAspectRatio) {
             mediaAspectRatio?.let { aspectRatio ->
                 mediaFitBounds(
-                    maxWidthPx = maxWidthPx,
+                    maxWidthPx = pageWidthPx,
                     maxHeightPx = maxHeightPx,
                     mediaAspectRatio = aspectRatio,
-                )
-            } ?: Rect(left = 0f, top = 0f, right = maxWidthPx, bottom = maxHeightPx)
+                ).translate(x = insetPx)
+            } ?: Rect(left = insetPx, top = 0f, right = maxWidthPx - insetPx, bottom = maxHeightPx)
         }
         val draggedTargetBounds = remember(targetBounds, viewerScale, dragOffsetY.value) {
             targetBounds
@@ -364,13 +427,17 @@ fun MediaPreviewOverlay(
         val fullScreenBounds = remember(maxWidthPx, maxHeightPx) {
             Rect(left = 0f, top = 0f, right = maxWidthPx, bottom = maxHeightPx)
         }
-        val useFullScreenCanvas = transitionProgress.value > 0.98f && !isDragging && !hasDismissed
+        val useFullScreenCanvas = transitionProgress.value > 0.98f &&
+            (showPeeks || !isDragging) && !hasDismissed &&
+            (!peekAdjacentMedia || previewItems.size > 1)
         val displayBounds = if (useFullScreenCanvas) {
             fullScreenBounds
         } else {
             animatedBounds
         }
-        val animatedCornerRadius = with(density) {
+        val animatedCornerRadius = if (peekAdjacentMedia) {
+            sourceCornerRadius * lerpFloat(1f, viewerScale, transitionProgress.value)
+        } else with(density) {
             lerpFloat(
                 start = sourceCornerRadius.toPx(),
                 end = if (isActiveVideo) {
@@ -398,6 +465,20 @@ fun MediaPreviewOverlay(
         } else {
             ContentScale.Crop
         }
+        val backgroundTap by rememberUpdatedState<(Offset) -> Unit> { localPosition ->
+            if (dismissOnBackgroundTap && hasOpened && !hasDismissed && !isDragging &&
+                !pagerState.isScrollInProgress && transitionProgress.value == 1f
+            ) {
+                val position = localPosition + overlayOrigin
+                val insideMedia = if (showPeeks && useFullScreenCanvas) {
+                    pageMediaBounds.any { (page, bounds) ->
+                        abs(page - pagerState.currentPage) <= 1 && bounds.contains(position)
+                    }
+                } else activeMediaBounds?.contains(position) == true
+                val insideControl = counterBounds?.contains(position) == true || closeBounds?.contains(position) == true
+                if (!insideMedia && !insideControl) requestDismiss()
+            }
+        }
         Box(
             modifier = Modifier
                 .fillMaxSize()
@@ -406,23 +487,36 @@ fun MediaPreviewOverlay(
                         alpha = 0.94f * transitionProgress.value * (1f - dismissProgress),
                     ),
                 )
+                .onGloballyPositioned { overlayOrigin = it.boundsInRoot().topLeft }
                 .pointerInput(activeItem.id) {
                     awaitEachGesture {
+                        val down = awaitFirstDown(requireUnconsumed = false, pass = PointerEventPass.Initial)
+                        swipeStartPage = pagerState.currentPage
+                        var isTap = true
                         do {
                             val event = awaitPointerEvent(PointerEventPass.Initial)
                             hasMultiplePointers = event.changes.count { it.pressed } > 1
+                            if (event.changes.size > 1 || event.changes.any {
+                                    it.isConsumed || (it.position - down.position).getDistance() > viewConfiguration.touchSlop ||
+                                        it.uptimeMillis - down.uptimeMillis > viewConfiguration.longPressTimeoutMillis
+                                }
+                            ) isTap = false
                         } while (event.changes.any { it.pressed })
                         hasMultiplePointers = false
+                        // Observe the completed tap without consuming carousel or player gestures.
+                        if (isTap) backgroundTap(down.position)
                     }
                 }
                 .pointerInput(activeItem.id) {
                     detectVerticalDragGestures(
                         onDragStart = {
-                            if (transitionProgress.value < 1f) return@detectVerticalDragGestures
+                            if (hasMultiplePointers || hasDismissed || transitionProgress.value < 1f) {
+                                return@detectVerticalDragGestures
+                            }
                             isDragging = true
                         },
                         onVerticalDrag = { change, dragAmount ->
-                            if (!isDragging || transitionProgress.value < 1f) {
+                            if (hasMultiplePointers || !isDragging || transitionProgress.value < 1f) {
                                 return@detectVerticalDragGestures
                             }
                             change.consume()
@@ -463,6 +557,57 @@ fun MediaPreviewOverlay(
                 },
             contentAlignment = Alignment.TopStart,
         ) {
+            if (transitionProgress.value < 1f || hasDismissed) {
+                val activeIndex = previewItems.indexOfFirst { it.id == activeItem.id }
+                transitionCards.asReversed().filter { it.item.id != activeItem.id }.forEach { card ->
+                    androidx.compose.runtime.key(card.item.id) {
+                        val index = previewItems.indexOfFirst { it.id == card.item.id }
+                        if (index >= 0) {
+                            val ratio = resolvedAspectRatios[card.item.id]
+                                ?: (card.bounds.width / card.bounds.height)
+                            val target = mediaFitBounds(pageWidthPx, maxHeightPx, ratio)
+                            val edgeOffset = if (showPeeks) {
+                                -sign((index - activeIndex).toFloat()) * (pageWidthPx - target.width) / 2f
+                            } else 0f
+                            val shiftedTarget = target.translate(
+                                x = insetPx + (index - activeIndex) * pageStridePx + edgeOffset,
+                            )
+                            val progress = transitionProgress.value.coerceIn(0f, 1f)
+                            val bounds = lerp(card.bounds, shiftedTarget, progress)
+                            MediaPreviewThumbnail(
+                                item = card.item,
+                                hidden = false,
+                                interactive = false,
+                                showPlayIndicator = true,
+                                aspectRatio = ratio,
+                                contentScale = ContentScale.Fit,
+                                scrimAlpha = lerpFloat(card.scrimAlpha, 0.22f, progress),
+                                cornerRadius = if (showPeeks) sourceCornerRadius else sourceCornerRadius * (1f - progress),
+                                modifier = Modifier
+                                    .testTag("media_preview_companion_${card.item.id}")
+                                    .graphicsLayer {
+                                        translationX = bounds.left
+                                        translationY = bounds.top
+                                        rotationZ = card.rotation * (1f - progress)
+                                        alpha = card.sourceAlpha +
+                                            (1f - card.sourceAlpha) * (progress * 4f).coerceAtMost(1f)
+                                    }
+                                    .size(
+                                        with(density) { bounds.width.toDp() },
+                                        with(density) { bounds.height.toDp() },
+                                    )
+                                    .shadow(
+                                        6.dp * (1f - progress),
+                                        RoundedCornerShape(
+                                            if (peekAdjacentMedia) sourceCornerRadius else sourceCornerRadius * (1f - progress),
+                                        ),
+                                    ),
+                                onClick = {},
+                            )
+                        }
+                    }
+                }
+            }
             Box(
                 modifier = Modifier
                     .graphicsLayer {
@@ -470,21 +615,63 @@ fun MediaPreviewOverlay(
                         translationY = displayBounds.top
                     }
                     .size(width = displayWidth, height = displayHeight)
+                    .testTag("media_preview_transition_media")
+                    .onGloballyPositioned { activeMediaBounds = it.boundsInRoot() }
                     .clip(RoundedCornerShape(displayCornerRadius)),
             ) {
-                if (transitionProgress.value > 0.98f && previewItems.size > 1) {
+                if (transitionProgress.value > 0.98f && previewItems.size > 1 && (!showPeeks || useFullScreenCanvas)) {
                     HorizontalPager(
                         state = pagerState,
                         modifier = Modifier.fillMaxSize().testTag("media_preview_pager"),
-                        userScrollEnabled = !isDragging && !hasDismissed && !hasMultiplePointers,
+                        contentPadding = PaddingValues(horizontal = pageInset),
+                        pageSpacing = pageGap,
+                        beyondViewportPageCount = if (showPeeks) 1 else 0,
+                        flingBehavior = pagerFling,
+                        userScrollEnabled = hasOpened && !isDragging && !hasDismissed && !hasMultiplePointers,
                     ) { page ->
-                        MediaPreviewPage(
-                            item = previewItems[page],
-                            active = page == pagerState.settledPage,
-                            complete = true,
-                            showVideoControls = hasOpened && !isDragging && !hasDismissed,
-                            imageContentScale = mediaContentScale,
-                        )
+                        val ratio = resolvedAspectRatios[previewItems[page].id] ?: 1f
+                        val fitted = mediaFitBounds(pageWidthPx, maxHeightPx, ratio)
+                        Box(
+                            Modifier.fillMaxSize().testTag("media_preview_carousel_page_$page"),
+                            contentAlignment = Alignment.Center,
+                        ) {
+                            val mediaModifier = if (showPeeks) {
+                                Modifier.size(
+                                    with(density) { fitted.width.toDp() },
+                                    with(density) { fitted.height.toDp() },
+                                ).graphicsLayer {
+                                    val position = page - pagerState.currentPage - pagerState.currentPageOffsetFraction
+                                    translationX = -(pageWidthPx - fitted.width) / 2f * position.coerceIn(-1f, 1f)
+                                    if (page == pagerState.settledPage) {
+                                        translationY = dragOffsetY.value
+                                        scaleX = viewerScale
+                                        scaleY = viewerScale
+                                    }
+                                }
+                            } else Modifier.fillMaxSize()
+                            Box(
+                                mediaModifier
+                                    .testTag("media_preview_carousel_media_$page")
+                                    .onGloballyPositioned { pageMediaBounds[page] = it.boundsInRoot() }
+                                    .clip(RoundedCornerShape(if (showPeeks) sourceCornerRadius else 0.dp)),
+                            ) {
+                                MediaPreviewPage(
+                                    item = previewItems[page],
+                                    active = page == pagerState.settledPage,
+                                    complete = page == pagerState.settledPage && hasOpened,
+                                    showVideoControls = page == pagerState.settledPage && hasOpened && !isDragging && !hasDismissed,
+                                    imageContentScale = mediaContentScale,
+                                    zoomEnabled = zoomEnabled,
+                                )
+                                if (showPeeks) {
+                                    Box(Modifier.fillMaxSize().graphicsLayer {
+                                        val distance = abs(page - pagerState.currentPage - pagerState.currentPageOffsetFraction)
+                                            .coerceIn(0f, 1f)
+                                        alpha = 0.22f * distance
+                                    }.background(Color.Black))
+                                }
+                            }
+                        }
                     }
                 } else {
                     MediaPreviewPage(
@@ -493,6 +680,54 @@ fun MediaPreviewOverlay(
                         complete = transitionProgress.value > 0.98f,
                         showVideoControls = hasOpened && transitionProgress.value == 1f && !isDragging && !hasDismissed,
                         imageContentScale = mediaContentScale,
+                        zoomEnabled = zoomEnabled,
+                    )
+                }
+            }
+            val currentPage = previewItems.indexOfFirst { it.id == activeItem.id }.coerceAtLeast(0) + 1
+            val pageDescription = stringResource(
+                R.string.media_preview_page_description, currentPage, previewItems.size,
+            )
+            val pageLabels = previewItems.indices.map { index ->
+                stringResource(R.string.media_preview_page_count, index + 1, previewItems.size)
+            }
+            val labelStyle = MaterialTheme.typography.labelLarge
+            val textMeasurer = rememberTextMeasurer()
+            val counterWidth = with(density) {
+                pageLabels.maxOf { textMeasurer.measure(it, labelStyle).size.width }.toDp()
+            } + 32.dp
+            val counterWidthPx = with(density) { counterWidth.toPx() }
+            Box(
+                modifier = Modifier
+                    .align(Alignment.TopCenter)
+                    .windowInsetsPadding(
+                        WindowInsets.safeDrawing.union(WindowInsets.systemBarsIgnoringVisibility)
+                            .only(WindowInsetsSides.Top),
+                    )
+                    .padding(top = 12.dp)
+                    .height(48.dp)
+                    .width(counterWidth)
+                    .graphicsLayer { alpha = controlsAlpha }
+                    .clip(RoundedCornerShape(24.dp))
+                    .background(Color.Black.copy(alpha = 0.42f))
+                    .testTag("media_preview_page_count")
+                    .onGloballyPositioned { counterBounds = it.boundsInRoot() }
+                    .semantics(mergeDescendants = true) { contentDescription = pageDescription },
+                contentAlignment = Alignment.Center,
+            ) {
+                pageLabels.forEachIndexed { index, label ->
+                    Text(
+                        text = label,
+                        color = Color.White,
+                        style = labelStyle,
+                        modifier = Modifier
+                            .graphicsLayer {
+                                val position = index - pagerState.currentPage - pagerState.currentPageOffsetFraction
+                                translationX = position * counterWidthPx
+                                alpha = (1f - abs(position)).coerceIn(0f, 1f)
+                            }
+                            .testTag("media_preview_page_label_${index + 1}")
+                            .clearAndSetSemantics {},
                     )
                 }
             }
@@ -502,6 +737,7 @@ fun MediaPreviewOverlay(
                     .align(Alignment.TopEnd)
                     .windowInsetsPadding(WindowInsets.safeDrawing.union(WindowInsets.systemBarsIgnoringVisibility))
                     .padding(12.dp)
+                    .onGloballyPositioned { closeBounds = it.boundsInRoot() }
                     .graphicsLayer {
                         alpha = controlsAlpha
                     }
@@ -527,6 +763,7 @@ private fun BoxScope.MediaPreviewPage(
     complete: Boolean,
     showVideoControls: Boolean,
     imageContentScale: ContentScale,
+    zoomEnabled: Boolean = true,
 ) {
     val context = LocalContext.current
     val isVideo = item.type == MediaPreviewType.VIDEO
@@ -550,6 +787,7 @@ private fun BoxScope.MediaPreviewPage(
             contentDescription = item.displayName,
             complete = complete,
             contentScale = imageContentScale,
+            zoomEnabled = zoomEnabled,
         )
     } else {
         AsyncImage(
@@ -560,18 +798,7 @@ private fun BoxScope.MediaPreviewPage(
         )
     }
 
-    if (isVideo && showVideoControls) {
-        Icon(
-            Icons.Filled.Videocam,
-            contentDescription = null,
-            tint = MaterialTheme.colorScheme.inverseOnSurface,
-            modifier = Modifier
-                .align(Alignment.BottomStart)
-                .padding(12.dp)
-                .background(MaterialTheme.colorScheme.inverseSurface.copy(alpha = 0.92f), RoundedCornerShape(8.dp))
-                .padding(4.dp),
-        )
-    }
+
 }
 
 @Composable
@@ -580,7 +807,17 @@ private fun MediaPreviewImagePage(
     contentDescription: String,
     complete: Boolean,
     contentScale: ContentScale,
+    zoomEnabled: Boolean,
 ) {
+    if (!zoomEnabled) {
+        AsyncImage(
+            model = imageRequest,
+            contentDescription = contentDescription,
+            modifier = Modifier.fillMaxSize(),
+            contentScale = contentScale,
+        )
+        return
+    }
     val zoomableImageState = rememberZoomableImageState(rememberZoomableState())
     var hasShownZoomable by remember(imageRequest) { mutableStateOf(false) }
     LaunchedEffect(complete) {

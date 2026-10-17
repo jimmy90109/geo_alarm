@@ -328,4 +328,6 @@
     <string name="place_reminder_media_video">影片</string>
     <string name="place_reminder_media_unavailable">無法載入媒體</string>
     <string name="place_reminder_media_open">全螢幕開啟</string>
+    <string name="media_preview_page_count">%1$d / %2$d</string>
+    <string name="media_preview_page_description">第 %1$d 個附件，共 %2$d 個</string>
 </resources>

@@ -122,6 +122,7 @@ import com.github.jimmy90109.geoalarm.ui.components.AlarmIconBadge
 import com.github.jimmy90109.geoalarm.ui.components.BackgroundLocationPermissionDialog
 import com.github.jimmy90109.geoalarm.ui.components.rememberMediaPreviewAspectRatios
 import com.github.jimmy90109.geoalarm.ui.components.MediaPreviewMotion
+import com.github.jimmy90109.geoalarm.ui.components.MediaPreviewStackCard
 import com.github.jimmy90109.geoalarm.ui.components.MediaPreviewItem
 import com.github.jimmy90109.geoalarm.ui.components.MediaPreviewOverlay
 import com.github.jimmy90109.geoalarm.ui.components.MediaPreviewPreloader
@@ -164,6 +165,7 @@ fun PlaceReminderDetailScreen(
     var selectedPreview by remember { mutableStateOf<MediaPreviewSelection?>(null) }
     val previewTransitionProgress = remember(reminderId) { Animatable(0f) }
     var activePreviewItemId by remember { mutableStateOf<String?>(null) }
+    var previewStackCards by remember { mutableStateOf<List<MediaPreviewStackCard>>(emptyList()) }
     val previewSourceBounds = remember { mutableStateMapOf<String, Rect>() }
     var permissionState by remember {
         mutableStateOf(PlaceReminderListViewModel.permissionState(context))
@@ -265,6 +267,12 @@ fun PlaceReminderDetailScreen(
         } ?: emptyList()
     }
     val previewAspectRatios = rememberMediaPreviewAspectRatios(previewItems)
+    val previewWindowSize = androidx.compose.ui.platform.LocalWindowInfo.current.containerSize
+    LaunchedEffect(previewItems, previewWindowSize) {
+        selectedPreview = null
+        activePreviewItemId = null
+        previewTransitionProgress.snapTo(0f)
+    }
     val handleBack = {
         haptic.performHapticFeedback(HapticFeedbackType.ContextClick)
         onBack()
@@ -308,6 +316,7 @@ fun PlaceReminderDetailScreen(
                     newItemText = ""
                 },
                 attachmentAspectRatios = previewAspectRatios,
+                onStackCardsChanged = { previewStackCards = it },
                 hiddenAttachmentId = activePreviewItemId ?: selectedPreview?.item?.id,
                 onAttachmentBoundsChanged = { id, bounds ->
                     previewSourceBounds[id] = bounds
@@ -418,6 +427,10 @@ fun PlaceReminderDetailScreen(
                 aspectRatiosById = previewAspectRatios,
                 transitionProgress = previewTransitionProgress,
                 hideSystemBars = true,
+                stackCards = previewStackCards,
+                peekAdjacentMedia = true,
+                zoomEnabled = false,
+                dismissOnBackgroundTap = true,
                 onActiveItemChanged = { item ->
                     activePreviewItemId = item.id
                 },
@@ -617,6 +630,7 @@ private fun PlaceReminderDetailContent(
     onItemCheckedChange: (PlaceReminderItem, Boolean) -> Unit,
     onAddItem: () -> Unit,
     attachmentAspectRatios: Map<String, Float>,
+    onStackCardsChanged: (List<MediaPreviewStackCard>) -> Unit,
     hiddenAttachmentId: String?,
     onAttachmentBoundsChanged: (String, Rect) -> Unit,
     onAttachmentClick: (MediaPreviewSelection) -> Unit,
@@ -723,6 +737,7 @@ private fun PlaceReminderDetailContent(
                     PlaceReminderMediaStack(
                         items = reminderWithItems.sortedAttachments.map { it.toMediaPreviewItem() },
                         aspectRatiosById = attachmentAspectRatios,
+                        onStackCardsChanged = onStackCardsChanged,
                         hiddenAttachmentId = hiddenAttachmentId,
                         onAttachmentBoundsChanged = onAttachmentBoundsChanged,
                         onAttachmentClick = onAttachmentClick,
