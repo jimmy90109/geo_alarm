@@ -38,6 +38,7 @@ import com.github.jimmy90109.geoalarm.ui.components.MediaPreviewItem
 import com.github.jimmy90109.geoalarm.ui.components.MediaPreviewSelection
 import com.github.jimmy90109.geoalarm.ui.components.MediaPreviewType
 import com.github.jimmy90109.geoalarm.ui.screens.place_reminders.components.PlaceReminderMediaStack
+import com.github.jimmy90109.geoalarm.ui.screens.place_reminders.components.PlaceReminderMediaLayout
 import org.junit.Assert.assertEquals
 import org.junit.Rule
 import org.junit.Test
@@ -52,7 +53,10 @@ class PlaceReminderMediaStackTest {
     private val hidden = mutableStateOf<String?>(null)
     private val shownItems = mutableStateOf(items)
 
-    private fun show(withOverlay: Boolean = false) {
+    private fun show(
+        withOverlay: Boolean = false,
+        layout: PlaceReminderMediaLayout = PlaceReminderMediaLayout.Original,
+    ) {
         compose.setContent {
             MaterialTheme {
                 val selection = remember { mutableStateOf<MediaPreviewSelection?>(null) }
@@ -63,7 +67,7 @@ class PlaceReminderMediaStackTest {
                     PlaceReminderMediaStack(shownItems.value, hidden.value, { id, rect -> bounds[id] = rect }, {
                         opened = it
                         if (withOverlay) { selection.value = it; hidden.value = it.item.id }
-                    }, aspectRatiosById = ratios, onStackCardsChanged = { cards.value = it })
+                    }, aspectRatiosById = ratios, onStackCardsChanged = { cards.value = it }, layout = layout)
                     selection.value?.let {
                         MediaPreviewOverlay(
                             selection = it, items = shownItems.value, sourceBoundsById = bounds.toMap(),
@@ -84,6 +88,79 @@ class PlaceReminderMediaStackTest {
     private fun assertFront(id: String) {
         front().performClick()
         compose.runOnIdle { assertEquals(id, opened?.item?.id) }
+    }
+
+    @Test fun compactStackKeepsSizeAcrossMixedRatiosAndReturnsFromPreview() {
+        shownItems.value = listOf(
+            MediaRatioFixtures.image("wide", 320, 180),
+            MediaRatioFixtures.image("tall", 90, 320),
+            MediaPreviewItem("video", "/missing/video.mp4", "video", MediaPreviewType.VIDEO),
+        )
+        show(withOverlay = true, layout = PlaceReminderMediaLayout.Compact)
+        val stack = compose.onNodeWithTag("place_reminder_media_stack")
+        stack.assertWidthIsEqualTo(144.dp).assertHeightIsEqualTo(144.dp)
+        assertFront("wide")
+        compose.onNodeWithTag("media_preview_pager").performTouchInput { swipeLeft() }
+        val close = InstrumentationRegistry.getInstrumentation().targetContext.getString(R.string.close)
+        compose.onNodeWithContentDescription(close).performClick()
+        stack.assertHeightIsEqualTo(144.dp)
+        front().performTouchInput { swipeLeft() }
+        front().assertContentDescriptionEquals(
+            InstrumentationRegistry.getInstrumentation().targetContext.getString(
+                R.string.place_reminder_media_description, 3, 3,
+                InstrumentationRegistry.getInstrumentation().targetContext.getString(R.string.place_reminder_media_video),
+                "video",
+            ),
+        ).assertHasClickAction()
+        stack.assertHeightIsEqualTo(144.dp)
+    }
+
+    @Test fun compactNarrowMediaHasAccessibleHitAreaAndActualPreviewBounds() {
+        val narrow = items.first().copy(width = 40, height = 800)
+        compose.setContent {
+            MaterialTheme {
+                PlaceReminderMediaStack(
+                    listOf(narrow), null, { _, _ -> }, { opened = it },
+                    aspectRatiosById = mapOf(narrow.id to 0.05f),
+                    layout = PlaceReminderMediaLayout.Compact,
+                )
+            }
+        }
+        front().assertWidthIsAtLeast(48.dp).assertHeightIsAtLeast(48.dp)
+        front().performClick()
+        compose.runOnIdle {
+            assertEquals(0.05f, opened!!.sourceBounds.width / opened!!.sourceBounds.height, 0.001f)
+        }
+    }
+
+    @Test fun compactVerticalDragScrollsWithoutChangingAttachment() {
+        val scroll = ScrollState(0)
+        compose.setContent {
+            MaterialTheme {
+                Column(Modifier.fillMaxSize().verticalScroll(scroll)) {
+                    PlaceReminderMediaStack(
+                        items, null, { _, _ -> }, { opened = it },
+                        layout = PlaceReminderMediaLayout.Compact,
+                    )
+                    Spacer(Modifier.height(1000.dp))
+                }
+            }
+        }
+        front().performTouchInput { swipeUp() }
+        compose.runOnIdle { assertTrue(scroll.value > 0) }
+        front().performScrollTo()
+        assertFront("1")
+    }
+
+    @Test fun compactSlowShortDragReboundsAndSingleAttachmentHasNoCounter() {
+        show(layout = PlaceReminderMediaLayout.Compact)
+        front().performTouchInput {
+            swipe(center, center + Offset(width * 0.12f, 0f), durationMillis = 600)
+        }
+        assertFront("1")
+        compose.runOnIdle { shownItems.value = items.take(1) }
+        compose.onNodeWithTag("place_reminder_media_stack").assertHeightIsEqualTo(144.dp)
+        compose.onNodeWithTag("place_reminder_media_count", useUnmergedTree = true).assertDoesNotExist()
     }
 
     @Test fun bothDirectionsCycleToBottomAndOpenCurrentItem() {
@@ -126,6 +203,53 @@ class PlaceReminderMediaStackTest {
         front().performTouchInput { swipeRight(durationMillis = 100) }
         front().performClick()
         compose.runOnIdle { assertEquals(null, opened) }
+        compose.mainClock.autoAdvance = true
+        assertFront("2")
+    }
+
+    @Test fun promotionTimingIsIndependentOfFlingVelocity() {
+        show()
+        fun samplePromotion(durationMillis: Long, promotedId: String): List<Rect> {
+            compose.mainClock.autoAdvance = false
+            front().performTouchInput {
+                swipe(center, center - Offset(width * 0.35f, 0f), durationMillis)
+            }
+            val card = compose.onNodeWithTag("place_reminder_media_card_$promotedId", useUnmergedTree = true)
+            compose.mainClock.advanceTimeBy(64)
+            val early = card.fetchSemanticsNode().boundsInRoot
+            compose.mainClock.advanceTimeBy(96)
+            val later = card.fetchSemanticsNode().boundsInRoot
+            compose.mainClock.autoAdvance = true
+            assertFront(promotedId)
+            return listOf(early, later)
+        }
+        val slow = samplePromotion(600, "2")
+        val fast = samplePromotion(60, "3")
+        slow.zip(fast).forEach { (expected, actual) ->
+            assertEquals(expected.left, actual.left, 1f)
+            assertEquals(expected.top, actual.top, 1f)
+            assertEquals(expected.right, actual.right, 1f)
+            assertEquals(expected.bottom, actual.bottom, 1f)
+        }
+        assertTrue("Promotion must continue over time", slow.first() != slow.last())
+    }
+
+    @Test fun outgoingCardReturnsWhilePromotionIsStillRunning() {
+        show(layout = PlaceReminderMediaLayout.Compact)
+        compose.mainClock.autoAdvance = false
+        front().performTouchInput {
+            swipe(center, center + Offset(width * 1.5f, 0f), durationMillis = 60)
+        }
+        val outgoing = compose.onNodeWithTag("place_reminder_media_card_1", useUnmergedTree = true)
+        val promoted = compose.onNodeWithTag("place_reminder_media_card_2", useUnmergedTree = true)
+        compose.mainClock.advanceTimeBy(64)
+        val outgoingEarly = outgoing.fetchSemanticsNode().boundsInRoot.center.x
+        val promotedEarly = promoted.fetchSemanticsNode().boundsInRoot
+        compose.mainClock.advanceTimeBy(64)
+        val outgoingLater = outgoing.fetchSemanticsNode().boundsInRoot.center.x
+        val promotedLater = promoted.fetchSemanticsNode().boundsInRoot
+        assertTrue("Return must start before the 260 ms promotion finishes", outgoingLater < outgoingEarly - 1f)
+        assertTrue("Promotion must keep running during return", promotedLater != promotedEarly)
         compose.mainClock.autoAdvance = true
         assertFront("2")
     }
@@ -503,6 +627,8 @@ class PlaceReminderMediaStackTest {
             compose.onNodeWithTag("media_preview_companion_page$id", useUnmergedTree = true).assertExists()
         }
         compose.mainClock.advanceTimeBy(32)
+        assertEquals(previousStart, previous.fetchSemanticsNode().boundsInRoot.center.x, 1f)
+        compose.mainClock.advanceTimeBy(128)
         assertTrue(previous.fetchSemanticsNode().boundsInRoot.center.x < previousStart)
         compose.mainClock.autoAdvance = true
         compose.waitForIdle()
@@ -590,7 +716,7 @@ class PlaceReminderMediaStackTest {
         assertEquals(identity, card.fetchSemanticsNode().id)
     }
 
-    @Test fun overlayCompanionsExpandAndReturnTogether() {
+    @Test fun overlayCompanionsExpandInSequenceAndReturnTogether() {
         shownItems.value = listOf(
             MediaRatioFixtures.image("first", 320, 180),
             MediaRatioFixtures.image("second", 320, 180),
@@ -602,10 +728,15 @@ class PlaceReminderMediaStackTest {
         front().performClick()
         compose.mainClock.advanceTimeByFrame()
         val second = compose.onNodeWithTag("media_preview_companion_second", useUnmergedTree = true)
+        val third = compose.onNodeWithTag("media_preview_companion_third", useUnmergedTree = true)
         val start = second.fetchSemanticsNode().boundsInRoot
-        compose.mainClock.advanceTimeBy(32)
+        val thirdStart = third.fetchSemanticsNode().boundsInRoot
+        compose.mainClock.advanceTimeBy(64)
         val moving = second.fetchSemanticsNode().boundsInRoot
         assertTrue(moving.center.x > start.center.x)
+        assertEquals(thirdStart, third.fetchSemanticsNode().boundsInRoot)
+        compose.mainClock.advanceTimeBy(48)
+        assertTrue(third.fetchSemanticsNode().boundsInRoot.center.x > thirdStart.center.x)
         compose.mainClock.autoAdvance = true
         compose.waitForIdle()
         second.assertDoesNotExist()
@@ -644,7 +775,7 @@ class PlaceReminderMediaStackTest {
         val right = compose.onNodeWithTag("media_preview_companion_last", useUnmergedTree = true)
         val leftStart = left.fetchSemanticsNode().boundsInRoot.center.x
         val rightStart = right.fetchSemanticsNode().boundsInRoot.center.x
-        compose.mainClock.advanceTimeBy(32)
+        compose.mainClock.advanceTimeBy(160)
         assertTrue(left.fetchSemanticsNode().boundsInRoot.center.x < leftStart)
         assertTrue(right.fetchSemanticsNode().boundsInRoot.center.x > rightStart)
         val capture = InstrumentationRegistry.getInstrumentation().uiAutomation.executeShellCommand(

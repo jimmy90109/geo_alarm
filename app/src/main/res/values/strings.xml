@@ -1,4 +1,7 @@
 <resources>
+    <string name="media_preview_play">Play</string>
+    <string name="media_preview_pause">Pause</string>
+    <string name="media_preview_seek">Playback position</string>
     <string name="app_name">Geo Alarm</string>
     <string name="app_name_debug">Geo Alarm DEV</string>
     <string name="home_title">Geo Alarm</string>
@@ -323,6 +326,7 @@
         <item quantity="one">Review %1$s here: %2$d item to review</item>
         <item quantity="other">Review %1$s here: %2$d items to review</item>
     </plurals>
+    <string name="place_reminder_media_count">%1$d / %2$d</string>
     <string name="place_reminder_media_next">Show next attachment</string>
     <string name="place_reminder_media_description">Attachment %1$d of %2$d: %3$s, %4$s</string>
     <string name="place_reminder_media_photo">Photo</string>

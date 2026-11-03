@@ -10,8 +10,10 @@ import android.net.Uri
 import androidx.annotation.OptIn as AndroidXOptIn
 import androidx.activity.compose.BackHandler
 import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.animation.ExitTransition
 import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.slideInVertically
+import androidx.compose.animation.slideOutVertically
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.AnimationVector1D
 import androidx.compose.animation.core.animateFloatAsState
@@ -48,6 +50,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.BrokenImage
 import androidx.compose.material.icons.filled.PlayArrow
+import androidx.compose.material.icons.filled.Pause
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
@@ -57,6 +60,8 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.LoadingIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
+import androidx.compose.material3.Slider
+import androidx.compose.material3.SliderDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
@@ -117,6 +122,7 @@ import java.io.IOException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.coroutineScope
 import me.saket.telephoto.zoomable.coil.ZoomableAsyncImage
 import me.saket.telephoto.zoomable.rememberZoomableImageState
 import me.saket.telephoto.zoomable.rememberZoomableState
@@ -190,6 +196,9 @@ fun MediaPreviewThumbnail(
     cornerRadius: Dp = 12.dp,
     interactive: Boolean = true,
     showPlayIndicator: Boolean = false,
+    playIndicatorAlignment: Alignment = Alignment.Center,
+    playIndicatorSize: Dp = 40.dp,
+    showVideoDuration: Boolean = true,
     contentScale: ContentScale = ContentScale.Crop,
     scrimAlpha: Float = 0f,
 ) {
@@ -243,10 +252,15 @@ fun MediaPreviewThumbnail(
                     Icons.Filled.PlayArrow,
                     contentDescription = stringResource(R.string.place_reminder_media_video),
                     tint = MaterialTheme.colorScheme.inverseOnSurface,
-                    modifier = Modifier.background(MaterialTheme.colorScheme.inverseSurface.copy(alpha = 0.92f), RoundedCornerShape(24.dp)).padding(8.dp),
+                    modifier = Modifier
+                        .align(playIndicatorAlignment)
+                        .padding(8.dp)
+                        .size(playIndicatorSize)
+                        .background(MaterialTheme.colorScheme.inverseSurface.copy(alpha = 0.92f), RoundedCornerShape(24.dp))
+                        .padding(playIndicatorSize / 5),
                 )
             }
-            if (isVideo) {
+            if (isVideo && showVideoDuration) {
                 val durationMillis = item.durationMillis ?: rememberMediaPreviewVideoDurationMillis(item.localPath)
                 MediaPreviewVideoDurationBadge(
                     durationMillis = durationMillis,
@@ -328,16 +342,46 @@ fun MediaPreviewOverlay(
     var overlayOrigin by remember { mutableStateOf(Offset.Zero) }
     var counterBounds by remember { mutableStateOf<Rect?>(null) }
     var closeBounds by remember { mutableStateOf<Rect?>(null) }
+    var videoControlsBounds by remember { mutableStateOf<Rect?>(null) }
     val activeItem = if (hasOpened) {
         previewItems.getOrElse(pagerState.settledPage) { selection.item }
     } else {
         selection.item
     }
     val openingCards = remember(selection.item.id) { stackCards.toList() }
+    val companionOpeningProgress = remember(selection.item.id) {
+        openingCards.filter { it.item.id != selection.item.id }.associate { it.item.id to Animatable(0f) }
+    }
+    var companionDismissProgress by remember(selection.item.id) { mutableStateOf(emptyMap<String, Float>()) }
+    var dismissStartProgress by remember(selection.item.id) { mutableStateOf(1f) }
     val transitionCards = if (hasOpened) stackCards else openingCards
     val isActiveVideo = activeItem.type == MediaPreviewType.VIDEO
+    var playbackPosition by remember { mutableStateOf(0L) }
+    var playbackDuration by remember { mutableStateOf(0L) }
+    var playbackPlaying by remember { mutableStateOf(false) }
+    var playbackReady by remember(activeItem.id) { mutableStateOf(false) }
+    var activePlayer by remember(activeItem.id) { mutableStateOf<Player?>(null) }
+    val onPlayerChanged: (Player?, Boolean) -> Unit = remember(activeItem.id) {
+        { player, ready ->
+            activePlayer = player
+            playbackReady = ready
+        }
+    }
+    LaunchedEffect(activePlayer) {
+        val player = activePlayer ?: return@LaunchedEffect
+        while (true) {
+            withFrameMillis {
+                playbackPosition = player.currentPosition.coerceAtLeast(0L)
+                playbackDuration = player.duration.takeUnless { it == C.TIME_UNSET }
+                    ?.coerceAtLeast(0L) ?: 0L
+                playbackPlaying = player.playWhenReady
+            }
+        }
+    }
     fun requestDismiss() {
         if (hasDismissed) return
+        dismissStartProgress = transitionProgress.value.coerceAtLeast(0.001f)
+        companionDismissProgress = companionOpeningProgress.mapValues { it.value.value }
         hasDismissed = true
         scope.launch {
             transitionProgress.animateTo(
@@ -353,10 +397,26 @@ fun MediaPreviewOverlay(
     LaunchedEffect(selection.item.id) {
         transitionProgress.snapTo(0f)
         dragOffsetY.snapTo(0f)
-        transitionProgress.animateTo(
-            targetValue = 1f,
-            animationSpec = MediaPreviewMotion.spatial(visibilityThreshold = 0.001f),
-        )
+        coroutineScope {
+            if (peekAdjacentMedia && previewItems.size > 1) {
+                companionOpeningProgress.values.forEachIndexed { index, progress ->
+                    launch {
+                        progress.snapTo(0f)
+                        progress.animateTo(1f, MediaPreviewMotion.carouselExpansion(
+                            delayMillis = (index + 1).coerceAtMost(3) * 40,
+                        ))
+                    }
+                }
+            }
+            transitionProgress.animateTo(
+                targetValue = 1f,
+                animationSpec = if (peekAdjacentMedia && previewItems.size > 1) {
+                    MediaPreviewMotion.carouselExpansion()
+                } else {
+                    MediaPreviewMotion.spatial(visibilityThreshold = 0.001f)
+                },
+            )
+        }
         hasOpened = true
     }
 
@@ -428,6 +488,7 @@ fun MediaPreviewOverlay(
             Rect(left = 0f, top = 0f, right = maxWidthPx, bottom = maxHeightPx)
         }
         val useFullScreenCanvas = transitionProgress.value > 0.98f &&
+            (!showPeeks || hasOpened) &&
             (showPeeks || !isDragging) && !hasDismissed &&
             (!peekAdjacentMedia || previewItems.size > 1)
         val displayBounds = if (useFullScreenCanvas) {
@@ -475,7 +536,8 @@ fun MediaPreviewOverlay(
                         abs(page - pagerState.currentPage) <= 1 && bounds.contains(position)
                     }
                 } else activeMediaBounds?.contains(position) == true
-                val insideControl = counterBounds?.contains(position) == true || closeBounds?.contains(position) == true
+                val insideControl = counterBounds?.contains(position) == true ||
+                    closeBounds?.contains(position) == true || videoControlsBounds?.contains(position) == true
                 if (!insideMedia && !insideControl) requestDismiss()
             }
         }
@@ -557,7 +619,7 @@ fun MediaPreviewOverlay(
                 },
             contentAlignment = Alignment.TopStart,
         ) {
-            if (transitionProgress.value < 1f || hasDismissed) {
+            if (!hasOpened || transitionProgress.value < 1f || hasDismissed) {
                 val activeIndex = previewItems.indexOfFirst { it.id == activeItem.id }
                 transitionCards.asReversed().filter { it.item.id != activeItem.id }.forEach { card ->
                     androidx.compose.runtime.key(card.item.id) {
@@ -572,7 +634,12 @@ fun MediaPreviewOverlay(
                             val shiftedTarget = target.translate(
                                 x = insetPx + (index - activeIndex) * pageStridePx + edgeOffset,
                             )
-                            val progress = transitionProgress.value.coerceIn(0f, 1f)
+                            val progress = if (!hasOpened && showPeeks) {
+                                if (hasDismissed) {
+                                    (companionDismissProgress[card.item.id] ?: 0f) *
+                                        (transitionProgress.value / dismissStartProgress).coerceIn(0f, 1f)
+                                } else companionOpeningProgress[card.item.id]?.value ?: transitionProgress.value
+                            } else transitionProgress.value.coerceIn(0f, 1f)
                             val bounds = lerp(card.bounds, shiftedTarget, progress)
                             MediaPreviewThumbnail(
                                 item = card.item,
@@ -659,7 +726,7 @@ fun MediaPreviewOverlay(
                                     item = previewItems[page],
                                     active = page == pagerState.settledPage,
                                     complete = page == pagerState.settledPage && hasOpened,
-                                    showVideoControls = page == pagerState.settledPage && hasOpened && !isDragging && !hasDismissed,
+                                    onPlayerChanged = onPlayerChanged,
                                     imageContentScale = mediaContentScale,
                                     zoomEnabled = zoomEnabled,
                                 )
@@ -678,9 +745,46 @@ fun MediaPreviewOverlay(
                         item = activeItem,
                         active = true,
                         complete = transitionProgress.value > 0.98f,
-                        showVideoControls = hasOpened && transitionProgress.value == 1f && !isDragging && !hasDismissed,
+                        onPlayerChanged = onPlayerChanged,
                         imageContentScale = mediaContentScale,
                         zoomEnabled = zoomEnabled,
+                    )
+                }
+            }
+            AnimatedVisibility(
+                visible = isActiveVideo && playbackReady && hasOpened && transitionProgress.value == 1f &&
+                    !isDragging && !hasDismissed,
+                enter = slideInVertically(animationSpec = MediaPreviewMotion.spatial()) { it } +
+                    fadeIn(animationSpec = MediaPreviewMotion.effects()),
+                exit = slideOutVertically(animationSpec = MediaPreviewMotion.spatial()) { it } +
+                    fadeOut(animationSpec = MediaPreviewMotion.effects()),
+                modifier = Modifier
+                    .align(Alignment.BottomCenter),
+            ) {
+                DisposableEffect(Unit) {
+                    onDispose { videoControlsBounds = null }
+                }
+                androidx.compose.runtime.key(activeItem.id) {
+                    MediaPreviewVideoControls(
+                        positionMillis = playbackPosition,
+                        durationMillis = playbackDuration,
+                        playing = playbackPlaying,
+                        canSeek = activePlayer?.isCurrentMediaItemSeekable == true,
+                        onTogglePlayback = {
+                            activePlayer?.let { player ->
+                                if (player.playWhenReady) player.pause() else player.play()
+                                playbackPlaying = player.playWhenReady
+                            }
+                        },
+                        onSeek = { position ->
+                            activePlayer?.seekTo(position)
+                            playbackPosition = position
+                        },
+                        modifier = Modifier
+                            .windowInsetsPadding(WindowInsets.safeDrawing.union(WindowInsets.systemBarsIgnoringVisibility))
+                            .padding(MediaPreviewControlEdgePadding)
+                            .testTag("media_preview_video_controls")
+                            .onGloballyPositioned { videoControlsBounds = it.boundsInRoot() },
                     )
                 }
             }
@@ -761,7 +865,7 @@ private fun BoxScope.MediaPreviewPage(
     item: MediaPreviewItem,
     active: Boolean,
     complete: Boolean,
-    showVideoControls: Boolean,
+    onPlayerChanged: (Player?, Boolean) -> Unit,
     imageContentScale: ContentScale,
     zoomEnabled: Boolean = true,
 ) {
@@ -778,7 +882,7 @@ private fun BoxScope.MediaPreviewPage(
     if (isVideo && active && complete) {
         MediaPreviewVideoPlayer(
             localPath = item.localPath,
-            showControls = showVideoControls,
+            onPlayerChanged = onPlayerChanged,
             modifier = Modifier.fillMaxSize(),
         )
     } else if (!isVideo) {
@@ -868,7 +972,7 @@ private fun MediaPreviewImagePage(
 @Composable
 private fun MediaPreviewVideoPlayer(
     localPath: String,
-    showControls: Boolean,
+    onPlayerChanged: (Player?, Boolean) -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val context = LocalContext.current
@@ -880,8 +984,7 @@ private fun MediaPreviewVideoPlayer(
             isVideo = true,
         )
     }
-    var playbackPosition by remember(localPath) { mutableStateOf(0L) }
-    var playbackDuration by remember(localPath) { mutableStateOf(0L) }
+    val currentOnPlayerChanged by rememberUpdatedState(onPlayerChanged)
     var isBuffering by remember(localPath) { mutableStateOf(true) }
     var hasRenderedFirstFrame by remember(localPath) { mutableStateOf(false) }
     val playerAlpha by animateFloatAsState(
@@ -908,19 +1011,8 @@ private fun MediaPreviewVideoPlayer(
         }
     }
 
-    LaunchedEffect(player) {
-        while (true) {
-            withFrameMillis {
-                playbackPosition = player.currentPosition.coerceAtLeast(0L)
-                playbackDuration = player.duration
-                    .takeUnless { it == C.TIME_UNSET }
-                    ?.coerceAtLeast(0L)
-                    ?: 0L
-            }
-        }
-    }
-
-    DisposableEffect(player, lifecycleOwner) {
+    DisposableEffect(player, lifecycleOwner, onPlayerChanged) {
+        currentOnPlayerChanged(player, hasRenderedFirstFrame)
         val listener = object : Player.Listener {
             override fun onPlaybackStateChanged(playbackState: Int) {
                 isBuffering = playbackState == Player.STATE_BUFFERING
@@ -928,6 +1020,7 @@ private fun MediaPreviewVideoPlayer(
 
             override fun onRenderedFirstFrame() {
                 hasRenderedFirstFrame = true
+                currentOnPlayerChanged(player, true)
             }
         }
         val observer = LifecycleEventObserver { _, event ->
@@ -944,6 +1037,7 @@ private fun MediaPreviewVideoPlayer(
         onDispose {
             lifecycleOwner.lifecycle.removeObserver(observer)
             player.removeListener(listener)
+            currentOnPlayerChanged(null, false)
             player.release()
         }
     }
@@ -1000,86 +1094,66 @@ private fun MediaPreviewVideoPlayer(
                     },
             )
         }
-        AnimatedVisibility(
-            visible = showControls,
-            enter = fadeIn(animationSpec = MediaPreviewMotion.effects()),
-            exit = ExitTransition.None,
-            modifier = Modifier
-                .align(Alignment.BottomCenter)
-                .windowInsetsPadding(WindowInsets.safeDrawing.union(WindowInsets.systemBarsIgnoringVisibility))
-                .padding(
-                    start = MediaPreviewControlEdgePadding,
-                    top = MediaPreviewControlEdgePadding,
-                    end = MediaPreviewControlEdgePadding,
-                    bottom = MediaPreviewControlEdgePadding,
-                ),
-        ) {
-            MediaPreviewVideoControls(
-                positionMillis = playbackPosition,
-                durationMillis = playbackDuration,
-            )
-        }
     }
 }
 
 @Composable
-private fun MediaPreviewVideoControls(
+internal fun MediaPreviewVideoControls(
     positionMillis: Long,
     durationMillis: Long,
+    playing: Boolean,
+    canSeek: Boolean,
+    onTogglePlayback: () -> Unit,
+    onSeek: (Long) -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    val progress = remember(positionMillis, durationMillis) {
-        if (durationMillis > 0L) {
-            (positionMillis.toFloat() / durationMillis.toFloat()).coerceIn(0f, 1f)
-        } else {
-            0f
-        }
-    }
-    Box(
-        modifier = modifier
-            .fillMaxWidth()
-            .height(42.dp),
-    ) {
-        Text(
-            text = formatPlaybackTime(positionMillis),
-            modifier = Modifier
-                .align(Alignment.TopStart)
-                .background(
-                    color = MaterialTheme.colorScheme.inverseSurface.copy(alpha = 0.92f),
-                    shape = RoundedCornerShape(24.dp),
-                )
-                .padding(horizontal = 10.dp, vertical = 6.dp),
-            color = MaterialTheme.colorScheme.inverseOnSurface,
-            style = MaterialTheme.typography.labelMedium,
-        )
-        Text(
-            text = formatPlaybackTime(durationMillis),
-            modifier = Modifier
-                .align(Alignment.TopEnd)
-                .background(
-                    color = MaterialTheme.colorScheme.inverseSurface.copy(alpha = 0.92f),
-                    shape = RoundedCornerShape(24.dp),
-                )
-                .padding(horizontal = 10.dp, vertical = 6.dp),
-            color = MaterialTheme.colorScheme.inverseOnSurface,
-            style = MaterialTheme.typography.labelMedium,
-        )
-        Box(
-            modifier = Modifier
-                .align(Alignment.BottomCenter)
-                .fillMaxWidth()
-                .height(5.dp)
-                .clip(RoundedCornerShape(24.dp))
-                .background(MaterialTheme.colorScheme.onSurface.copy(alpha = 0.24f)),
+    var scrubProgress by remember { mutableStateOf<Float?>(null) }
+    val progress = if (durationMillis > 0L) {
+        (positionMillis.toFloat() / durationMillis.toFloat()).coerceIn(0f, 1f)
+    } else 0f
+    val displayedPosition = scrubProgress?.let { (it * durationMillis).toLong() } ?: positionMillis
+    val seekDescription = stringResource(R.string.media_preview_seek)
+    Box(modifier = modifier.fillMaxWidth()) {
+        IconButton(
+            onClick = onTogglePlayback,
+            modifier = Modifier.align(Alignment.TopStart),
         ) {
-            Box(
-                modifier = Modifier
-                    .fillMaxWidth(progress)
-                    .height(5.dp)
-                    .clip(RoundedCornerShape(24.dp))
-                    .background(MaterialTheme.colorScheme.primary),
+            Icon(
+                imageVector = if (playing) Icons.Filled.Pause else Icons.Filled.PlayArrow,
+                contentDescription = stringResource(
+                    if (playing) R.string.media_preview_pause else R.string.media_preview_play,
+                ),
+                tint = Color.White,
             )
         }
+        Text(
+            text = "${formatPlaybackTime(displayedPosition)} / ${formatPlaybackTime(durationMillis)}",
+            modifier = Modifier.align(Alignment.TopEnd).padding(vertical = 16.dp),
+            color = Color.White,
+            style = MaterialTheme.typography.labelMedium,
+        )
+        Slider(
+            value = scrubProgress ?: progress,
+            onValueChange = { scrubProgress = it },
+            onValueChangeFinished = {
+                scrubProgress?.let { onSeek((it * durationMillis).toLong().coerceIn(0L, durationMillis)) }
+                scrubProgress = null
+            },
+            enabled = canSeek && durationMillis > 0L,
+            colors = SliderDefaults.colors(
+                thumbColor = Color.White,
+                activeTrackColor = Color.White,
+                inactiveTrackColor = Color.White.copy(alpha = 0.3f),
+                disabledThumbColor = Color.White.copy(alpha = 0.5f),
+                disabledActiveTrackColor = Color.White.copy(alpha = 0.5f),
+                disabledInactiveTrackColor = Color.White.copy(alpha = 0.3f),
+            ),
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(top = 48.dp)
+                .testTag("media_preview_seek")
+                .semantics { contentDescription = seekDescription },
+        )
     }
 }
 

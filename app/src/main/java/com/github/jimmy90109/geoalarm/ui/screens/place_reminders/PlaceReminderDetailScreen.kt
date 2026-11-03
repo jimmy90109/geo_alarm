@@ -18,6 +18,8 @@ import androidx.compose.foundation.gestures.awaitEachGesture
 import androidx.compose.foundation.gestures.awaitFirstDown
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.WindowInsetsSides
+import androidx.compose.foundation.layout.only
 import androidx.compose.foundation.layout.asPaddingValues
 import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.Box
@@ -62,6 +64,7 @@ import androidx.compose.material3.Checkbox
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
+import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.FilledIconButton
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
@@ -84,8 +87,13 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.drawWithContent
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.graphics.rememberGraphicsLayer
+import androidx.compose.ui.graphics.layer.drawLayer
+import androidx.compose.ui.graphics.drawscope.clipRect
+import androidx.compose.ui.graphics.drawscope.translate
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
@@ -94,6 +102,7 @@ import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.boundsInRoot
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.layout.onGloballyPositioned
+import androidx.compose.ui.layout.positionInRoot
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalContext
@@ -106,6 +115,8 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.Dp
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.zIndex
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
@@ -128,6 +139,7 @@ import com.github.jimmy90109.geoalarm.ui.components.MediaPreviewOverlay
 import com.github.jimmy90109.geoalarm.ui.components.MediaPreviewPreloader
 import com.github.jimmy90109.geoalarm.ui.components.MediaPreviewSelection
 import com.github.jimmy90109.geoalarm.ui.screens.place_reminders.components.PlaceReminderMediaStack
+import com.github.jimmy90109.geoalarm.ui.screens.place_reminders.components.PlaceReminderMediaLayout
 import com.github.jimmy90109.geoalarm.ui.components.MediaPreviewType
 import com.github.jimmy90109.geoalarm.ui.screens.place_reminders.components.PlaceReminderTextFieldShape
 import com.github.jimmy90109.geoalarm.ui.components.TopAppBar as GeoTopAppBar
@@ -377,7 +389,7 @@ fun PlaceReminderDetailScreen(
                 val bottomOverlayHeight = with(density) { actionBarHeightPx.toDp() }
                 val topFadeHeight = topMargin + (topOverlayHeight - topMargin) / 2
                 val bottomFadeHeight = if (actionBarHeightPx > 0) {
-                    (bottomOverlayHeight + bottomMargin - cutoutPadding.calculateTopPadding()) / 2
+                    (bottomOverlayHeight + bottomMargin) / 2
                 } else {
                     0.dp
                 }
@@ -622,7 +634,7 @@ private fun PlaceReminderDetailTopOverlaySpace() =
     ) + 72.dp
 
 @Composable
-private fun PlaceReminderDetailContent(
+internal fun PlaceReminderDetailContent(
     reminderWithItems: PlaceReminderWithItems,
     newItemText: String,
     onNewItemTextChange: (String) -> Unit,
@@ -654,19 +666,35 @@ private fun PlaceReminderDetailContent(
     val bottomPadding = if (isLandscape) {
         maxOf(24.dp, navPadding.calculateBottomPadding())
     } else {
-        maxOf(
-            contentPadding.calculateBottomPadding() + 24.dp,
-            maxOf(112.dp, navPadding.calculateBottomPadding() + 96.dp),
-        )
+        // The measured action bar already includes the card's distance from the screen bottom.
+        contentPadding.calculateBottomPadding()
     }
+    val density = LocalDensity.current
+    var summaryHeightPx by remember { mutableStateOf(0) }
     val focusManager = LocalFocusManager.current
     val keyboardController = LocalSoftwareKeyboardController.current
     var contentBounds by remember { mutableStateOf<Rect?>(null) }
     var checklistAddInputBounds by remember { mutableStateOf<Rect?>(null) }
+    val mediaDrawingLayer = rememberGraphicsLayer()
+    var mediaDrawingOrigin by remember { mutableStateOf<Offset?>(null) }
+    var viewportOrigin by remember { mutableStateOf(Offset.Zero) }
     BoxWithConstraints(
-        modifier = modifier,
+        modifier = modifier
+            .onGloballyPositioned { viewportOrigin = it.positionInRoot() }
+            .drawWithContent {
+                drawContent()
+                // Draw outside the scroll container so narrow attachment layouts do not crop a swipe.
+                val origin = mediaDrawingOrigin
+                if (origin != null && reminderWithItems.sortedAttachments.isNotEmpty()) {
+                    val offset = origin - viewportOrigin
+                    clipRect {
+                        translate(offset.x, offset.y) { drawLayer(mediaDrawingLayer) }
+                    }
+                }
+            },
         contentAlignment = if (isLandscape) Alignment.CenterStart else Alignment.Center,
     ) {
+        val viewportHeight = maxHeight
         val landscapeContentWidth = (
             maxWidth -
                 startPadding -
@@ -695,6 +723,7 @@ private fun PlaceReminderDetailContent(
                     keyboardController?.hide()
                 }
                 .imePadding()
+                .testTag("place_reminder_detail_scroll")
                 .verticalScroll(rememberScrollState())
                 .padding(
                     start = horizontalContentPadding,
@@ -714,26 +743,15 @@ private fun PlaceReminderDetailContent(
                 modifier = Modifier
                     .widthIn(max = contentMaxWidth)
                     .fillMaxWidth(),
-                verticalArrangement = Arrangement.spacedBy(16.dp),
             ) {
-                PlaceReminderSummaryCard(
-                    reminderWithItems = reminderWithItems,
-                )
-                if (reminderWithItems.reminder.content.isNotBlank()) {
-                    PlaceReminderTextContentCard(content = reminderWithItems.reminder.content)
-                }
-                if (reminderWithItems.reminder.type == PlaceReminderType.CHECKLIST) {
-                    PlaceReminderChecklistCard(
-                        reminderWithItems = reminderWithItems,
-                        newItemText = newItemText,
-                        onNewItemTextChange = onNewItemTextChange,
-                        onResetChecklist = onResetChecklist,
-                        onItemCheckedChange = onItemCheckedChange,
-                        onAddItem = onAddItem,
-                        onAddInputBoundsChanged = { checklistAddInputBounds = it },
-                    )
-                }
-                if (reminderWithItems.sortedAttachments.isNotEmpty()) {
+                val hasText = reminderWithItems.reminder.content.isNotBlank()
+                val hasChecklist = reminderWithItems.reminder.type == PlaceReminderType.CHECKLIST
+                val hasAttachments = reminderWithItems.sortedAttachments.isNotEmpty()
+                val compactMedia = !isLandscape && hasAttachments && (hasText || hasChecklist)
+                val mediaHeight = (viewportHeight - contentPadding.calculateTopPadding() - 16.dp -
+                    bottomPadding - with(density) { summaryHeightPx.toDp() } - 16.dp)
+                    .coerceIn(160.dp, 360.dp)
+                val media: @Composable () -> Unit = {
                     PlaceReminderMediaStack(
                         items = reminderWithItems.sortedAttachments.map { it.toMediaPreviewItem() },
                         aspectRatiosById = attachmentAspectRatios,
@@ -741,7 +759,50 @@ private fun PlaceReminderDetailContent(
                         hiddenAttachmentId = hiddenAttachmentId,
                         onAttachmentBoundsChanged = onAttachmentBoundsChanged,
                         onAttachmentClick = onAttachmentClick,
+                        drawingLayer = mediaDrawingLayer,
+                        onDrawingOriginChanged = { mediaDrawingOrigin = it },
+                        layout = when {
+                            isLandscape -> PlaceReminderMediaLayout.Original
+                            compactMedia -> PlaceReminderMediaLayout.Compact
+                            else -> PlaceReminderMediaLayout.FixedHeight(mediaHeight)
+                        },
                     )
+                }
+                PlaceReminderSummaryCard(
+                    reminderWithItems = reminderWithItems,
+                    modifier = Modifier.onSizeChanged { summaryHeightPx = it.height },
+                    isLandscape = isLandscape,
+                    compactBottomSpacing = compactMedia,
+                )
+                if (hasText || hasChecklist || hasAttachments) {
+                    Spacer(Modifier.height(if (compactMedia) 8.dp else 16.dp))
+                }
+                if (hasText) {
+                    PlaceReminderContentWithMedia(compactMedia, media) {
+                        PlaceReminderTextContentCard(
+                            content = reminderWithItems.reminder.content,
+                            headerEndPadding = if (compactMedia) 128.dp else 0.dp,
+                        )
+                    }
+                }
+                if (hasChecklist) {
+                    if (hasText) Spacer(Modifier.height(16.dp))
+                    PlaceReminderContentWithMedia(compactMedia && !hasText, media) {
+                        PlaceReminderChecklistCard(
+                            reminderWithItems = reminderWithItems,
+                            newItemText = newItemText,
+                            onNewItemTextChange = onNewItemTextChange,
+                            onResetChecklist = onResetChecklist,
+                            onItemCheckedChange = onItemCheckedChange,
+                            onAddItem = onAddItem,
+                            onAddInputBoundsChanged = { checklistAddInputBounds = it },
+                            headerEndPadding = if (compactMedia && !hasText) 128.dp else 0.dp,
+                        )
+                    }
+                }
+                if (hasAttachments && !compactMedia) {
+                    if (hasText || hasChecklist) Spacer(Modifier.height(16.dp))
+                    media()
                 }
             }
         }
@@ -749,43 +810,91 @@ private fun PlaceReminderDetailContent(
 }
 
 @Composable
-private fun PlaceReminderSummaryCard(
-    reminderWithItems: PlaceReminderWithItems,
+private fun PlaceReminderContentWithMedia(
+    showMedia: Boolean,
+    media: @Composable () -> Unit,
+    content: @Composable () -> Unit,
 ) {
-    val reminder = reminderWithItems.reminder
-    Column(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(horizontal = 16.dp, vertical = 20.dp),
-        horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.spacedBy(10.dp),
-    ) {
-        CompositionLocalProvider(LocalContentColor provides MaterialTheme.colorScheme.primary) {
-            AlarmIconBadge(iconKey = reminder.iconKey)
+    if (!showMedia) {
+        content()
+        return
+    }
+    Box(Modifier.fillMaxWidth()) {
+        Box(Modifier.padding(top = 96.dp)) {
+            content()
         }
-        Text(
-            text = reminder.placeName,
-            style = MaterialTheme.typography.titleLarge,
-            fontWeight = FontWeight.SemiBold,
-            color = MaterialTheme.colorScheme.onSurface,
-            textAlign = TextAlign.Center,
-            maxLines = 2,
-            overflow = TextOverflow.Ellipsis,
-        )
-        Text(
-            text = triggerText(reminder.triggerType, reminder.dwellMinutes),
-            style = MaterialTheme.typography.titleMedium,
-            fontWeight = FontWeight.SemiBold,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-            textAlign = TextAlign.Center,
-        )
+        Box(Modifier.align(Alignment.TopEnd)) {
+            media()
+        }
     }
 }
 
 @Composable
-private fun PlaceReminderTextContentCard(content: String) {
+private fun PlaceReminderSummaryCard(
+    reminderWithItems: PlaceReminderWithItems,
+    modifier: Modifier = Modifier,
+    isLandscape: Boolean = false,
+    compactBottomSpacing: Boolean = false,
+) {
+    val reminder = reminderWithItems.reminder
+    val summaryModifier = modifier
+        .fillMaxWidth()
+        .padding(start = 16.dp, top = 20.dp, end = 16.dp, bottom = if (compactBottomSpacing) 0.dp else 20.dp)
+    val icon: @Composable () -> Unit = {
+        CompositionLocalProvider(LocalContentColor provides MaterialTheme.colorScheme.primary) {
+            AlarmIconBadge(iconKey = reminder.iconKey)
+        }
+    }
+    if (isLandscape) {
+        Column(
+            modifier = summaryModifier,
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.spacedBy(10.dp),
+        ) {
+            icon()
+            PlaceReminderSummaryText(reminderWithItems, TextAlign.Center)
+        }
+    } else {
+        Row(
+            modifier = summaryModifier.testTag("place_reminder_summary"),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(16.dp),
+        ) {
+            icon()
+            Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                PlaceReminderSummaryText(reminderWithItems, TextAlign.Start)
+            }
+        }
+    }
+}
+
+@Composable
+private fun PlaceReminderSummaryText(reminderWithItems: PlaceReminderWithItems, textAlign: TextAlign) {
+    val reminder = reminderWithItems.reminder
+    Text(
+        text = reminder.placeName,
+        style = MaterialTheme.typography.titleLarge,
+        fontWeight = FontWeight.SemiBold,
+        color = MaterialTheme.colorScheme.onSurface,
+        textAlign = textAlign,
+        maxLines = 2,
+        overflow = TextOverflow.Ellipsis,
+    )
+    Text(
+        text = triggerText(reminder.triggerType, reminder.dwellMinutes),
+        style = MaterialTheme.typography.titleMedium,
+        fontWeight = FontWeight.SemiBold,
+        color = MaterialTheme.colorScheme.onSurfaceVariant,
+        textAlign = textAlign,
+    )
+}
+
+@Composable
+private fun PlaceReminderTextContentCard(content: String, headerEndPadding: Dp = 0.dp) {
     DetailGroupCard {
-        DetailGroupTitle(text = stringResource(R.string.place_reminder_content))
+        Box(Modifier.fillMaxWidth().padding(end = headerEndPadding)) {
+            DetailGroupTitle(text = stringResource(R.string.place_reminder_content))
+        }
         Surface(
             modifier = Modifier.fillMaxWidth(),
             shape = PlaceReminderTextFieldShape,
@@ -810,31 +919,24 @@ private fun PlaceReminderChecklistCard(
     onItemCheckedChange: (PlaceReminderItem, Boolean) -> Unit,
     onAddItem: () -> Unit,
     onAddInputBoundsChanged: (Rect?) -> Unit,
+    headerEndPadding: Dp = 0.dp,
 ) {
     val checkedCount = reminderWithItems.sortedItems.count { it.checked }
     DetailGroupCard {
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            Column(
-                modifier = Modifier.weight(1f),
-                verticalArrangement = Arrangement.spacedBy(2.dp),
-            ) {
-                DetailGroupTitle(text = stringResource(R.string.place_reminder_type_checklist))
-                Text(
-                    text = stringResource(
-                        R.string.place_reminder_checklist_progress,
-                        checkedCount,
-                        reminderWithItems.sortedItems.size,
-                    ),
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
-            }
-            IconButton(onClick = onResetChecklist) {
-                Icon(
-                    Icons.Filled.Refresh,
-                    contentDescription = stringResource(R.string.place_reminder_reset_checklist),
-                )
-            }
+        Column(
+            modifier = Modifier.fillMaxWidth().padding(end = headerEndPadding),
+            verticalArrangement = Arrangement.spacedBy(2.dp),
+        ) {
+            DetailGroupTitle(text = stringResource(R.string.place_reminder_type_checklist))
+            Text(
+                text = stringResource(
+                    R.string.place_reminder_checklist_progress,
+                    checkedCount,
+                    reminderWithItems.sortedItems.size,
+                ),
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
         }
         Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
             reminderWithItems.sortedItems.forEach { item ->
@@ -849,6 +951,14 @@ private fun PlaceReminderChecklistCard(
                 onAdd = onAddItem,
                 onInputBoundsChanged = onAddInputBoundsChanged,
             )
+        }
+        FilledTonalButton(
+            onClick = onResetChecklist,
+            modifier = Modifier.fillMaxWidth().testTag("place_reminder_reset_checklist"),
+        ) {
+            Icon(Icons.Filled.Refresh, contentDescription = null)
+            Spacer(Modifier.width(8.dp))
+            Text(stringResource(R.string.place_reminder_reset_checklist))
         }
     }
 }
@@ -964,7 +1074,7 @@ private fun ChecklistDetailAddRow(
 @Composable
 private fun DetailGroupCard(content: @Composable ColumnScope.() -> Unit) {
     Card(
-        modifier = Modifier.fillMaxWidth(),
+        modifier = Modifier.fillMaxWidth().testTag("place_reminder_detail_group"),
         shape = PlaceReminderDetailCardShape,
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainer),
     ) {
@@ -987,7 +1097,7 @@ private fun DetailGroupTitle(text: String) {
 
 @Composable
 @OptIn(ExperimentalMaterial3ExpressiveApi::class)
-private fun PlaceReminderDetailActionBar(
+internal fun PlaceReminderDetailActionBar(
     lastTriggeredAt: Long?,
     onEdit: () -> Unit,
     onDelete: () -> Unit,
@@ -998,7 +1108,9 @@ private fun PlaceReminderDetailActionBar(
     val bottomPadding = maxOf(24.dp, navInsets.calculateBottomPadding())
     val screenPaddingModifier = if (applyScreenPadding) {
         Modifier
-            .windowInsetsPadding(WindowInsets.displayCutout)
+            .windowInsetsPadding(
+                WindowInsets.displayCutout.only(WindowInsetsSides.Horizontal + WindowInsetsSides.Bottom),
+            )
             .padding(start = 24.dp, end = 24.dp, bottom = bottomPadding)
     } else {
         Modifier
