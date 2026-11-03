@@ -112,6 +112,8 @@ Run the narrowest meaningful test first, then broaden if the change touches shar
 
 ## Git Flow
 
+For release builds, Google Play uploads/review/rollout, and release PR/tag/GitHub Release work, read and follow [release-geoalarm](.agents/skills/release-geoalarm/SKILL.md). It defines the staged, resumable release workflow. Follow only the stages authorized by the user; loading the skill does not authorize publishing or Git mutations.
+
 - Preserve user changes. The worktree may already contain prototype or unrelated edits.
 - Do not revert files you did not intentionally change.
 - Do not run destructive Git commands unless explicitly requested.

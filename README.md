@@ -36,6 +36,8 @@ Traditional Chinese: GeoAlarm 是一款定位鬧鐘 Android App。設定目的�
 - English and Traditional Chinese UI
 - Optional AdMob native ads on the home screen when ad support is configured
 
+The 1.5.1 Beta also includes the current place reminder prototype, with updated reminder details, media carousel interactions, and radius controls. This feature remains under testing.
+
 ## Privacy
 
 GeoAlarm uses location permission to detect whether your device has entered the alarm area. Alarm location processing happens on the device.
@@ -118,6 +120,17 @@ app/src/main/java/com/github/jimmy90109/geoalarm/
    ```sh
    ./gradlew assembleDebug
    ```
+
+### Release signing
+
+Copy `keystore.properties.example` to `keystore.properties` and fill in the existing upload keystore path, key alias, store password, and key password locally. The local file and keystores are ignored by Git. Keep the existing upload key for Play updates.
+
+```sh
+./gradlew verifyReleaseSigning
+./gradlew testDebugUnitTest lintRelease bundleRelease
+```
+
+Release builds use this signing configuration and fail signing validation if credentials are missing or invalid. Verify the resulting AAB certificate against the upload certificate in Play Console before uploading. See the [release workflow](.agents/skills/release-geoalarm/SKILL.md).
 
 ## Notes for Android Reliability
 
