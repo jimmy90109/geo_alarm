@@ -229,15 +229,14 @@ fun SettingsScreen(
                 Row(
                     modifier = Modifier
                         .fillMaxSize()
-                        .padding(horizontal = 16.dp),
+                        .verticalScroll(androidx.compose.foundation.rememberScrollState())
+                        .padding(start = 16.dp, end = 16.dp, bottom = 16.dp),
                     horizontalArrangement = Arrangement.spacedBy(16.dp)
                 ) {
                     // Left Column: General
                     Column(
                         modifier = Modifier
                             .weight(1f)
-                            .verticalScroll(androidx.compose.foundation.rememberScrollState())
-                            .padding(bottom = 16.dp) // Less padding needed than portrait
                     ) {
                         SettingsGeneralSection(
                             currentLanguage = currentLanguage,
@@ -271,8 +270,6 @@ fun SettingsScreen(
                     Column(
                         modifier = Modifier
                             .weight(1f)
-                            .verticalScroll(androidx.compose.foundation.rememberScrollState())
-                            .padding(bottom = 16.dp)
                     ) {
                         SettingsPrivacySection(
                             showAdPrivacyOptions = adConsentState.isPrivacyOptionsRequired,

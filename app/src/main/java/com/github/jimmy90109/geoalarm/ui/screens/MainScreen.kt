@@ -2,6 +2,9 @@ package com.github.jimmy90109.geoalarm.ui.screens
 
 import android.content.res.Configuration
 import androidx.activity.compose.BackHandler
+import androidx.compose.animation.AnimatedContentTransitionScope
+import androidx.compose.animation.EnterTransition
+import androidx.compose.animation.ExitTransition
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
@@ -34,6 +37,8 @@ import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.navigation.NavBackStackEntry
+import androidx.navigation.NavDestination
 import androidx.navigation.NavDestination.Companion.hasRoute
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
@@ -259,55 +264,44 @@ fun MainNavHost(
     onReviewHostReadyChanged: (Boolean) -> Unit,
     isLandscape: Boolean
 ) {
+    val tabEnterTransition: AnimatedContentTransitionScope<NavBackStackEntry>.() -> EnterTransition = {
+        val direction = targetState.destination.mainTabOrder()
+            .compareTo(initialState.destination.mainTabOrder())
+        val slide = if (isLandscape) {
+            slideInVertically(
+                initialOffsetY = { direction * (it / 2) }, animationSpec = tween(300)
+            )
+        } else {
+            slideInHorizontally(
+                initialOffsetX = { direction * (it / 2) }, animationSpec = tween(300)
+            )
+        }
+        slide + fadeIn(animationSpec = tween(300))
+    }
+    val tabExitTransition: AnimatedContentTransitionScope<NavBackStackEntry>.() -> ExitTransition = {
+        val direction = targetState.destination.mainTabOrder()
+            .compareTo(initialState.destination.mainTabOrder())
+        val slide = if (isLandscape) {
+            slideOutVertically(
+                targetOffsetY = { -direction * (it / 2) }, animationSpec = tween(300)
+            )
+        } else {
+            slideOutHorizontally(
+                targetOffsetX = { -direction * (it / 2) }, animationSpec = tween(300)
+            )
+        }
+        slide + fadeOut(animationSpec = tween(300))
+    }
+
     NavHost(
-        navController = navController, startDestination = MainRoutes.Home
+        navController = navController,
+        startDestination = MainRoutes.Home,
+        enterTransition = tabEnterTransition,
+        exitTransition = tabExitTransition,
+        popEnterTransition = tabEnterTransition,
+        popExitTransition = tabExitTransition,
     ) {
-        composable<MainRoutes.Home>(
-            enterTransition = {
-                if (isLandscape) {
-                    slideInVertically(
-                        initialOffsetY = { -it / 2 }, animationSpec = tween(300)
-                    ) + fadeIn(animationSpec = tween(300))
-                } else {
-                    slideInHorizontally(
-                        initialOffsetX = { -it / 2 }, animationSpec = tween(300)
-                    ) + fadeIn(animationSpec = tween(300))
-                }
-            },
-            exitTransition = {
-                if (isLandscape) {
-                    slideOutVertically(
-                        targetOffsetY = { -it / 2 }, animationSpec = tween(300)
-                    ) + fadeOut(animationSpec = tween(300))
-                } else {
-                    slideOutHorizontally(
-                        targetOffsetX = { -it / 2 }, animationSpec = tween(300)
-                    ) + fadeOut(animationSpec = tween(300))
-                }
-            },
-            popEnterTransition = {
-                if (isLandscape) {
-                    slideInVertically(
-                        initialOffsetY = { -it / 2 }, animationSpec = tween(300)
-                    ) + fadeIn(animationSpec = tween(300))
-                } else {
-                    slideInHorizontally(
-                        initialOffsetX = { -it / 2 }, animationSpec = tween(300)
-                    ) + fadeIn(animationSpec = tween(300))
-                }
-            },
-            popExitTransition = {
-                if (isLandscape) {
-                    slideOutVertically(
-                        targetOffsetY = { -it / 2 }, animationSpec = tween(300)
-                    ) + fadeOut(animationSpec = tween(300))
-                } else {
-                    slideOutHorizontally(
-                        targetOffsetX = { -it / 2 }, animationSpec = tween(300)
-                    ) + fadeOut(animationSpec = tween(300))
-                }
-            },
-        ) {
+        composable<MainRoutes.Home> {
             HomeScreen(
                 viewModel = viewModel,
                 onReviewHostReadyChanged = onReviewHostReadyChanged,
@@ -320,81 +314,13 @@ fun MainNavHost(
             )
         }
 
-        composable<MainRoutes.Settings>(
-            enterTransition = {
-                if (isLandscape) {
-                    slideInVertically(
-                        initialOffsetY = { it / 2 }, animationSpec = tween(300)
-                    ) + fadeIn(animationSpec = tween(300))
-                } else {
-                    slideInHorizontally(
-                        initialOffsetX = { it / 2 }, animationSpec = tween(300)
-                    ) + fadeIn(animationSpec = tween(300))
-                }
-            },
-            exitTransition = {
-                if (isLandscape) {
-                    slideOutVertically(
-                        targetOffsetY = { it / 2 }, animationSpec = tween(300)
-                    ) + fadeOut(animationSpec = tween(300))
-                } else {
-                    slideOutHorizontally(
-                        targetOffsetX = { it / 2 }, animationSpec = tween(300)
-                    ) + fadeOut(animationSpec = tween(300))
-                }
-            },
-            popEnterTransition = {
-                if (isLandscape) {
-                    slideInVertically(
-                        initialOffsetY = { it / 2 }, animationSpec = tween(300)
-                    ) + fadeIn(animationSpec = tween(300))
-                } else {
-                    slideInHorizontally(
-                        initialOffsetX = { it / 2 }, animationSpec = tween(300)
-                    ) + fadeIn(animationSpec = tween(300))
-                }
-            },
-            popExitTransition = {
-                if (isLandscape) {
-                    slideOutVertically(
-                        targetOffsetY = { it / 2 }, animationSpec = tween(300)
-                    ) + fadeOut(animationSpec = tween(300))
-                } else {
-                    slideOutHorizontally(
-                        targetOffsetX = { it / 2 }, animationSpec = tween(300)
-                    ) + fadeOut(animationSpec = tween(300))
-                }
-            },
-        ) {
+        composable<MainRoutes.Settings> {
             SettingsScreen(
                 viewModel = settingsViewModel
             )
         }
 
-        composable<MainRoutes.PlaceReminders>(
-            enterTransition = {
-                if (isLandscape) {
-                    slideInVertically(
-                        initialOffsetY = { it / 3 }, animationSpec = tween(300)
-                    ) + fadeIn(animationSpec = tween(300))
-                } else {
-                    slideInHorizontally(
-                        initialOffsetX = { it / 3 }, animationSpec = tween(300)
-                    ) + fadeIn(animationSpec = tween(300))
-                }
-            },
-            exitTransition = {
-                if (isLandscape) {
-                    slideOutVertically(
-                        targetOffsetY = { it / 3 }, animationSpec = tween(300)
-                    ) + fadeOut(animationSpec = tween(300))
-                } else {
-                    slideOutHorizontally(
-                        targetOffsetX = { it / 3 }, animationSpec = tween(300)
-                    ) + fadeOut(animationSpec = tween(300))
-                }
-            },
-        ) {
+        composable<MainRoutes.PlaceReminders> {
             PlaceReminderListScreen(
                 viewModel = placeReminderListViewModel,
                 onAddReminder = onAddPlaceReminder,
@@ -405,4 +331,11 @@ fun MainNavHost(
             )
         }
     }
+}
+
+private fun NavDestination.mainTabOrder(): Int = when {
+    hasRoute<MainRoutes.Home>() -> NavTab.HOME.ordinal
+    hasRoute<MainRoutes.PlaceReminders>() -> NavTab.REMINDERS.ordinal
+    hasRoute<MainRoutes.Settings>() -> NavTab.SETTINGS.ordinal
+    else -> error("Unknown main tab destination: $route")
 }
