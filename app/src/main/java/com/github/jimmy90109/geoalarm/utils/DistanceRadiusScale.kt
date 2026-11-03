@@ -35,6 +35,13 @@ data class DistanceRadiusScale(
     companion object {
         private const val METERS_PER_MILE = 1609.344
 
+        fun forPlaceReminder(): DistanceRadiusScale = DistanceRadiusScale(
+            valueRange = 100f..1000f,
+            steps = 8,
+            metersPerUnit = 1.0,
+            stepSize = 100.0,
+        )
+
         fun forSystem(system: DistanceUnitSystem): DistanceRadiusScale {
             return when (system) {
                 DistanceUnitSystem.METRIC -> DistanceRadiusScale(

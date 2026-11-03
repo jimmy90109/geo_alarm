@@ -1,4 +1,7 @@
 <resources>
+    <string name="media_preview_play">播放</string>
+    <string name="media_preview_pause">暫停</string>
+    <string name="media_preview_seek">播放進度</string>
     <string name="app_name">定位鬧鐘</string>
     <string name="app_name_debug">定位鬧鐘 DEV</string>
     <string name="home_title">定位鬧鐘</string>
@@ -322,4 +325,13 @@
     <plurals name="place_reminder_notification_checklist_body">
         <item quantity="other">到這裡記得查看「%1$s」：%2$d 項待處理</item>
     </plurals>
+    <string name="place_reminder_media_count">%1$d / %2$d</string>
+    <string name="place_reminder_media_next">顯示下一張</string>
+    <string name="place_reminder_media_description">第 %1$d 個附件，共 %2$d 個：%3$s，%4$s</string>
+    <string name="place_reminder_media_photo">照片</string>
+    <string name="place_reminder_media_video">影片</string>
+    <string name="place_reminder_media_unavailable">無法載入媒體</string>
+    <string name="place_reminder_media_open">全螢幕開啟</string>
+    <string name="media_preview_page_count">%1$d / %2$d</string>
+    <string name="media_preview_page_description">第 %1$d 個附件，共 %2$d 個</string>
 </resources>

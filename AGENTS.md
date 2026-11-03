@@ -103,7 +103,16 @@ Useful commands:
 
 Run the narrowest meaningful test first, then broaden if the change touches shared behavior. If tests cannot be run, state why in the final response.
 
+### Preserve Daily Debug App Data
+
+- Never run instrumentation tests against the user's daily-use debug app on a physical device. Connected test runs have cleared its data.
+- Use a dedicated disposable emulator for instrumentation tests, and explicitly set `ANDROID_SERIAL` to that emulator so Gradle cannot target other connected devices.
+- If no dedicated emulator is available, run local unit tests and build checks only, and report that device tests were not run.
+- Do not uninstall the daily debug app, clear its package data, or reset its storage as part of testing.
+
 ## Git Flow
+
+For release builds, Google Play uploads/review/rollout, and release PR/tag/GitHub Release work, read and follow [release-geoalarm](.agents/skills/release-geoalarm/SKILL.md). It defines the staged, resumable release workflow. Follow only the stages authorized by the user; loading the skill does not authorize publishing or Git mutations.
 
 - Preserve user changes. The worktree may already contain prototype or unrelated edits.
 - Do not revert files you did not intentionally change.

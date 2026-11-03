@@ -1,0 +1,4 @@
+interface:
+  display_name: "GeoAlarm 發版"
+  short_description: "建置與驗證 GeoAlarm，續接 Google Play 及 GitHub 發版流程"
+  default_prompt: "使用 $release-geoalarm 將下一個 GeoAlarm 版本發布到 Google Play Beta 公開測試。"

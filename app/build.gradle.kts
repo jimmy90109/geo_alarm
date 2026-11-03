@@ -1,4 +1,5 @@
 import java.util.Properties
+import java.security.KeyStore
 import org.jetbrains.kotlin.gradle.dsl.JvmTarget
 
 plugins {
@@ -8,6 +9,42 @@ plugins {
     alias(libs.plugins.compose.compiler)
     alias(libs.plugins.kotlin.serialization)
     id("com.google.android.gms.oss-licenses-plugin")
+}
+
+val releaseSigningProperties = Properties().apply {
+    val propertiesFile = rootProject.file("keystore.properties")
+    if (propertiesFile.exists()) {
+        propertiesFile.inputStream().use { load(it) }
+    }
+}
+
+val verifyReleaseSigning = tasks.register("verifyReleaseSigning") {
+    group = "verification"
+    description = "Checks the local release keystore and credentials without displaying secrets."
+    doLast {
+        val requiredKeys = listOf("storeFile", "storePassword", "keyAlias", "keyPassword")
+        val missingKeys = requiredKeys.filter { releaseSigningProperties.getProperty(it).isNullOrBlank() }
+        if (missingKeys.isNotEmpty()) {
+            throw GradleException("Fill in keystore.properties before signing a release. Missing: ${missingKeys.joinToString()}")
+        }
+        val keystoreFile = rootProject.file(releaseSigningProperties.getProperty("storeFile"))
+        if (!keystoreFile.isFile) {
+            throw GradleException("Release keystore does not exist. Check storeFile in keystore.properties.")
+        }
+        try {
+            val keystore = KeyStore.getInstance(keystoreFile, releaseSigningProperties.getProperty("storePassword").toCharArray())
+            val alias = releaseSigningProperties.getProperty("keyAlias")
+            check(keystore.isKeyEntry(alias))
+            check(keystore.getKey(alias, releaseSigningProperties.getProperty("keyPassword").toCharArray()) is java.security.PrivateKey)
+            check(keystore.getCertificate(alias) != null)
+        } catch (_: Exception) {
+            throw GradleException("Cannot access the release private key. Check the keystore, alias and passwords locally.")
+        }
+    }
+}
+
+tasks.matching { it.name == "validateSigningRelease" }.configureEach {
+    dependsOn(verifyReleaseSigning)
 }
 
 android {
@@ -27,8 +64,8 @@ android {
         applicationId = "com.github.jimmy90109.geoalarm"
         minSdk = 31
         targetSdk = 37
-        versionCode = 2610050
-        versionName = "1.5.0"
+        versionCode = 2611030
+        versionName = "1.5.1"
         
         manifestPlaceholders["GOOGLE_MAPS_API_KEY"] = localProperties.getProperty("maps.apiKey") ?: ""
         manifestPlaceholders["ADMOB_APP_ID"] = localProperties.getProperty("admob.appId") ?: ""
@@ -38,6 +75,17 @@ android {
         buildConfigField("Boolean", "ADS_ENABLED", "false")
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
+    }
+
+    signingConfigs {
+        create("release") {
+            releaseSigningProperties.getProperty("storeFile")?.takeIf { it.isNotBlank() }?.let {
+                storeFile = rootProject.file(it)
+            }
+            storePassword = releaseSigningProperties.getProperty("storePassword")
+            keyAlias = releaseSigningProperties.getProperty("keyAlias")
+            keyPassword = releaseSigningProperties.getProperty("keyPassword")
+        }
     }
 
     buildTypes {
@@ -54,7 +102,7 @@ android {
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro"
             )
-            signingConfig = signingConfigs.getByName("debug")
+            signingConfig = signingConfigs.getByName("release")
         }
         debug {
             applicationIdSuffix = ".debug"

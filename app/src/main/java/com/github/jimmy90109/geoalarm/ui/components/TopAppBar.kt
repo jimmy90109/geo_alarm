@@ -35,9 +35,10 @@ fun TopAppBar(
     actions: @Composable RowScope.() -> Unit = {},
     containerColor: Color = MaterialTheme.colorScheme.surface,
     showAlternateTitle: Boolean = false,
-    alternateTitle: (@Composable () -> Unit)? = null
+    alternateTitle: (@Composable () -> Unit)? = null,
+    statusBarInsets: WindowInsets = WindowInsets.statusBars,
 ) {
-    val statusBar = WindowInsets.statusBars.asPaddingValues().calculateTopPadding()
+    val statusBar = statusBarInsets.asPaddingValues().calculateTopPadding()
     val topPadding = maxOf(statusBar, 24.dp)
 
     Surface(
