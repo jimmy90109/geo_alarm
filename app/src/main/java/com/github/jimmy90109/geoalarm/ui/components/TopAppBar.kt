@@ -11,9 +11,6 @@ import androidx.compose.animation.core.snap
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.WindowInsets
-import androidx.compose.foundation.layout.asPaddingValues
-import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.statusBars
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.CenterAlignedTopAppBar
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -36,13 +33,9 @@ fun TopAppBar(
     containerColor: Color = MaterialTheme.colorScheme.surface,
     showAlternateTitle: Boolean = false,
     alternateTitle: (@Composable () -> Unit)? = null,
-    statusBarInsets: WindowInsets = WindowInsets.statusBars,
 ) {
-    val statusBar = statusBarInsets.asPaddingValues().calculateTopPadding()
-    val topPadding = maxOf(statusBar, 24.dp)
-
     Surface(
-        modifier = modifier.padding(top = topPadding),
+        modifier = modifier,
         shape = CircleShape,
         color = containerColor,
         shadowElevation = 4.dp

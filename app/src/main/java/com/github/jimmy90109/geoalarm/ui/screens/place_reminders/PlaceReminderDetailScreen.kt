@@ -556,6 +556,12 @@ private fun PlaceReminderDetailTopBar(
     Box(
         modifier = modifier
             .fillMaxWidth()
+            .padding(
+                top = if (isLandscape) 0.dp else maxOf(
+                    24.dp,
+                    WindowInsets.statusBarsIgnoringVisibility.asPaddingValues().calculateTopPadding()
+                )
+            )
             .then(if (applyHorizontalPadding) Modifier.padding(horizontal = 24.dp) else Modifier),
         contentAlignment = if (isLandscape) Alignment.TopEnd else Alignment.TopCenter,
     ) {
@@ -575,7 +581,6 @@ private fun PlaceReminderDetailTopBar(
                     )
                 }
             },
-            statusBarInsets = WindowInsets.statusBarsIgnoringVisibility,
             containerColor = MaterialTheme.colorScheme.surfaceVariant,
             modifier = Modifier
                 .widthIn(max = if (isLandscape) PlaceReminderDetailLandscapeControlWidth else PlaceReminderDetailActionMaxWidth)
@@ -598,10 +603,17 @@ private fun PlaceReminderDetailLandscapeControls(
     val layoutDirection = LocalLayoutDirection.current
     val bottomPadding = maxOf(24.dp, navInsets.calculateBottomPadding())
     val endPadding = maxOf(24.dp, navInsets.calculateEndPadding(layoutDirection))
+    val topPadding = maxOf(
+        24.dp,
+        WindowInsets.statusBarsIgnoringVisibility.asPaddingValues().calculateTopPadding(),
+        WindowInsets.displayCutout.asPaddingValues().calculateTopPadding()
+    )
     Box(
         modifier = modifier
-            .padding(top = 24.dp, end = endPadding, bottom = bottomPadding)
-            .windowInsetsPadding(WindowInsets.displayCutout)
+            .padding(top = topPadding, end = endPadding, bottom = bottomPadding)
+            .windowInsetsPadding(
+                WindowInsets.displayCutout.only(WindowInsetsSides.Horizontal + WindowInsetsSides.Bottom)
+            )
             .widthIn(max = PlaceReminderDetailLandscapeControlWidth)
             .fillMaxHeight(),
     ) {

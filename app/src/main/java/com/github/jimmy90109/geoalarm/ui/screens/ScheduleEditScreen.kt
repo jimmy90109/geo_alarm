@@ -12,6 +12,7 @@ import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.WindowInsetsSides
 import androidx.compose.foundation.layout.asPaddingValues
 import androidx.compose.foundation.layout.calculateEndPadding
 import androidx.compose.foundation.layout.displayCutout
@@ -19,8 +20,10 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.navigationBars
+import androidx.compose.foundation.layout.only
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.statusBars
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.lazy.LazyColumn
@@ -173,20 +176,27 @@ fun ScheduleEditScreen(
             BoxWithConstraints(
                 modifier = Modifier
                     .fillMaxSize()
-                    .windowInsetsPadding(WindowInsets.displayCutout)
+                    .windowInsetsPadding(
+                        WindowInsets.displayCutout.only(WindowInsetsSides.Horizontal + WindowInsetsSides.Bottom)
+                    )
             ) {
                 val controlsWidth = minOf(360.dp, maxWidth * 0.4f)
                 val navInsets = WindowInsets.navigationBars.asPaddingValues()
                 val layoutDirection = LocalLayoutDirection.current
                 val bottomPadding = maxOf(24.dp, navInsets.calculateBottomPadding())
                 val endPadding = maxOf(24.dp, navInsets.calculateEndPadding(layoutDirection))
+                val topPadding = maxOf(
+                    24.dp,
+                    WindowInsets.statusBars.asPaddingValues().calculateTopPadding(),
+                    WindowInsets.displayCutout.asPaddingValues().calculateTopPadding()
+                )
 
                 // Main Content - Left Side (TimePicker + DaySelector)
                 Column(
                     modifier = Modifier
                         .fillMaxSize()
                         .padding(end = controlsWidth + endPadding + 16.dp)
-                        .padding(24.dp),
+                        .padding(start = 24.dp, end = 24.dp, top = topPadding, bottom = 24.dp),
                     horizontalAlignment = Alignment.CenterHorizontally,
                     verticalArrangement = Arrangement.Center
                 ) {
@@ -212,7 +222,7 @@ fun ScheduleEditScreen(
                 Box(
                     modifier = Modifier
                         .align(Alignment.CenterEnd)
-                        .padding(end = endPadding, bottom = bottomPadding, top = 24.dp)
+                        .padding(end = endPadding, bottom = bottomPadding, top = topPadding)
                         .width(controlsWidth)
                 ) {
                     Column(
@@ -415,7 +425,11 @@ fun ScheduleEditScreen(
                             )
                         }
                     },
-                    modifier = Modifier.padding(horizontal = 24.dp),
+                    modifier = Modifier.padding(
+                        start = 24.dp,
+                        end = 24.dp,
+                        top = maxOf(24.dp, WindowInsets.statusBars.asPaddingValues().calculateTopPadding())
+                    ),
                     containerColor = MaterialTheme.colorScheme.surfaceVariant
                 )
 
