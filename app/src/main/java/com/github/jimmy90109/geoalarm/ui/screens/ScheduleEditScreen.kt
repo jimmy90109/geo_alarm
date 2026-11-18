@@ -6,7 +6,9 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
@@ -19,7 +21,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.navigationBars
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.widthIn
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.selection.toggleable
@@ -48,7 +50,8 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.OutlinedCard
 import androidx.compose.material3.Text
-import androidx.compose.material3.TimePicker
+import androidx.compose.material3.TimePickerDefaults
+import androidx.compose.material3.TimeScroll
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.material3.rememberTimePickerState
 import androidx.compose.runtime.Composable
@@ -167,13 +170,22 @@ fun ScheduleEditScreen(
     Box(modifier = Modifier.fillMaxSize()) {
         if (isLandscape) {
             // LANDSCAPE LAYOUT
-            Box(modifier = Modifier.fillMaxSize()) {
+            BoxWithConstraints(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .windowInsetsPadding(WindowInsets.displayCutout)
+            ) {
+                val controlsWidth = minOf(360.dp, maxWidth * 0.4f)
+                val navInsets = WindowInsets.navigationBars.asPaddingValues()
+                val layoutDirection = LocalLayoutDirection.current
+                val bottomPadding = maxOf(24.dp, navInsets.calculateBottomPadding())
+                val endPadding = maxOf(24.dp, navInsets.calculateEndPadding(layoutDirection))
+
                 // Main Content - Left Side (TimePicker + DaySelector)
                 Column(
                     modifier = Modifier
                         .fillMaxSize()
-                        .padding(end = 400.dp)
-                        .windowInsetsPadding(WindowInsets.displayCutout)
+                        .padding(end = controlsWidth + endPadding + 16.dp)
                         .padding(24.dp),
                     horizontalAlignment = Alignment.CenterHorizontally,
                     verticalArrangement = Arrangement.Center
@@ -185,7 +197,7 @@ fun ScheduleEditScreen(
                         color = MaterialTheme.colorScheme.onSurface,
                     )
                     Spacer(modifier = Modifier.height(16.dp))
-                    TimePicker(state = timePickerState)
+                    TimeScroll(state = timePickerState, shapes = TimePickerDefaults.shapes())
                     Spacer(modifier = Modifier.height(24.dp))
                     DayOfWeekSelector(
                         selectedDays = uiState.daysOfWeek,
@@ -197,17 +209,11 @@ fun ScheduleEditScreen(
                 }
 
                 // Controls Overlay - Right Side
-                val navInsets = WindowInsets.navigationBars.asPaddingValues()
-                val layoutDirection = LocalLayoutDirection.current
-                val bottomPadding = maxOf(24.dp, navInsets.calculateBottomPadding())
-                val endPadding = maxOf(24.dp, navInsets.calculateEndPadding(layoutDirection))
-
                 Box(
                     modifier = Modifier
                         .align(Alignment.CenterEnd)
                         .padding(end = endPadding, bottom = bottomPadding, top = 24.dp)
-                        .windowInsetsPadding(WindowInsets.displayCutout)
-                        .widthIn(max = 360.dp)
+                        .width(controlsWidth)
                 ) {
                     Column(
                         modifier = Modifier.fillMaxSize(),
@@ -429,7 +435,7 @@ fun ScheduleEditScreen(
                         color = MaterialTheme.colorScheme.onSurface,
                     )
                     Spacer(modifier = Modifier.height(16.dp))
-                    TimePicker(state = timePickerState)
+                    TimeScroll(state = timePickerState, shapes = TimePickerDefaults.shapes())
                     Spacer(modifier = Modifier.height(24.dp))
                     DayOfWeekSelector(
                         selectedDays = uiState.daysOfWeek,
@@ -604,29 +610,49 @@ fun DayOfWeekSelector(
         Calendar.SATURDAY to dayLabels[6]
     )
 
-    Row(
-        modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween
-    ) {
-        days.forEach { (dayValues, label) ->
-            val isSelected = selectedDays.contains(dayValues)
-            Box(
-                modifier = Modifier
-                    .size(40.dp)
-                    .clip(CircleShape)
-                    .background(
-                        if (isSelected) MaterialTheme.colorScheme.primary
-                        else MaterialTheme.colorScheme.surfaceContainerHighest
-                    )
-                    .toggleable(
-                        value = isSelected, onValueChange = { onDayToggle(dayValues) }),
-                contentAlignment = Alignment.Center
-            ) {
-                Text(
-                    text = label,
-                    color = if (isSelected) MaterialTheme.colorScheme.onPrimary
-                    else MaterialTheme.colorScheme.onSurfaceVariant,
-                    style = MaterialTheme.typography.bodyMedium
-                )
+    BoxWithConstraints(modifier = Modifier.fillMaxWidth()) {
+        val dayRows = if (maxWidth >= 48.dp * days.size) {
+            listOf(days)
+        } else {
+            listOf(days.subList(1, 6), listOf(days.first(), days.last()))
+        }
+
+        Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            dayRows.forEach { rowDays ->
+                FlowRow(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = if (rowDays.size == 2) {
+                        Arrangement.spacedBy(8.dp, Alignment.CenterHorizontally)
+                    } else {
+                        Arrangement.SpaceBetween
+                    },
+                    verticalArrangement = Arrangement.spacedBy(8.dp),
+                ) {
+                    rowDays.forEach { (dayValue, label) ->
+                        val isSelected = selectedDays.contains(dayValue)
+                        Box(
+                            modifier = Modifier
+                                .size(48.dp)
+                                .clip(CircleShape)
+                                .background(
+                                    if (isSelected) MaterialTheme.colorScheme.primary
+                                    else MaterialTheme.colorScheme.surfaceContainerHighest
+                                )
+                                .toggleable(
+                                    value = isSelected,
+                                    onValueChange = { onDayToggle(dayValue) }
+                                ),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Text(
+                                text = label,
+                                color = if (isSelected) MaterialTheme.colorScheme.onPrimary
+                                else MaterialTheme.colorScheme.onSurfaceVariant,
+                                style = MaterialTheme.typography.bodyMedium
+                            )
+                        }
+                    }
+                }
             }
         }
     }
