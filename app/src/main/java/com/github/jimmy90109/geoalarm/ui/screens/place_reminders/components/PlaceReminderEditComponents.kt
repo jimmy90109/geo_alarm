@@ -74,6 +74,7 @@ import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.Dp
 import com.github.jimmy90109.geoalarm.R
 import com.github.jimmy90109.geoalarm.data.PlaceReminderType
 import com.github.jimmy90109.geoalarm.ui.components.MediaPreviewSelection
@@ -143,6 +144,7 @@ internal fun PlaceReminderEditLandscapeControls(
     onPreviewNotification: () -> Unit,
     onSave: () -> Unit,
     modifier: Modifier = Modifier,
+    landscapeControlWidth: Dp = PlaceReminderLandscapeControlWidth,
 ) {
     val navInsets = WindowInsets.navigationBars.asPaddingValues()
     val layoutDirection = LocalLayoutDirection.current
@@ -159,7 +161,7 @@ internal fun PlaceReminderEditLandscapeControls(
             .windowInsetsPadding(
                 WindowInsets.displayCutout.only(WindowInsetsSides.Horizontal + WindowInsetsSides.Bottom)
             )
-            .widthIn(max = PlaceReminderLandscapeControlWidth)
+            .width(landscapeControlWidth)
             .fillMaxHeight(),
     ) {
         Column(modifier = Modifier.fillMaxSize()) {
@@ -194,6 +196,7 @@ internal fun PlaceReminderEditContent(
     pagerState: PagerState,
     isLandscape: Boolean,
     modifier: Modifier = Modifier,
+    landscapeControlWidth: Dp = PlaceReminderLandscapeControlWidth,
 ) {
     var newChecklistText by remember { mutableStateOf("") }
     val newChecklistFocusRequester = remember { FocusRequester() }
@@ -223,7 +226,7 @@ internal fun PlaceReminderEditContent(
             maxWidth -
                 startPadding -
                 endPadding -
-                PlaceReminderLandscapeControlWidth -
+                landscapeControlWidth -
                 PlaceReminderLandscapePaneGap
             ).coerceAtLeast(280.dp)
         val pagerModifier = if (isLandscape) {

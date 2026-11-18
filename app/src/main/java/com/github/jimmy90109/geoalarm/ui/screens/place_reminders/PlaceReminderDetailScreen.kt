@@ -77,6 +77,7 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import com.github.jimmy90109.geoalarm.ui.screens.place_reminders.components.placeReminderLandscapeControlWidth
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
@@ -297,7 +298,8 @@ fun PlaceReminderDetailScreen(
         haptic.performHapticFeedback(HapticFeedbackType.Reject)
         showDeleteDialog = true
     }
-    Box(modifier = Modifier.fillMaxSize()) {
+    BoxWithConstraints(modifier = Modifier.fillMaxSize()) {
+        val landscapeControlWidth = placeReminderLandscapeControlWidth(maxWidth)
         MediaPreviewPreloader(items = previewItems)
         if (current == null) {
             Box(
@@ -309,6 +311,7 @@ fun PlaceReminderDetailScreen(
         } else {
             val reminder = current.reminder
             PlaceReminderDetailContent(
+                landscapeControlWidth = landscapeControlWidth,
                 reminderWithItems = current,
                 newItemText = newItemText,
                 onNewItemTextChange = { newItemText = it },
@@ -353,6 +356,7 @@ fun PlaceReminderDetailScreen(
 
         if (isLandscape) {
             PlaceReminderDetailLandscapeControls(
+                landscapeControlWidth = landscapeControlWidth,
                 title = current?.reminder?.title ?: stringResource(R.string.place_reminder_detail_title),
                 lastTriggeredAt = current?.reminder?.lastTriggeredAt,
                 onBack = handleBack,
@@ -598,6 +602,7 @@ private fun PlaceReminderDetailLandscapeControls(
     onDelete: () -> Unit,
     actionEnabled: Boolean,
     modifier: Modifier = Modifier,
+    landscapeControlWidth: Dp = PlaceReminderDetailLandscapeControlWidth,
 ) {
     val navInsets = WindowInsets.navigationBarsIgnoringVisibility.asPaddingValues()
     val layoutDirection = LocalLayoutDirection.current
@@ -614,7 +619,7 @@ private fun PlaceReminderDetailLandscapeControls(
             .windowInsetsPadding(
                 WindowInsets.displayCutout.only(WindowInsetsSides.Horizontal + WindowInsetsSides.Bottom)
             )
-            .widthIn(max = PlaceReminderDetailLandscapeControlWidth)
+            .width(landscapeControlWidth)
             .fillMaxHeight(),
     ) {
         Column(modifier = Modifier.fillMaxSize()) {
@@ -661,6 +666,7 @@ internal fun PlaceReminderDetailContent(
     contentPadding: PaddingValues,
     isLandscape: Boolean,
     modifier: Modifier = Modifier,
+    landscapeControlWidth: Dp = PlaceReminderDetailLandscapeControlWidth,
 ) {
     val navPadding = WindowInsets.navigationBarsIgnoringVisibility.asPaddingValues()
     val cutoutPadding = WindowInsets.displayCutout.asPaddingValues()
@@ -711,7 +717,7 @@ internal fun PlaceReminderDetailContent(
             maxWidth -
                 startPadding -
                 endPadding -
-                PlaceReminderDetailLandscapeControlWidth -
+                landscapeControlWidth -
                 PlaceReminderDetailLandscapePaneGap
             ).coerceAtLeast(280.dp)
         val contentColumnModifier = if (isLandscape) {

@@ -11,12 +11,14 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.core.CubicBezierEasing
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.pager.PagerState
 import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.runtime.Composable
+import com.github.jimmy90109.geoalarm.ui.screens.place_reminders.components.placeReminderLandscapeControlWidth
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
@@ -147,9 +149,11 @@ fun PlaceReminderEditScreen(
         viewModel.onAction(PlaceReminderEditAction.PreviewNotificationClicked)
     }
 
-    Box(modifier = Modifier.fillMaxSize()) {
+    BoxWithConstraints(modifier = Modifier.fillMaxSize()) {
+        val landscapeControlWidth = placeReminderLandscapeControlWidth(maxWidth)
         MediaPreviewPreloader(items = previewItems)
         PlaceReminderEditContent(
+            landscapeControlWidth = landscapeControlWidth,
             state = uiState,
             onAction = viewModel::onAction,
             onSelectPlace = {
@@ -203,6 +207,7 @@ fun PlaceReminderEditScreen(
         }
         if (isLandscape) {
             PlaceReminderEditLandscapeControls(
+                landscapeControlWidth = landscapeControlWidth,
                 pagerState = formPagerState,
                 state = uiState,
                 onBack = onFormBack,
