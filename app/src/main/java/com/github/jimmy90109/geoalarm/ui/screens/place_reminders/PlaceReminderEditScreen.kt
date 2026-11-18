@@ -17,6 +17,7 @@ import androidx.compose.foundation.pager.PagerState
 import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -36,12 +37,15 @@ import androidx.compose.ui.res.stringResource
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.github.jimmy90109.geoalarm.R
+import com.github.jimmy90109.geoalarm.GeoAlarmApplication
+import com.github.jimmy90109.geoalarm.data.DistanceUnitPreference
 import com.github.jimmy90109.geoalarm.ui.components.MediaPreviewOverlay
 import com.github.jimmy90109.geoalarm.ui.components.MediaPreviewPreloader
 import com.github.jimmy90109.geoalarm.ui.components.MediaPreviewSelection
 import com.github.jimmy90109.geoalarm.ui.components.NotificationPermissionDialog
 import com.github.jimmy90109.geoalarm.ui.screens.AlarmEditLandscapeLayout
 import com.github.jimmy90109.geoalarm.ui.screens.AlarmEditPortraitLayout
+import com.github.jimmy90109.geoalarm.ui.screens.LocalDistanceUnitSystem
 import com.github.jimmy90109.geoalarm.ui.screens.place_reminders.components.PlaceReminderEditBottomBar
 import com.github.jimmy90109.geoalarm.ui.screens.place_reminders.components.PlaceReminderEditContent
 import com.github.jimmy90109.geoalarm.ui.screens.place_reminders.components.PlaceReminderEditLandscapeControls
@@ -54,13 +58,13 @@ import com.github.jimmy90109.geoalarm.ui.viewmodel.PlaceReminderEditAction
 import com.github.jimmy90109.geoalarm.ui.viewmodel.PlaceReminderEditEffect
 import com.github.jimmy90109.geoalarm.ui.viewmodel.PlaceReminderEditViewModel
 import com.github.jimmy90109.geoalarm.utils.DistanceRadiusScale
+import com.github.jimmy90109.geoalarm.utils.DistanceUnitResolver
 import com.google.android.gms.maps.CameraUpdateFactory
 import com.google.android.gms.maps.model.CameraPosition
 import com.google.android.gms.maps.model.LatLng
 import com.google.maps.android.compose.rememberCameraPositionState
 import kotlinx.coroutines.launch
 
-private val PlaceReminderRadiusScale = DistanceRadiusScale.forPlaceReminder()
 private val DefaultPlaceReminderMapPosition = LatLng(25.034, 121.564)
 private const val PlaceReminderEditPageCount = 3
 private const val PlaceReminderPageAnimationDurationMillis = 460
@@ -287,6 +291,17 @@ fun PlaceReminderPlacePickerScreen(
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val configuration = LocalConfiguration.current
+    val context = LocalContext.current
+    val settingsRepository =
+        (context.applicationContext as GeoAlarmApplication).settingsRepository
+    val distanceUnitPreference by settingsRepository.distanceUnitPreferenceFlow
+        .collectAsStateWithLifecycle(initialValue = DistanceUnitPreference.AUTO)
+    val distanceUnitSystem = remember(configuration, distanceUnitPreference) {
+        DistanceUnitResolver.resolve(context, distanceUnitPreference)
+    }
+    val radiusScale = remember(distanceUnitSystem) {
+        DistanceRadiusScale.forPlaceReminder(distanceUnitSystem)
+    }
     val isLandscape = configuration.orientation == Configuration.ORIENTATION_LANDSCAPE
     val locationUiState = uiState.alarmEditUiState
     LaunchedEffect(reminderId) {
@@ -361,11 +376,11 @@ fun PlaceReminderPlacePickerScreen(
         }
     }
 
-    val interceptBack = uiState.step == AlarmEditStep.DetailsForm ||
+    val interceptBack = uiState.isShowingPlaceDetails ||
         uiState.controlMode != AlarmEditControlMode.Radius ||
         uiState.placeCandidates.isNotEmpty()
     BackHandler(enabled = interceptBack) {
-        if (uiState.step == AlarmEditStep.DetailsForm) {
+        if (uiState.isShowingPlaceDetails) {
             viewModel.onAction(PlaceReminderEditAction.BackToMapClicked)
         } else {
             handleLocationBack()
@@ -386,95 +401,97 @@ fun PlaceReminderPlacePickerScreen(
         }
     }
 
-    if (isLandscape) {
-        AlarmEditLandscapeLayout(
-            uiState = locationUiState,
-            cameraPositionState = cameraPositionState,
-            isDetailsStep = uiState.step == AlarmEditStep.DetailsForm,
-            screenTitle = stringResource(R.string.place_reminder_place),
-            nameLabel = stringResource(R.string.place_reminder_place_name),
-            namePlaceholder = stringResource(R.string.place_reminder_place_name_placeholder),
-            iconPickerTitle = stringResource(R.string.place_reminder_select_place_icon),
-            radiusScale = PlaceReminderRadiusScale,
-            disabledNextLabel = stringResource(R.string.tap_map_to_select_place),
-            onBack = ::handleLocationBack,
-            onSearch = {
-                viewModel.onAction(PlaceReminderEditAction.StartInAppSearch(cameraPositionState.position.target))
-            },
-            onSearchQueryChange = {
-                viewModel.onAction(
-                    PlaceReminderEditAction.InAppSearchQueryChanged(
-                        it
+    CompositionLocalProvider(LocalDistanceUnitSystem provides distanceUnitSystem) {
+        if (isLandscape) {
+            AlarmEditLandscapeLayout(
+                uiState = locationUiState,
+                cameraPositionState = cameraPositionState,
+                isDetailsStep = uiState.isShowingPlaceDetails,
+                screenTitle = stringResource(R.string.place_reminder_place),
+                nameLabel = stringResource(R.string.place_reminder_place_name),
+                namePlaceholder = stringResource(R.string.place_reminder_place_name_placeholder),
+                iconPickerTitle = stringResource(R.string.place_reminder_select_place_icon),
+                radiusScale = radiusScale,
+                disabledNextLabel = stringResource(R.string.tap_map_to_select_place),
+                onBack = ::handleLocationBack,
+                onSearch = {
+                    viewModel.onAction(PlaceReminderEditAction.StartInAppSearch(cameraPositionState.position.target))
+                },
+                onSearchQueryChange = {
+                    viewModel.onAction(
+                        PlaceReminderEditAction.InAppSearchQueryChanged(
+                            it
+                        )
                     )
-                )
-            },
-            onSearchSubmit = { viewModel.onAction(PlaceReminderEditAction.SubmitInAppSearch) },
-            onSearchCancel = { viewModel.onAction(PlaceReminderEditAction.CancelInAppSearch) },
-            onSuggestionSelected = {
-                viewModel.onAction(
-                    PlaceReminderEditAction.PlaceSuggestionSelected(
-                        it
+                },
+                onSearchSubmit = { viewModel.onAction(PlaceReminderEditAction.SubmitInAppSearch) },
+                onSearchCancel = { viewModel.onAction(PlaceReminderEditAction.CancelInAppSearch) },
+                onSuggestionSelected = {
+                    viewModel.onAction(
+                        PlaceReminderEditAction.PlaceSuggestionSelected(
+                            it
+                        )
                     )
-                )
-            },
-            onMapClick = { viewModel.onAction(PlaceReminderEditAction.MapPositionSelected(it)) },
-            onMapInteracted = { viewModel.onAction(PlaceReminderEditAction.MapInteracted) },
-            onRadiusChange = { viewModel.onAction(PlaceReminderEditAction.RadiusChanged(it.toInt())) },
-            onNext = { viewModel.onAction(PlaceReminderEditAction.NextClicked) },
-            onDelete = {},
-            onNameChange = { viewModel.onAction(PlaceReminderEditAction.PlaceNameChanged(it)) },
-            onIconSelected = { viewModel.onAction(PlaceReminderEditAction.IconSelected(it)) },
-            onBackToMap = { viewModel.onAction(PlaceReminderEditAction.BackToMapClicked) },
-            onSave = savePlace,
-            onCandidateChanged = { viewModel.onAction(PlaceReminderEditAction.CandidateChanged(it)) },
-            onCandidateConfirmed = { viewModel.onAction(PlaceReminderEditAction.CandidateConfirmed) },
-            onCandidateCancelled = { viewModel.onAction(PlaceReminderEditAction.CandidateSelectionCancelled) },
-            hideMapForInitialLocation = false,
-        )
-    } else {
-        AlarmEditPortraitLayout(
-            uiState = locationUiState,
-            cameraPositionState = cameraPositionState,
-            isDetailsStep = uiState.step == AlarmEditStep.DetailsForm,
-            screenTitle = stringResource(R.string.place_reminder_place),
-            nameLabel = stringResource(R.string.place_reminder_place_name),
-            namePlaceholder = stringResource(R.string.place_reminder_place_name_placeholder),
-            iconPickerTitle = stringResource(R.string.place_reminder_select_place_icon),
-            radiusScale = PlaceReminderRadiusScale,
-            disabledNextLabel = stringResource(R.string.tap_map_to_select_place),
-            onBack = ::handleLocationBack,
-            onSearch = {
-                viewModel.onAction(PlaceReminderEditAction.StartInAppSearch(cameraPositionState.position.target))
-            },
-            onSearchQueryChange = {
-                viewModel.onAction(
-                    PlaceReminderEditAction.InAppSearchQueryChanged(
-                        it
+                },
+                onMapClick = { viewModel.onAction(PlaceReminderEditAction.MapPositionSelected(it)) },
+                onMapInteracted = { viewModel.onAction(PlaceReminderEditAction.MapInteracted) },
+                onRadiusChange = { viewModel.onAction(PlaceReminderEditAction.RadiusChanged(it.toInt())) },
+                onNext = { viewModel.onAction(PlaceReminderEditAction.NextClicked) },
+                onDelete = {},
+                onNameChange = { viewModel.onAction(PlaceReminderEditAction.PlaceNameChanged(it)) },
+                onIconSelected = { viewModel.onAction(PlaceReminderEditAction.IconSelected(it)) },
+                onBackToMap = { viewModel.onAction(PlaceReminderEditAction.BackToMapClicked) },
+                onSave = savePlace,
+                onCandidateChanged = { viewModel.onAction(PlaceReminderEditAction.CandidateChanged(it)) },
+                onCandidateConfirmed = { viewModel.onAction(PlaceReminderEditAction.CandidateConfirmed) },
+                onCandidateCancelled = { viewModel.onAction(PlaceReminderEditAction.CandidateSelectionCancelled) },
+                hideMapForInitialLocation = false,
+            )
+        } else {
+            AlarmEditPortraitLayout(
+                uiState = locationUiState,
+                cameraPositionState = cameraPositionState,
+                isDetailsStep = uiState.isShowingPlaceDetails,
+                screenTitle = stringResource(R.string.place_reminder_place),
+                nameLabel = stringResource(R.string.place_reminder_place_name),
+                namePlaceholder = stringResource(R.string.place_reminder_place_name_placeholder),
+                iconPickerTitle = stringResource(R.string.place_reminder_select_place_icon),
+                radiusScale = radiusScale,
+                disabledNextLabel = stringResource(R.string.tap_map_to_select_place),
+                onBack = ::handleLocationBack,
+                onSearch = {
+                    viewModel.onAction(PlaceReminderEditAction.StartInAppSearch(cameraPositionState.position.target))
+                },
+                onSearchQueryChange = {
+                    viewModel.onAction(
+                        PlaceReminderEditAction.InAppSearchQueryChanged(
+                            it
+                        )
                     )
-                )
-            },
-            onSearchSubmit = { viewModel.onAction(PlaceReminderEditAction.SubmitInAppSearch) },
-            onSearchCancel = { viewModel.onAction(PlaceReminderEditAction.CancelInAppSearch) },
-            onSuggestionSelected = {
-                viewModel.onAction(
-                    PlaceReminderEditAction.PlaceSuggestionSelected(
-                        it
+                },
+                onSearchSubmit = { viewModel.onAction(PlaceReminderEditAction.SubmitInAppSearch) },
+                onSearchCancel = { viewModel.onAction(PlaceReminderEditAction.CancelInAppSearch) },
+                onSuggestionSelected = {
+                    viewModel.onAction(
+                        PlaceReminderEditAction.PlaceSuggestionSelected(
+                            it
+                        )
                     )
-                )
-            },
-            onMapClick = { viewModel.onAction(PlaceReminderEditAction.MapPositionSelected(it)) },
-            onMapInteracted = { viewModel.onAction(PlaceReminderEditAction.MapInteracted) },
-            onRadiusChange = { viewModel.onAction(PlaceReminderEditAction.RadiusChanged(it.toInt())) },
-            onNext = { viewModel.onAction(PlaceReminderEditAction.NextClicked) },
-            onDelete = {},
-            onNameChange = { viewModel.onAction(PlaceReminderEditAction.PlaceNameChanged(it)) },
-            onIconSelected = { viewModel.onAction(PlaceReminderEditAction.IconSelected(it)) },
-            onBackToMap = { viewModel.onAction(PlaceReminderEditAction.BackToMapClicked) },
-            onSave = savePlace,
-            onCandidateChanged = { viewModel.onAction(PlaceReminderEditAction.CandidateChanged(it)) },
-            onCandidateConfirmed = { viewModel.onAction(PlaceReminderEditAction.CandidateConfirmed) },
-            onCandidateCancelled = { viewModel.onAction(PlaceReminderEditAction.CandidateSelectionCancelled) },
-            hideMapForInitialLocation = false,
-        )
+                },
+                onMapClick = { viewModel.onAction(PlaceReminderEditAction.MapPositionSelected(it)) },
+                onMapInteracted = { viewModel.onAction(PlaceReminderEditAction.MapInteracted) },
+                onRadiusChange = { viewModel.onAction(PlaceReminderEditAction.RadiusChanged(it.toInt())) },
+                onNext = { viewModel.onAction(PlaceReminderEditAction.NextClicked) },
+                onDelete = {},
+                onNameChange = { viewModel.onAction(PlaceReminderEditAction.PlaceNameChanged(it)) },
+                onIconSelected = { viewModel.onAction(PlaceReminderEditAction.IconSelected(it)) },
+                onBackToMap = { viewModel.onAction(PlaceReminderEditAction.BackToMapClicked) },
+                onSave = savePlace,
+                onCandidateChanged = { viewModel.onAction(PlaceReminderEditAction.CandidateChanged(it)) },
+                onCandidateConfirmed = { viewModel.onAction(PlaceReminderEditAction.CandidateConfirmed) },
+                onCandidateCancelled = { viewModel.onAction(PlaceReminderEditAction.CandidateSelectionCancelled) },
+                hideMapForInitialLocation = false,
+            )
+        }
     }
 }

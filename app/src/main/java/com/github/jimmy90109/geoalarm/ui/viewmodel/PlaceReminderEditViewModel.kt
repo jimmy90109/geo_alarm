@@ -14,6 +14,7 @@ import com.github.jimmy90109.geoalarm.data.PlaceReminderItem
 import com.github.jimmy90109.geoalarm.data.PlaceReminderType
 import com.github.jimmy90109.geoalarm.data.PlaceReminderWithItems
 import com.github.jimmy90109.geoalarm.data.PlaceTriggerType
+import com.github.jimmy90109.geoalarm.data.SettingsRepository
 import com.github.jimmy90109.geoalarm.data.location.CurrentLocationRepository
 import com.github.jimmy90109.geoalarm.data.places.PlaceAutocompleteService
 import com.github.jimmy90109.geoalarm.data.places.PlaceCandidate
@@ -21,6 +22,8 @@ import com.github.jimmy90109.geoalarm.data.places.PlaceSearchService
 import com.github.jimmy90109.geoalarm.data.places.PlaceSuggestion
 import com.github.jimmy90109.geoalarm.service.PlaceReminderGeofenceManager
 import com.github.jimmy90109.geoalarm.service.PlaceReminderNotifier
+import com.github.jimmy90109.geoalarm.utils.DistanceRadiusScale
+import com.github.jimmy90109.geoalarm.utils.DistanceUnitResolver
 import com.google.android.gms.maps.model.LatLng
 import dagger.hilt.android.lifecycle.HiltViewModel
 import java.util.UUID
@@ -33,6 +36,7 @@ import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 
 data class EditChecklistItem(val id: String = java.util.UUID.randomUUID().toString(), val text: String)
@@ -73,6 +77,8 @@ data class PlaceReminderEditUiState(
     val savedReminderId: String? = null,
 ) {
     val isEditMode: Boolean get() = reminderId != null
+    val isShowingPlaceDetails: Boolean
+        get() = isSelectingPlace && step == AlarmEditStep.DetailsForm
     val attachmentLimitReached: Boolean get() = attachments.size >= MaxPlaceReminderAttachments
     val remainingAttachmentSlots: Int
         get() = (MaxPlaceReminderAttachments - attachments.size).coerceAtLeast(0)
@@ -171,6 +177,7 @@ class PlaceReminderEditViewModel @Inject constructor(
     private val placeSearchService: PlaceSearchService,
     private val placeAutocompleteService: PlaceAutocompleteService,
     private val placeReminderNotifier: PlaceReminderNotifier,
+    private val settingsRepository: SettingsRepository,
 ) : ViewModel() {
     private val _uiState = MutableStateFlow(PlaceReminderEditUiState())
     val uiState: StateFlow<PlaceReminderEditUiState> = _uiState.asStateFlow()
@@ -188,6 +195,7 @@ class PlaceReminderEditViewModel @Inject constructor(
     private var originalAttachmentIds: Set<String> = emptySet()
     private var loadingReminderId: String? = null
     private var loadedReminderId: String? = null
+    private var isNewDraftInitialized = false
 
     init {
         viewModelScope.launch {
@@ -250,6 +258,16 @@ class PlaceReminderEditViewModel @Inject constructor(
     private fun load(reminderId: String?) {
         viewModelScope.launch {
             if (reminderId == null) {
+                if (!isNewDraftInitialized) {
+                    val preference = settingsRepository.distanceUnitPreferenceFlow.first()
+                    val system = DistanceUnitResolver.resolve(application, preference)
+                    if (!isNewDraftInitialized) {
+                        _uiState.value = _uiState.value.copy(
+                            radiusMeters = DistanceRadiusScale.defaultPlaceReminderRadiusMeters(system),
+                        )
+                        isNewDraftInitialized = true
+                    }
+                }
                 loadingReminderId = null
                 loadedReminderId = null
                 _uiState.value = _uiState.value.copy(isLoading = false)

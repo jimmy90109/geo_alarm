@@ -164,7 +164,7 @@ import kotlin.math.roundToInt
 
 private val DefaultMapPosition = LatLng(25.034, 121.564)
 private const val INITIAL_LOCATION_FALLBACK_DELAY_MS = 1200L
-private val LocalDistanceUnitSystem = staticCompositionLocalOf { DistanceUnitSystem.METRIC }
+internal val LocalDistanceUnitSystem = staticCompositionLocalOf { DistanceUnitSystem.METRIC }
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalMaterial3ExpressiveApi::class)
 @Composable

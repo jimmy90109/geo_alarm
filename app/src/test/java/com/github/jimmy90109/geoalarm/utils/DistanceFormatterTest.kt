@@ -7,6 +7,27 @@ import java.util.Locale
 
 class DistanceFormatterTest {
     @Test
+    fun `reminder radius ticks stay in miles after integer meter storage`() {
+        val scale = DistanceRadiusScale.forPlaceReminder(DistanceUnitSystem.IMPERIAL)
+        for (tick in 1..10) {
+            val storedMeters = scale.distanceMeters(tick / 10f).toInt()
+            assertEquals(
+                FormattedDistance(if (tick == 10) "1" else "0.$tick", DistanceDisplayUnit.MILE),
+                DistanceFormatter.formatValue(
+                    storedMeters.toDouble(),
+                    DistanceUnitSystem.IMPERIAL,
+                    Locale.US,
+                    DistanceFormatStyle.RADIUS,
+                ),
+            )
+        }
+        assertEquals(
+            FormattedDistance("0.5", DistanceDisplayUnit.MILE),
+            DistanceFormatter.formatValue(805.0, DistanceUnitSystem.IMPERIAL, Locale.US, DistanceFormatStyle.RADIUS),
+        )
+    }
+
+    @Test
     fun `metric distances switch from meters to kilometers`() {
         assertEquals(
             FormattedDistance("999", DistanceDisplayUnit.METER),

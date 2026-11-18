@@ -35,12 +35,27 @@ data class DistanceRadiusScale(
     companion object {
         private const val METERS_PER_MILE = 1609.344
 
-        fun forPlaceReminder(): DistanceRadiusScale = DistanceRadiusScale(
-            valueRange = 100f..1000f,
-            steps = 8,
-            metersPerUnit = 1.0,
-            stepSize = 100.0,
-        )
+        fun forPlaceReminder(
+            system: DistanceUnitSystem = DistanceUnitSystem.METRIC,
+        ): DistanceRadiusScale = when (system) {
+            DistanceUnitSystem.METRIC -> DistanceRadiusScale(
+                valueRange = 100f..1000f,
+                steps = 8,
+                metersPerUnit = 1.0,
+                stepSize = 100.0,
+            )
+            DistanceUnitSystem.IMPERIAL -> DistanceRadiusScale(
+                valueRange = 0.1f..1.0f,
+                steps = 8,
+                metersPerUnit = METERS_PER_MILE,
+                stepSize = 0.1,
+            )
+        }
+
+        fun defaultPlaceReminderRadiusMeters(system: DistanceUnitSystem): Int = when (system) {
+            DistanceUnitSystem.METRIC -> 1000
+            DistanceUnitSystem.IMPERIAL -> kotlin.math.round(0.5 * METERS_PER_MILE).toInt()
+        }
 
         fun forSystem(system: DistanceUnitSystem): DistanceRadiusScale {
             return when (system) {
