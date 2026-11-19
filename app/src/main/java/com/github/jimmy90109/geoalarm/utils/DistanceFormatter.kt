@@ -78,7 +78,7 @@ object DistanceFormatter {
         style: DistanceFormatStyle,
     ): FormattedDistance {
         val feet = distanceMeters * FEET_PER_MILE / METERS_PER_MILE
-        return if (feet < 1000.0) {
+        return if (feet < 1000.0 && style != DistanceFormatStyle.RADIUS) {
             FormattedDistance(formatNumber(feet, locale, 0), DistanceDisplayUnit.FOOT)
         } else {
             FormattedDistance(

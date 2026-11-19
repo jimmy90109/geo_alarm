@@ -6,6 +6,35 @@ import org.junit.Test
 
 class DistanceRadiusScaleTest {
     @Test
+    fun `imperial reminders keep ten positions spaced by one tenth mile`() {
+        val scale = DistanceRadiusScale.forPlaceReminder(DistanceUnitSystem.IMPERIAL)
+
+        assertEquals(8, scale.steps)
+        assertEquals(0.1f, scale.valueRange.start, 0f)
+        assertEquals(1f, scale.valueRange.endInclusive, 0f)
+        for (tick in 1..10) {
+            val miles = tick / 10f
+            val meters = scale.distanceMeters(miles)
+            assertEquals(tick * 160.9344f, meters, 0.001f)
+            assertEquals(miles, scale.sliderValue(meters.toDouble()), 0.0001f)
+            assertEquals(meters, scale.snapDistanceMeters(meters.toDouble()), 0.001f)
+        }
+    }
+
+    @Test
+    fun `new reminder defaults use one kilometer or half a mile`() {
+        assertEquals(1000, DistanceRadiusScale.defaultPlaceReminderRadiusMeters(DistanceUnitSystem.METRIC))
+        val imperialDefault = DistanceRadiusScale.defaultPlaceReminderRadiusMeters(DistanceUnitSystem.IMPERIAL)
+        assertEquals(805, imperialDefault)
+        assertEquals(
+            0.5f,
+            DistanceRadiusScale.forPlaceReminder(DistanceUnitSystem.IMPERIAL)
+                .sliderValue(imperialDefault.toDouble()),
+            0.001f,
+        )
+    }
+
+    @Test
     fun `place reminder radius maps every slider tick to hundred meter increments`() {
         val scale = DistanceRadiusScale.forPlaceReminder()
 

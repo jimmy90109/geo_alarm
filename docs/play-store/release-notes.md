@@ -4,6 +4,36 @@
 
 每版包含版本名稱與 version code、`zh-TW` 文案及 `en-US` 文案。Google Play 上傳用 JSON 依本文件產生於 repository 外的暫存目錄；GitHub Release 更新內容從對應 tag 的本文件及實際合併內容取得。
 
+## 1.5.2 (2611190) — Beta
+
+### zh-TW
+
+- 將 Wi-Fi 硬體設為選用，避免不必要的裝置安裝限制。
+- 改善排程時間選擇器與星期選擇操作。
+- 改善鬧鐘、排程與地點提醒在橫向模式下的排版及安全邊界。
+- 修正地點提醒的英制距離顯示與半徑刻度，並改善選擇器轉場。
+
+### en-US
+
+- Made Wi-Fi hardware optional to avoid unnecessary device installation restrictions.
+- Improved the schedule time picker and day selection.
+- Improved landscape layouts and safe insets for alarms, schedules, and place reminders.
+- Fixed imperial distance display and radius steps for place reminders, and improved picker transitions.
+
+## 1.5.2 (2611180) — Beta
+
+### zh-TW
+
+- 改善排程時間選擇器與星期選擇操作。
+- 改善鬧鐘、排程與地點提醒在橫向模式下的排版及安全邊界。
+- 修正地點提醒的英制距離顯示與半徑刻度，並改善選擇器轉場。
+
+### en-US
+
+- Improved the schedule time picker and day selection.
+- Improved landscape layouts and safe insets for alarms, schedules, and place reminders.
+- Fixed imperial distance display and radius steps for place reminders, and improved picker transitions.
+
 ## 1.5.1 (2611030) — Beta
 
 ### zh-TW

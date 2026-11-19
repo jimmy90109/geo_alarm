@@ -18,6 +18,7 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.WindowInsetsSides
 import androidx.compose.foundation.layout.asPaddingValues
 import androidx.compose.foundation.layout.calculateEndPadding
 import androidx.compose.foundation.layout.calculateStartPadding
@@ -28,6 +29,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.navigationBars
+import androidx.compose.foundation.layout.only
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.statusBars
 import androidx.compose.foundation.layout.width
@@ -72,6 +74,7 @@ import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.Dp
 import com.github.jimmy90109.geoalarm.R
 import com.github.jimmy90109.geoalarm.data.PlaceReminderType
 import com.github.jimmy90109.geoalarm.ui.components.MediaPreviewSelection
@@ -100,6 +103,12 @@ internal fun PlaceReminderEditTopBar(
     Box(
         modifier = modifier
             .fillMaxWidth()
+            .padding(
+                top = if (isLandscape) 0.dp else maxOf(
+                    24.dp,
+                    WindowInsets.statusBars.asPaddingValues().calculateTopPadding()
+                )
+            )
             .then(if (applyHorizontalPadding) Modifier.padding(horizontal = 24.dp) else Modifier),
         contentAlignment = if (isLandscape) Alignment.TopEnd else Alignment.TopCenter,
     ) {
@@ -135,16 +144,24 @@ internal fun PlaceReminderEditLandscapeControls(
     onPreviewNotification: () -> Unit,
     onSave: () -> Unit,
     modifier: Modifier = Modifier,
+    landscapeControlWidth: Dp = PlaceReminderLandscapeControlWidth,
 ) {
     val navInsets = WindowInsets.navigationBars.asPaddingValues()
     val layoutDirection = LocalLayoutDirection.current
     val bottomPadding = maxOf(24.dp, navInsets.calculateBottomPadding())
     val endPadding = maxOf(24.dp, navInsets.calculateEndPadding(layoutDirection))
+    val topPadding = maxOf(
+        24.dp,
+        WindowInsets.statusBars.asPaddingValues().calculateTopPadding(),
+        WindowInsets.displayCutout.asPaddingValues().calculateTopPadding()
+    )
     Box(
         modifier = modifier
-            .padding(top = 24.dp, end = endPadding, bottom = bottomPadding)
-            .windowInsetsPadding(WindowInsets.displayCutout)
-            .widthIn(max = PlaceReminderLandscapeControlWidth)
+            .padding(top = topPadding, end = endPadding, bottom = bottomPadding)
+            .windowInsetsPadding(
+                WindowInsets.displayCutout.only(WindowInsetsSides.Horizontal + WindowInsetsSides.Bottom)
+            )
+            .width(landscapeControlWidth)
             .fillMaxHeight(),
     ) {
         Column(modifier = Modifier.fillMaxSize()) {
@@ -179,6 +196,7 @@ internal fun PlaceReminderEditContent(
     pagerState: PagerState,
     isLandscape: Boolean,
     modifier: Modifier = Modifier,
+    landscapeControlWidth: Dp = PlaceReminderLandscapeControlWidth,
 ) {
     var newChecklistText by remember { mutableStateOf("") }
     val newChecklistFocusRequester = remember { FocusRequester() }
@@ -208,7 +226,7 @@ internal fun PlaceReminderEditContent(
             maxWidth -
                 startPadding -
                 endPadding -
-                PlaceReminderLandscapeControlWidth -
+                landscapeControlWidth -
                 PlaceReminderLandscapePaneGap
             ).coerceAtLeast(280.dp)
         val pagerModifier = if (isLandscape) {

@@ -33,6 +33,7 @@ import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.WindowInsetsSides
 import androidx.compose.foundation.layout.asPaddingValues
 import androidx.compose.foundation.layout.calculateEndPadding
 import androidx.compose.foundation.layout.calculateStartPadding
@@ -44,6 +45,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.navigationBars
 import androidx.compose.foundation.layout.offset
+import androidx.compose.foundation.layout.only
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBars
@@ -162,7 +164,7 @@ import kotlin.math.roundToInt
 
 private val DefaultMapPosition = LatLng(25.034, 121.564)
 private const val INITIAL_LOCATION_FALLBACK_DELAY_MS = 1200L
-private val LocalDistanceUnitSystem = staticCompositionLocalOf { DistanceUnitSystem.METRIC }
+internal val LocalDistanceUnitSystem = staticCompositionLocalOf { DistanceUnitSystem.METRIC }
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalMaterial3ExpressiveApi::class)
 @Composable
@@ -724,7 +726,11 @@ private fun AlarmEditPortraitStepOnePage(
             onSearchCancel = onSearchCancel,
             modifier = Modifier
                 .align(Alignment.TopCenter)
-                .padding(start = 24.dp, end = 24.dp)
+                .padding(
+                    start = 24.dp,
+                    end = 24.dp,
+                    top = maxOf(24.dp, WindowInsets.statusBars.asPaddingValues().calculateTopPadding())
+                )
         )
 
         AlarmEditSuggestionList(
@@ -806,6 +812,11 @@ private fun AlarmEditLandscapeStepOnePage(
     val layoutDirection = LocalLayoutDirection.current
     val bottomPadding = maxOf(24.dp, navInsets.calculateBottomPadding())
     val endPadding = maxOf(24.dp, navInsets.calculateEndPadding(layoutDirection))
+    val topPadding = maxOf(
+        24.dp,
+        WindowInsets.statusBars.asPaddingValues().calculateTopPadding(),
+        WindowInsets.displayCutout.asPaddingValues().calculateTopPadding()
+    )
     Box(modifier = modifier.fillMaxSize()) {
         AlarmEditMapContent(
             cameraPositionState = cameraPositionState,
@@ -822,8 +833,10 @@ private fun AlarmEditLandscapeStepOnePage(
         Box(
             modifier = Modifier
                 .align(Alignment.CenterEnd)
-                .padding(end = endPadding, bottom = bottomPadding, top = 24.dp)
-                .windowInsetsPadding(WindowInsets.displayCutout)
+                .padding(end = endPadding, bottom = bottomPadding, top = topPadding)
+                .windowInsetsPadding(
+                    WindowInsets.displayCutout.only(WindowInsetsSides.Horizontal + WindowInsetsSides.Bottom)
+                )
                 .widthIn(max = 360.dp)
         ) {
             Column(
@@ -1856,7 +1869,11 @@ private fun InitialMapLocationCoverPreview() {
             com.github.jimmy90109.geoalarm.ui.components.TopAppBar(
                 modifier = Modifier
                     .align(Alignment.TopCenter)
-                    .padding(start = 24.dp, end = 24.dp),
+                    .padding(
+                        start = 24.dp,
+                        end = 24.dp,
+                        top = maxOf(24.dp, WindowInsets.statusBars.asPaddingValues().calculateTopPadding())
+                    ),
                 title = { Text(stringResource(R.string.add_alarm)) },
                 navigationIcon = {
                     IconButton(onClick = {}) {
