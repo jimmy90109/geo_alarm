@@ -94,3 +94,11 @@
 - 收尾時觀察到 HEAD 已由外部操作前進至 `ce6931d`（僅提交本次相同的 Wi-Fi 宣告）；本次發版流程未執行 Git commit。建置輸入仍符合上述來源與版本設定。
 - 2026-11-19 使用者通知已過審後重新查核：Beta API 僅列出 `1.5.2 / 2611190`，狀態為 `RELEASE_LIFECYCLE_STATE_PUBLISHED`，確認 Beta 已公開。上方審查中紀錄保留為提交當時狀態。
 - Production 尚未操作；後續須依使用者指定的正式版推出範圍與比例續接。
+
+### Git 收尾（2026-11-19）
+
+- 版本與發版文件已提交為 `a20614f`（Prepare 1.5.2 release metadata），推送至 `dev`；另以 `94454b4` 同步上一版 `main` 合併紀錄，未改變建置輸入。
+- [PR #33](https://github.com/jimmy90109/geo_alarm/pull/33) 的兩項 `build` CI 均通過。首次合併因審查規則受阻；使用者完成 GitHub 操作後，讀回確認已合併至 `main`，merge revision 為 `75ed8969b18ee63d52eb33a632c53869d5acd9b1`。
+- 已建立並推送 annotated tag `v1.5.2`，指向上述 `main` revision；tag 內版本為 `1.5.2 (2611190)`、minSdk 31。
+- [GitHub Release 1.5.2](https://github.com/jimmy90109/geo_alarm/releases/tag/v1.5.2) 已發布；讀回確認非 Draft、非 prerelease、為 Latest，未附產物。繁體中文說明標示 Beta 已公開、Production 尚未推出。
+- 長期 `dev` 分支保留；本次未操作 Google Play Production。
