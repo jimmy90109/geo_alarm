@@ -55,3 +55,42 @@
 - 使用者要求 commit、push、tag 與 GitHub Release。
 - 重新讀取 Beta API，確認 `1.5.1 / 2611030` 已為 `RELEASE_LIFECYCLE_STATE_PUBLISHED`；Production 未操作，未宣稱正式版全面推出。
 - 以下 Git 操作按實際結果續記；上方送審紀錄保留為當時狀態。
+
+## 1.5.2 (2611180) — Beta 審查中（2026-11-18）
+
+- 來源：`dev` 的 `da0643db5eccfff87551aacef8a369be221f7aff`；建置輸入包含工作樹既有的 `app/build.gradle.kts` 版本變更（1.5.1 → 1.5.2，2611030 → 2611180）。發布說明與本紀錄為本次新增的文件變更。
+- 使用者明確同意本版包含地點提醒原型變更並發佈 Beta；原型尚未升格為正式產品規格。
+- 範圍：排程時間／星期選擇器、鬧鐘／排程／提醒安全邊界與橫向排版、提醒英制距離與半徑刻度、選擇器轉場；Material 3 更新為 1.5.0-alpha24。
+- 差異未變更 manifest 權限、背景服務、資料庫、排程觸發及單一啟動鬧鐘邏輯。未執行裝置端回歸驗證。
+- `./gradlew verifyReleaseSigning testDebugUnitTest lintRelease bundleRelease --console=plain` 成功；129 個 JVM 測試通過，0 failure/error/skipped；lint 0 Error、168 Warning、7 Hint。
+- 儀器測試未執行：未確認可用的專用拋棄式模擬器，未操作日常實機 debug app 資料。
+- AAB：`app/build/outputs/bundle/release/app-release.aab`；17,293,911 bytes；package `com.github.jimmy90109.geoalarm`、versionName `1.5.2`、versionCode `2611180`、minSdk 31、targetSdk 37，已由 artifact scanner 核對。
+- AAB SHA-256：`0f35ac3a4c4def650a1276039df0c38ba94dfb0fc2c3e9b6b8d65f443ef29963`。
+- mapping：`app/build/outputs/mapping/release/mapping.txt`；SHA-256：`e101978831476d82a6ff1a00e73c5c9f4725a34e440c24ba1464b56727498b79`；與 AAB 內嵌 `BUNDLE-METADATA/com.android.tools.build.obfuscation/proguard.map` 完全一致。
+- `jarsigner -verify` 成功；簽署者 `CN=Jim H`；SHA-256：`6A:FF:22:FD:F2:D0:9D:C8:FE:5C:B4:5C:01:6F:F5:9B:7D:1C:91:64:9D:A1:19:C3:1E:F4:F1:BF:D4:A7:63:3C`，與上一版被 Play 接受的憑證相同；未人工比對 Console upload certificate。
+- 未產生 native symbols ZIP，`extractReleaseNativeSymbolTables/out` 為空；本版只有既有 AndroidX graphics path 與 DataStore 預編譯 native libraries，未新增自有 native code，未另傳 symbols。預檢仍提示 DataStore library 的內含符號。
+- `gplay validate`（明確使用 `tw-live-noti` profile）完成遠端核對：0 blocking、13 warning、17 info、2 manual follow-up。警告涉及既有權限、backup、Google API key 限制、DataStore native symbols、Gradle metadata 與缺少本機 app-content inventory。
+- Console 的發布總覽、裝置支援、國家／地區、測試者設定及政策頁未人工核對：Safari 電腦操作未獲允許。
+- 未建立 commit、push、PR、tag 或 GitHub Release；Production 未操作。
+- 同一 edit 完成 AAB 上傳、Beta 更新、`edits validate` 及送審 commit；上傳回應的 version code 與 SHA-256 均符合本機產物。mapping 已內嵌，未重複上傳。
+- Beta 軌道內設定 100%。提交後 API 讀回：`1.5.2 / 2611180` 為 `RELEASE_LIFECYCLE_STATE_IN_REVIEW`；上一版 `1.5.1 / 2611030` 仍為 `RELEASE_LIFECYCLE_STATE_PUBLISHED`。尚未確認 1.5.2 過審或公開。
+- 下一步：等待 Google Play 審查；已停止查詢，未建立輪詢或自動化。待使用者要求查詢或續接時再核對狀態。
+
+## 1.5.2 (2611190) — Beta 已公開（2026-11-19）
+
+- 續接前 API 已確認 `1.5.2 / 2611180` 在 Beta 為 `RELEASE_LIFECYCLE_STATE_PUBLISHED`。
+- 使用者要求建置 `2611190` 並上 Beta；沿用先前明確同意的 1.5.2 原型範圍。本次增加 `android.hardware.wifi` 的 `required="false"`，保留 Places SDK 帶入的 `ACCESS_WIFI_STATE` 權限，以取消非必要的 Wi-Fi 裝置篩選。
+- 來源 revision：`da0643db5eccfff87551aacef8a369be221f7aff`；工作樹建置輸入：`app/build.gradle.kts` 的 `1.5.2 / 2611190` 版本設定，以及 `app/src/main/AndroidManifest.xml` 的 Wi-Fi 選用宣告。發布說明與發版紀錄另有未提交文件變更。
+- `./gradlew verifyReleaseSigning testDebugUnitTest lintRelease bundleRelease --console=plain` 成功；129 個 JVM 測試通過，0 failure/error/skipped；lint 0 Error、168 Warning、7 Hint。release 合併 Manifest 已確認 Wi-Fi 為選用。
+- 儀器測試未執行：未確認可用的專用拋棄式模擬器，未操作日常實機 debug app 資料。相較 2611180，未變更定位／通知權限、背景服務、資料庫或鬧鐘邏輯。
+- AAB：`app/build/outputs/bundle/release/app-release.aab`；17,293,961 bytes；SHA-256：`35031463902eed01cf60e0d530ffdc9ad82724fe4faf972608c224fbadf58508`。artifact scanner 確認 package `com.github.jimmy90109.geoalarm`、versionName `1.5.2`、versionCode `2611190`、minSdk 31、targetSdk 37。
+- mapping：`app/build/outputs/mapping/release/mapping.txt`；SHA-256：`e101978831476d82a6ff1a00e73c5c9f4725a34e440c24ba1464b56727498b79`；與 AAB 內嵌 mapping 完全相同，未另傳。未產生 native symbols ZIP，native libraries 仍為既有 AndroidX graphics path 與 DataStore 預編譯程式庫，未新增自有 native code。
+- `jarsigner -verify` 成功；簽署者 `CN=Jim H`；憑證 SHA-256：`6A:FF:22:FD:F2:D0:9D:C8:FE:5C:B4:5C:01:6F:F5:9B:7D:1C:91:64:9D:A1:19:C3:1E:F4:F1:BF:D4:A7:63:3C`，與先前 Play 接受的憑證一致。
+- `gplay validate` 使用 `tw-live-noti` profile：0 blocking、13 warning、17 info、2 manual follow-up；警告項目與 2611180 相同。Console 專屬的裝置支援、國家／地區、測試者設定及政策頁仍未人工核對，先前 Safari 操作未獲允許。
+- 未操作 Production，未建立 commit、push、PR、tag 或 GitHub Release。
+- 同一 edit 完成 AAB 上傳、Beta 100% 更新、edit 驗證與送審提交；Play 回傳 SHA-256 與本機一致。
+- 提交後讀回 Beta：`2611190` 為 `RELEASE_LIFECYCLE_STATE_IN_REVIEW`，`2611180` 仍為 `RELEASE_LIFECYCLE_STATE_PUBLISHED`。尚未確認 2611190 過審或公開。
+- 已停止查詢，不輪詢或建立自動化；等待使用者要求查詢／續接。
+- 收尾時觀察到 HEAD 已由外部操作前進至 `ce6931d`（僅提交本次相同的 Wi-Fi 宣告）；本次發版流程未執行 Git commit。建置輸入仍符合上述來源與版本設定。
+- 2026-11-19 使用者通知已過審後重新查核：Beta API 僅列出 `1.5.2 / 2611190`，狀態為 `RELEASE_LIFECYCLE_STATE_PUBLISHED`，確認 Beta 已公開。上方審查中紀錄保留為提交當時狀態。
+- Production 尚未操作；後續須依使用者指定的正式版推出範圍與比例續接。
